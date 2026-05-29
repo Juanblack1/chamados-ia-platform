@@ -297,7 +297,10 @@ export async function getSession(): Promise<{ user: AppUser }> {
 }
 
 export async function logout(): Promise<void> {
-  await request("/auth/logout", { method: "POST" });
+  await request("/auth/logout", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
 }
 
 export async function listTickets(): Promise<Ticket[]> {
