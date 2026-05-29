@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { CopilotKit } from "@copilotkit/react-core/v2";
+import { CopilotKit, CopilotPopup } from "@copilotkit/react-core/v2";
 import App from "./App";
 import "./styles.css";
 
@@ -12,6 +12,17 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <CopilotKit runtimeUrl={runtimeUrl} headers={{ "x-api-key": apiKey }} showDevConsole={false}>
       <App />
+      <CopilotPopup
+        defaultOpen={false}
+        width={420}
+        height={620}
+        labels={{
+          modalHeaderTitle: "Copiloto de chamados",
+          welcomeMessageText: "Posso listar chamados, prever triagem ou criar um chamado com rastreio.",
+          chatInputPlaceholder: "Pergunte sobre SLA, fila ou abertura de chamado..."
+        }}
+        attachments={{ enabled: true, accept: "image/*", maxSize: 2 * 1024 * 1024 }}
+      />
     </CopilotKit>
   </StrictMode>
 );

@@ -2,6 +2,7 @@ import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { z } from "zod";
 import type { CreateTicketInput, RagSource, TicketPriority } from "../../domain/ticket.js";
 import type { ModelGateway } from "../modelGateway.js";
+import { summarizeTicketInputForLlm } from "./attachmentSummary.js";
 
 const TriageResultSchema = z.object({
   category: z.string(),
@@ -25,7 +26,7 @@ export class TicketTriageAgent {
 
   async run(input: CreateTicketInput, sources: RagSource[]): Promise<TriageResult> {
     const rendered = await this.prompt.format({
-      ticket: JSON.stringify(input, null, 2),
+      ticket: JSON.stringify(summarizeTicketInputForLlm(input), null, 2),
       sources: JSON.stringify(sources, null, 2)
     });
 

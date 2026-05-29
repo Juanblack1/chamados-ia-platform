@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -8,6 +8,7 @@ import {
   ClipboardList,
   FileSearch,
   Gauge,
+  ImagePlus,
   KeyRound,
   LifeBuoy,
   Loader2,
@@ -17,7 +18,8 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
-  TicketCheck
+  TicketCheck,
+  X
 } from "lucide-react";
 import {
   createTicket,
@@ -30,6 +32,9 @@ import {
 } from "./lib/api";
 
 type View = "queue" | "new" | "detail";
+
+const MAX_ATTACHMENTS = 4;
+const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
 
 const initialForm: CreateTicketPayload = {
   requesterEmail: "ana.silva@acme.local",
@@ -361,6 +366,25 @@ function IntakeView({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const analysis = useMemo(() => analyzeDraft(form), [form]);
+  const remainingAttachments = MAX_ATTACHMENTS - form.attachments.length;
+
+  async function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    const imageFiles = files
+      .filter((file) => file.type.startsWith("image/") && file.size <= MAX_ATTACHMENT_BYTES)
+      .slice(0, Math.max(remainingAttachments, 0));
+
+    if (imageFiles.length > 0) {
+      const encoded = await Promise.all(imageFiles.map(readFileAsDataUrl));
+      setForm({ ...form, attachments: [...form.attachments, ...encoded] });
+    }
+
+    event.target.value = "";
+  }
+
+  function removeAttachment(index: number) {
+    setForm({ ...form, attachments: form.attachments.filter((_, currentIndex) => currentIndex !== index) });
+  }
 
   return (
     <form className="intake-layout" onSubmit={onSubmit}>
@@ -421,6 +445,38 @@ function IntakeView({
               onChange={(event) => setForm({ ...form, businessImpact: event.target.value })}
             />
           </Field>
+          <div className="field wide">
+            <span>Imagens</span>
+            <label className="attachment-drop">
+              <ImagePlus size={22} />
+              <strong>Anexar evidencia visual</strong>
+              <small>PNG, JPG, WebP ou GIF ate 2 MB. Limite de {MAX_ATTACHMENTS} imagens.</small>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                disabled={remainingAttachments <= 0}
+                onChange={handleAttachmentChange}
+              />
+            </label>
+            {form.attachments.length ? (
+              <div className="attachment-grid" aria-label="Imagens anexadas">
+                {form.attachments.map((attachment, index) => (
+                  <div className="attachment-thumb" key={`${attachment.slice(0, 40)}-${index}`}>
+                    <img src={attachment} alt={`Anexo ${index + 1}`} />
+                    <button
+                      type="button"
+                      className="remove-attachment"
+                      onClick={() => removeAttachment(index)}
+                      aria-label={`Remover anexo ${index + 1}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="sticky-actions">
           <button type="button" className="secondary-button" disabled={isSubmitting}>
@@ -477,7 +533,7 @@ function DetailView({ ticket, traces }: { ticket: Ticket; traces: TraceSpan[] })
         <div>
           <p className="eyebrow">{ticket.number}</p>
           <h2>{ticket.title}</h2>
-          <p>{ticket.requesterEmail} · {ticket.affectedService}</p>
+          <p>{ticket.requesterEmail} - {ticket.affectedService}</p>
         </div>
         <div className="header-badges">
           <Badge tone={priorityTone(ticket.priority)}>{ticket.priority}</Badge>
@@ -527,6 +583,26 @@ function DetailView({ ticket, traces }: { ticket: Ticket; traces: TraceSpan[] })
           <AnalysisItem label="Categoria" value={ticket.category} />
           <AnalysisItem label="Impacto" value={ticket.businessImpact} />
           <AnalysisItem label="Tags" value={ticket.tags.join(", ") || "Sem tags"} />
+          <div className="ticket-attachments">
+            <h3>Imagens anexadas</h3>
+            {ticket.attachments.length ? (
+              <div className="attachment-grid readonly" aria-label="Imagens do chamado">
+                {ticket.attachments.map((attachment, index) => (
+                  <a
+                    className="attachment-thumb"
+                    href={attachment}
+                    target="_blank"
+                    rel="noreferrer"
+                    key={`${ticket.id}-attachment-${index}`}
+                  >
+                    <img src={attachment} alt={`Imagem anexada ${index + 1}`} />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p>Sem imagens anexadas.</p>
+            )}
+          </div>
           <div className="checklist">
             <h3>Runbook</h3>
             {["Validar servico", "Confirmar usuarios afetados", "Executar passo seguro", "Registrar evidencia"].map((item, index) => (
@@ -658,6 +734,15 @@ function SkeletonRows() {
       ))}
     </div>
   );
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read image attachment."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function analyzeDraft(form: CreateTicketPayload) {

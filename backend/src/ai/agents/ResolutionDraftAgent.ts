@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CreateTicketInput, RagSource } from "../../domain/ticket.js";
 import type { ModelGateway } from "../modelGateway.js";
+import { summarizeTicketInputForLlm } from "./attachmentSummary.js";
 import type { TriageResult } from "./TicketTriageAgent.js";
 
 const ResolutionDraftSchema = z.object({
@@ -19,7 +20,7 @@ export class ResolutionDraftAgent {
     const result = await this.llm.completeObject({
       system:
         "Draft a concise first response for a service desk analyst. Cite only the provided source IDs and avoid unsupported claims.",
-      user: JSON.stringify({ input, triage, sources }, null, 2),
+      user: JSON.stringify({ input: summarizeTicketInputForLlm(input), triage, sources }, null, 2),
       schema: ResolutionDraftSchema,
       fallback: () => fallbackDraft(input, triage, sources)
     });
