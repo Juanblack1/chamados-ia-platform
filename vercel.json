@@ -1,5 +1,12 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm --workspace frontend run build",
   "outputDirectory": "frontend/dist",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/[...]"
+    }
+  ]
 }
