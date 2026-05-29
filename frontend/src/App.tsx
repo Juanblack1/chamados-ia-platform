@@ -10,6 +10,7 @@ import {
   type AppendMessage,
   type ThreadMessageLike
 } from "@assistant-ui/react";
+import { CopilotKit, CopilotPopup } from "@copilotkit/react-core/v2";
 import {
   Activity,
   AlertTriangle,
@@ -42,6 +43,7 @@ import {
   addFollowup,
   addTask,
   assignTicket,
+  assessTicketIntake,
   chatWithTicket,
   completeTask,
   createTicket,
@@ -56,6 +58,7 @@ import {
   updateTicketStatus,
   type AppUser,
   type CreateTicketPayload,
+  type IntakeAssessment,
   type ServiceDeskCatalog,
   type Ticket,
   type TicketAgentMemoryEntry,
@@ -82,6 +85,8 @@ const initialForm: CreateTicketPayload = {
   attachments: []
 };
 
+const copilotRuntimeUrl = import.meta.env.VITE_COPILOT_RUNTIME_URL ?? "/api/copilotkit";
+
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [view, setView] = useState<View>("queue");
@@ -92,10 +97,12 @@ export default function App() {
   const [isBooting, setIsBooting] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAssessing, setIsAssessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
   const [form, setForm] = useState<CreateTicketPayload>(initialForm);
+  const [intakeAssessment, setIntakeAssessment] = useState<IntakeAssessment | null>(null);
 
   useEffect(() => {
     void boot();
@@ -177,17 +184,50 @@ export default function App() {
 
     try {
       const payload = user.role === "requester" ? { ...form, requesterEmail: user.email } : form;
+      const assessment = await runIntakeAssessment(payload);
+      if (!assessment.shouldCreate) {
+        setError(assessment.blockedReason ?? assessment.summary);
+        return;
+      }
       const ticket = await createTicket(payload);
       setTickets((current) => [ticket, ...current]);
       setSelectedId(ticket.id);
       setView("detail");
       setForm({ ...initialForm, requesterEmail: user.email });
+      setIntakeAssessment(null);
       void refreshWorkspace();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Nao foi possivel criar o chamado.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function runIntakeAssessment(payload: CreateTicketPayload): Promise<IntakeAssessment> {
+    setIsAssessing(true);
+    try {
+      const assessment = await assessTicketIntake(payload);
+      setIntakeAssessment(assessment);
+      return assessment;
+    } finally {
+      setIsAssessing(false);
+    }
+  }
+
+  async function handleAssessIntake() {
+    if (!user) return;
+    setError(null);
+    try {
+      const payload = user.role === "requester" ? { ...form, requesterEmail: user.email } : form;
+      await runIntakeAssessment(payload);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Nao foi possivel analisar o chamado.");
+    }
+  }
+
+  function updateForm(next: CreateTicketPayload) {
+    setForm(next);
+    setIntakeAssessment(null);
   }
 
   async function mutateTicket(action: () => Promise<Ticket>) {
@@ -243,71 +283,87 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <Sidebar user={user} active={view} onNavigate={setView} onLogout={() => void handleLogout()} />
-      <main className="workspace">
-        <Topbar
-          view={view}
-          user={user}
-          search={search}
-          setSearch={setSearch}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          onCreate={() => setView("new")}
-          onRefresh={() => void refreshWorkspace()}
-          isLoading={isLoading}
-        />
-        {error ? (
-          <div className="inline-alert" role="alert">
-            <AlertTriangle size={18} />
-            <span>{error}</span>
-          </div>
-        ) : null}
-
-        {view === "queue" ? (
-          <QueueView
-            tickets={visibleTickets}
-            allTickets={tickets}
-            traces={traces}
+    <CopilotKit key={user.id} runtimeUrl={copilotRuntimeUrl} credentials="include" showDevConsole={false}>
+      <div className="app-shell">
+        <Sidebar user={user} active={view} onNavigate={setView} onLogout={() => void handleLogout()} />
+        <main className="workspace">
+          <Topbar
+            view={view}
+            user={user}
+            search={search}
+            setSearch={setSearch}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            onCreate={() => setView("new")}
+            onRefresh={() => void refreshWorkspace()}
             isLoading={isLoading}
-            selectedId={selectedTicket?.id}
-            onSelect={(ticket) => {
-              setSelectedId(ticket.id);
-              setView("detail");
-            }}
           />
-        ) : null}
+          {error ? (
+            <div className="inline-alert" role="alert">
+              <AlertTriangle size={18} />
+              <span>{error}</span>
+            </div>
+          ) : null}
 
-        {view === "new" ? (
-          <IntakeView
-            user={user}
-            form={form.requesterEmail ? form : { ...form, requesterEmail: user.email }}
-            setForm={setForm}
-            isSubmitting={isSubmitting}
-            onSubmit={handleCreateTicket}
-          />
-        ) : null}
+          {view === "queue" ? (
+            <QueueView
+              tickets={visibleTickets}
+              allTickets={tickets}
+              traces={traces}
+              isLoading={isLoading}
+              selectedId={selectedTicket?.id}
+              onSelect={(ticket) => {
+                setSelectedId(ticket.id);
+                setView("detail");
+              }}
+            />
+          ) : null}
 
-        {view === "detail" && selectedTicket ? (
-          <DetailView
-            user={user}
-            ticket={selectedTicket}
-            traces={traces}
-            isSubmitting={isSubmitting}
-            onAssign={() => mutateTicket(() => assignTicket(selectedTicket.id))}
-            onStatus={(status) => mutateTicket(() => updateTicketStatus(selectedTicket.id, status))}
-            onFollowup={(message, visibility) => mutateTicket(() => addFollowup(selectedTicket.id, message, visibility))}
-            onTask={(title, description) => mutateTicket(() => addTask(selectedTicket.id, title, description))}
-            onCompleteTask={(taskId) => mutateTicket(() => completeTask(selectedTicket.id, taskId))}
-            onResolve={(message) => mutateTicket(() => resolveTicket(selectedTicket.id, message))}
-            onDelete={() => void handleDeleteTicket(selectedTicket)}
-            onChat={(message) => handleTicketChat(selectedTicket, message)}
-          />
-        ) : null}
+          {view === "new" ? (
+            <IntakeView
+              user={user}
+              form={form.requesterEmail ? form : { ...form, requesterEmail: user.email }}
+              setForm={updateForm}
+              assessment={intakeAssessment}
+              isAssessing={isAssessing}
+              isSubmitting={isSubmitting}
+              onAssess={() => void handleAssessIntake()}
+              onSubmit={handleCreateTicket}
+            />
+          ) : null}
 
-        {view === "admin" ? <AdminView user={user} catalog={catalog} /> : null}
-      </main>
-    </div>
+          {view === "detail" && selectedTicket ? (
+            <DetailView
+              user={user}
+              ticket={selectedTicket}
+              traces={traces}
+              isSubmitting={isSubmitting}
+              onAssign={() => mutateTicket(() => assignTicket(selectedTicket.id))}
+              onStatus={(status) => mutateTicket(() => updateTicketStatus(selectedTicket.id, status))}
+              onFollowup={(message, visibility) => mutateTicket(() => addFollowup(selectedTicket.id, message, visibility))}
+              onTask={(title, description) => mutateTicket(() => addTask(selectedTicket.id, title, description))}
+              onCompleteTask={(taskId) => mutateTicket(() => completeTask(selectedTicket.id, taskId))}
+              onResolve={(message) => mutateTicket(() => resolveTicket(selectedTicket.id, message))}
+              onDelete={() => void handleDeleteTicket(selectedTicket)}
+              onChat={(message) => handleTicketChat(selectedTicket, message)}
+            />
+          ) : null}
+
+          {view === "admin" ? <AdminView user={user} catalog={catalog} /> : null}
+        </main>
+      </div>
+      <CopilotPopup
+        defaultOpen={false}
+        width={420}
+        height={620}
+        labels={{
+          modalHeaderTitle: "Copiloto de chamados",
+          welcomeMessageText: "Posso listar chamados, prever triagem ou criar um chamado com rastreio.",
+          chatInputPlaceholder: "Pergunte sobre SLA, fila ou abertura de chamado..."
+        }}
+        attachments={{ enabled: true, accept: "image/*", maxSize: 2 * 1024 * 1024 }}
+      />
+    </CopilotKit>
   );
 }
 
@@ -652,16 +708,23 @@ function IntakeView({
   user,
   form,
   setForm,
+  assessment,
+  isAssessing,
   isSubmitting,
+  onAssess,
   onSubmit
 }: {
   user: AppUser;
   form: CreateTicketPayload;
   setForm: (form: CreateTicketPayload) => void;
+  assessment: IntakeAssessment | null;
+  isAssessing: boolean;
   isSubmitting: boolean;
+  onAssess: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const remainingAttachments = MAX_ATTACHMENTS - form.attachments.length;
+  const shouldBlockCreate = Boolean(assessment && !assessment.shouldCreate);
 
   async function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -732,7 +795,7 @@ function IntakeView({
               <option value="critical">Critica</option>
             </select>
           </Field>
-          <Field label="Impacto">
+          <Field label="Impacto operacional">
             <select value={form.impact} onChange={(event) => setForm({ ...form, impact: event.target.value as TicketPriority })}>
               <option value="low">Baixo</option>
               <option value="medium">Medio</option>
@@ -766,27 +829,166 @@ function IntakeView({
           </div>
         </div>
         <div className="sticky-actions">
-          <button type="submit" className="primary-button" disabled={isSubmitting}>
+          <button type="button" className="secondary-button" disabled={isSubmitting || isAssessing} onClick={onAssess}>
+            {isAssessing ? <Loader2 className="spin" size={18} /> : <FileSearch size={18} />}
+            <span>Analisar chamado</span>
+          </button>
+          <button type="submit" className="primary-button" disabled={isSubmitting || isAssessing || shouldBlockCreate}>
             {isSubmitting ? <Loader2 className="spin" size={18} /> : <Send size={18} />}
             <span>Criar chamado</span>
           </button>
         </div>
       </section>
-      <section className="panel ai-panel" aria-labelledby="routing-title">
-        <div className="panel-heading">
-          <div>
-            <h2 id="routing-title">Roteamento previsto</h2>
-            <p>Previsao local antes da orquestracao final.</p>
-          </div>
-        </div>
-        <div className="analysis-list">
-          <AnalysisItem label="Prioridade" value={priorityLabel(estimatedPriority(form))} />
-          <AnalysisItem label="SLA" value={estimatedPriority(form) === "critical" ? "P1 - resposta em 15 min" : estimatedPriority(form) === "high" ? "P2 - resposta em 1 h" : "P3/P4 - fila padrao"} />
-          <AnalysisItem label="Grupo" value={estimatedGroup(form)} />
-          <AnalysisItem label="Controle" value="Aprovacao humana para resposta externa" />
-        </div>
-      </section>
+      <IntakeIntelligencePanel
+        form={form}
+        assessment={assessment}
+        isAssessing={isAssessing}
+        onApplySuggestion={() => {
+          if (!assessment) return;
+          setForm({
+            ...form,
+            type: assessment.suggestedFields.type,
+            title: assessment.suggestedFields.title ?? form.title,
+            affectedService: assessment.suggestedFields.affectedService,
+            urgency: assessment.suggestedFields.urgency,
+            impact: assessment.suggestedFields.impact
+          });
+        }}
+      />
     </form>
+  );
+}
+
+function IntakeIntelligencePanel({
+  form,
+  assessment,
+  isAssessing,
+  onApplySuggestion
+}: {
+  form: CreateTicketPayload;
+  assessment: IntakeAssessment | null;
+  isAssessing: boolean;
+  onApplySuggestion: () => void;
+}) {
+  const localPriority = estimatedPriority(form);
+
+  return (
+    <section className="panel ai-panel" aria-labelledby="intake-ai-title">
+      <div className="panel-heading">
+        <div>
+          <h2 id="intake-ai-title">Intake inteligente</h2>
+          <p>Analise antes da abertura com RAG, similares, campos sugeridos e bloqueio de chamados vagos.</p>
+        </div>
+        {assessment ? <Badge tone={assessmentTone(assessment)}>{readinessLabel(assessment.readiness)}</Badge> : null}
+      </div>
+      {isAssessing ? (
+        <div className="analysis-list">
+          <div className="intake-loading">
+            <Loader2 className="spin" size={18} />
+            <span>Analisando qualidade, RAG e similares</span>
+          </div>
+          <SkeletonRows />
+        </div>
+      ) : assessment ? (
+        <div className="analysis-list">
+          <div className="quality-block">
+            <div className="quality-header">
+              <strong>{assessment.qualityScore}/100</strong>
+              <span>{assessment.summary}</span>
+            </div>
+            <div className="quality-meter" aria-label={`Qualidade do chamado ${assessment.qualityScore} de 100`}>
+              <span style={{ width: `${assessment.qualityScore}%` }} />
+            </div>
+          </div>
+
+          {assessment.selfService.canDeflect ? (
+            <div className="self-service-box">
+              <div className="heading-inline">
+                <BookOpen size={17} />
+                <h3>Autoatendimento encontrado</h3>
+              </div>
+              <p>{assessment.selfService.answer}</p>
+            </div>
+          ) : null}
+
+          {assessment.missingInformation.length ? (
+            <div className="intake-list">
+              <h3>Faltando para abrir</h3>
+              <ul>
+                {assessment.missingInformation.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {assessment.clarificationQuestions.length ? (
+            <div className="intake-list">
+              <h3>Perguntas sugeridas</h3>
+              <ul>
+                {assessment.clarificationQuestions.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="suggestion-card">
+            <div>
+              <strong>{assessment.suggestedFields.category}</strong>
+              <span>{priorityLabel(assessment.suggestedFields.priority)} · {assessment.suggestedFields.assignedGroupName}</span>
+            </div>
+            <button type="button" className="secondary-button small" onClick={onApplySuggestion}>
+              <CheckCircle2 size={16} />
+              <span>Aplicar sugestao</span>
+            </button>
+          </div>
+
+          <div className="quality-signals">
+            {assessment.qualitySignals.map((signal) => (
+              <div className={`quality-signal ${signal.status}`} key={signal.label}>
+                {signal.status === "ok" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                <div>
+                  <strong>{signal.label}</strong>
+                  <span>{signal.detail}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {assessment.ragSources.length ? (
+            <div className="intake-list">
+              <h3>RAG usado</h3>
+              {assessment.ragSources.slice(0, 3).map((source) => (
+                <article className="compact-source" key={source.id}>
+                  <strong>{source.title}</strong>
+                  <span>{source.source} · {Math.round(source.relevance * 100)}%</span>
+                </article>
+              ))}
+            </div>
+          ) : null}
+
+          {assessment.similarTickets.length ? (
+            <div className="intake-list">
+              <h3>Chamados parecidos</h3>
+              {assessment.similarTickets.map((ticket) => (
+                <article className="compact-source" key={ticket.id}>
+                  <strong>{ticket.number} · {ticket.title}</strong>
+                  <span>{statusLabel(ticket.status)} · {ticket.affectedService} · {Math.round(ticket.score * 100)}%</span>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="analysis-list">
+          <AnalysisItem label="Prioridade local" value={priorityLabel(localPriority)} />
+          <AnalysisItem label="SLA local" value={localPriority === "critical" ? "P1 - resposta em 15 min" : localPriority === "high" ? "P2 - resposta em 1 h" : "P3/P4 - fila padrao"} />
+          <AnalysisItem label="Grupo local" value={estimatedGroup(form)} />
+          <AnalysisItem label="Controle" value="A analise IA roda antes de criar o chamado" />
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1064,7 +1266,9 @@ function AgentRail({ ticket, traces }: { ticket?: Ticket; traces: TraceSpan[] })
   const draft = ticket?.ai.resolutionDraft;
   const traceId = typeof triage?.metadata?.traceId === "string" ? triage.metadata.traceId : undefined;
   const visibleSpans = traceId ? traces.filter((span) => span.traceId === traceId).slice(0, 6) : traces.slice(0, 6);
+  const intakeQuality = triage?.metadata?.intakeQuality as { qualityScore?: number; readiness?: string } | undefined;
   const steps = [
+    { label: "Intake", state: intakeQuality ? "done" : "waiting", icon: FileSearch, meta: intakeQuality?.qualityScore ? `${intakeQuality.qualityScore}/100` : "pendente" },
     { label: "Classificador", state: triage ? "done" : "waiting", icon: ClipboardList, meta: triage ? `${Math.round(triage.confidence * 100)}%` : "pendente" },
     { label: "RAG", state: ticket?.ai.retrievedSources.length ? "done" : "waiting", icon: FileSearch, meta: `${ticket?.ai.retrievedSources.length ?? 0} fontes` },
     { label: "Roteamento", state: ticket?.assignedGroupName ? "done" : "waiting", icon: UsersRound, meta: ticket?.assignedGroupName ?? "sem grupo" },
@@ -1317,4 +1521,16 @@ function statusTone(status: string) {
   if (status === "waiting_customer" || status === "pending_approval") return "warning";
   if (status === "triaging" || status === "in_progress") return "info";
   return "neutral";
+}
+
+function readinessLabel(readiness: string) {
+  if (readiness === "ready") return "Pronto";
+  if (readiness === "self_service") return "Autoatendimento";
+  return "Pedir dados";
+}
+
+function assessmentTone(assessment: IntakeAssessment) {
+  if (assessment.readiness === "ready") return "success";
+  if (assessment.readiness === "self_service") return "info";
+  return "warning";
 }

@@ -9,6 +9,14 @@ export const ticketTriageMastraAgent = new Agent({
   model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`
 });
 
+export const intakeQualityMastraAgent = new Agent({
+  id: "intake-quality",
+  name: "Intake Quality Agent",
+  instructions:
+    "Evaluate whether a service desk request has enough actionable information before ticket creation. Detect vague or nonsensical tickets, ask focused clarification questions, suggest fields, surface self-service knowledge, and prevent low-quality tickets.",
+  model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`
+});
+
 export const ragRetrievalMastraAgent = new Agent({
   id: "rag-retrieval",
   name: "RAG Retrieval Agent",
@@ -50,6 +58,7 @@ export const ticketSpecialistMastraAgent = new Agent({
 });
 
 export const mastraAgents = {
+  "intake-quality": intakeQualityMastraAgent,
   "ticket-triage": ticketTriageMastraAgent,
   "rag-retrieval": ragRetrievalMastraAgent,
   routing: routingMastraAgent,

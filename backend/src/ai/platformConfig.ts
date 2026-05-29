@@ -2,6 +2,13 @@ export type AiPlatformFocus = "all" | "agents" | "rag" | "workflow" | "tool_call
 
 export const serviceDeskAgentCatalog = [
   {
+    id: "intake-quality",
+    name: "Intake Quality Agent",
+    framework: "Mastra Agent",
+    responsibility: "Avalia se a abertura tem contexto acionavel, sugere campos, detecta lacunas e evita chamados sem sentido.",
+    memory: "Resumo de qualidade e bloqueios ficam em agentMemory e metadata da triagem quando o chamado e criado."
+  },
+  {
     id: "ticket-triage",
     name: "Ticket Triage Agent",
     framework: "Mastra Agent",
@@ -51,6 +58,7 @@ export const serviceDeskWorkflow = {
   sddSpecs: ["docs/specs/open-ticket.sdd.md", "docs/specs/agent-governance.sdd.md"],
   steps: [
     "ticket.created",
+    "agent.intake-quality",
     "agent.rag-retrieval",
     "rag.search",
     "agent.ticket-triage",
@@ -67,6 +75,7 @@ export const serviceDeskToolCatalog = [
   "describe_ai_service_desk",
   "search_service_desk_knowledge",
   "list_service_desk_tickets",
+  "assess_ticket_intake",
   "preview_ticket_triage",
   "create_service_desk_ticket"
 ] as const;

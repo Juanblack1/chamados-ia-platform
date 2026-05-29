@@ -10,6 +10,7 @@ import type { ModelGateway } from "../../ai/modelGateway.js";
 import type { AiPlatformFocus } from "../../ai/platformConfig.js";
 import { CreateTicketInputSchema, normalizeCreateTicketInput, type RagSource, type Ticket } from "../../domain/ticket.js";
 import type { TraceRecorder } from "../../observability/traces.js";
+import type { AppUser } from "../../security/authStore.js";
 
 export async function registerCopilotKitRoutes(
   app: FastifyInstance,
@@ -25,7 +26,8 @@ export async function registerCopilotKitRoutes(
 
   const handler = createCopilotRuntimeHandler({
     runtime,
-    basePath: "/api/copilotkit"
+    basePath: "/api/copilotkit",
+    mode: "single-route"
   });
 
   const methods: HTTPMethods[] = ["GET", "POST", "OPTIONS"];
@@ -34,9 +36,11 @@ export async function registerCopilotKitRoutes(
     const protocol = request.headers["x-forwarded-proto"] ?? "http";
     const url = new URL(request.url, `${Array.isArray(protocol) ? protocol[0] : protocol}://${host}`);
     const body = ["GET", "HEAD"].includes(request.method) ? undefined : serializeBody(request.body);
+    const headers = toHeaders(request.headers);
+    if (request.currentUser) headers.set("x-service-desk-user", Buffer.from(JSON.stringify(request.currentUser)).toString("base64url"));
     const webRequest = new Request(url, {
       method: request.method,
-      headers: toHeaders(request.headers),
+      headers,
       body
     });
 
@@ -87,6 +91,7 @@ function createServiceDeskAgent(
 ): BuiltInAgent {
   const traceId = request.headers.get("x-trace-id") ?? randomUUID();
   const tenantId = request.headers.get("x-tenant-id") ?? "default";
+  const user = parseRequestUser(request);
 
   if (llm.isConfigured) {
     return new BuiltInAgent({
@@ -98,10 +103,11 @@ function createServiceDeskAgent(
           "Always answer in Brazilian Portuguese.",
           "When the user asks about agents, Mastra, RAG, workflows, observability, tracing, Docker, Kubernetes, Azure, Vercel, or tool calls, call describe_ai_service_desk before answering.",
           "When the user asks for policy, runbook, SLA, access, VPN, ERP, or knowledge-base guidance, call search_service_desk_knowledge before answering.",
-          "Use ticket tools when the user asks to inspect, preview, or create tickets.",
+          "Before creating a ticket, call assess_ticket_intake. If shouldCreate is false, do not create the ticket; ask the missing questions or provide the self-service answer.",
+          "Use ticket tools when the user asks to inspect, assess, preview, or create tickets.",
           "Keep answers concise, cite trace IDs when actions run, and require human approval for high-impact or low-confidence decisions."
         ].join(" "),
-      tools: createServiceDeskTools(orchestrator, traces, traceId, tenantId)
+      tools: createServiceDeskTools(orchestrator, traces, traceId, tenantId, user)
     });
   }
 
@@ -109,7 +115,7 @@ function createServiceDeskAgent(
     type: "custom",
     factory: async function* ({ input }): AsyncGenerator<BaseEvent> {
       const userText = latestUserText(input.messages);
-      const tickets = await orchestrator.listTickets();
+      const tickets = user ? await orchestrator.listTicketsForUser(user) : await orchestrator.listTickets();
       const response = await llm.completeText({
         system:
           "You are an enterprise service desk copilot. Help operators open, triage, and govern IT support tickets. Keep answers concise and audit-friendly.",
@@ -125,7 +131,7 @@ function createServiceDeskAgent(
   });
 }
 
-function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRecorder, traceId: string, tenantId: string) {
+function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRecorder, traceId: string, tenantId: string, user?: AppUser) {
   return [
     defineTool({
       name: "describe_ai_service_desk",
@@ -175,7 +181,7 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
         status: z.enum(["open", "triaging", "waiting_customer", "escalated", "resolved"]).optional()
       }),
       execute: async ({ status }) =>
-        traces.runSpan(
+        traces.runSpan<Array<{ id: string; number: string; title: string; service: string; priority: string; status: string; confidence: number | null }>>(
           {
             traceId,
             name: "tool.list_service_desk_tickets",
@@ -185,7 +191,7 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
             summarizeOutput: (items) => `${items.length} tickets`
           },
           async () =>
-            (await orchestrator.listTickets())
+            (user ? await orchestrator.listTicketsForUser(user) : await orchestrator.listTickets())
               .filter((ticket) => !status || ticket.status === status)
               .slice(0, 20)
               .map((ticket) => ({
@@ -197,6 +203,24 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
                 status: ticket.status,
                 confidence: ticket.ai.triage?.confidence ?? null
               }))
+        )
+    }),
+    defineTool({
+      name: "assess_ticket_intake",
+      description:
+        "Assess whether a new ticket request has enough actionable context. Returns missing information, RAG self-service suggestions, similar tickets, suggested fields, and whether creation is allowed.",
+      parameters: CreateTicketInputSchema,
+      execute: async (input) =>
+        traces.runSpan<Awaited<ReturnType<AgentOrchestrator["assessIntake"]>>>(
+          {
+            traceId,
+            name: "tool.assess_ticket_intake",
+            kind: "tool",
+            inputSummary: input.title,
+            metadata: { tenantId, userId: user?.id },
+            summarizeOutput: (assessment) => `${assessment.readiness} ${assessment.qualityScore}/100`
+          },
+          async ({ spanId }) => orchestrator.assessIntake(normalizeTicketInputForUser(input, user), { traceId, parentSpanId: spanId }, user)
         )
     }),
     defineTool({
@@ -213,7 +237,7 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
             metadata: { tenantId },
             summarizeOutput: (output) => `${output.triage.category} ${output.triage.priority}`
           },
-          async ({ spanId }) => orchestrator.previewTriage(normalizeCreateTicketInput(input), { traceId, parentSpanId: spanId })
+          async ({ spanId }) => orchestrator.previewTriage(normalizeTicketInputForUser(input, user), { traceId, parentSpanId: spanId })
         )
     }),
     defineTool({
@@ -221,19 +245,34 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
       description: "Create a service desk ticket, run RAG, triage it, and draft the initial analyst response.",
       parameters: CreateTicketInputSchema,
       execute: async (input) =>
-        traces.runSpan<Ticket>(
+        traces.runSpan<Ticket | { blocked: true; message: string; assessment: Awaited<ReturnType<AgentOrchestrator["assessIntake"]>> }>(
           {
             traceId,
             name: "tool.create_service_desk_ticket",
             kind: "tool",
             inputSummary: input.title,
             metadata: { tenantId },
-            summarizeOutput: (ticket) => `${ticket.number} ${ticket.priority} ${ticket.status}`
+            summarizeOutput: (result) => ("blocked" in result ? `blocked ${result.assessment.qualityScore}/100` : `${result.number} ${result.priority} ${result.status}`)
           },
-          async ({ spanId }) => orchestrator.openTicket(normalizeCreateTicketInput(input), { traceId, parentSpanId: spanId })
+          async ({ spanId }) => {
+            const payload = normalizeTicketInputForUser(input, user);
+            const assessment = await orchestrator.assessIntake(payload, { traceId, parentSpanId: spanId }, user);
+            if (!assessment.shouldCreate) {
+              return {
+                blocked: true,
+                message: assessment.blockedReason ?? assessment.summary,
+                assessment
+              };
+            }
+            return orchestrator.openTicket(payload, { traceId, parentSpanId: spanId }, user, assessment);
+          }
         )
     })
   ];
+}
+
+function normalizeTicketInputForUser(input: z.input<typeof CreateTicketInputSchema>, user?: AppUser) {
+  return normalizeCreateTicketInput(user?.role === "requester" ? { ...input, requesterEmail: user.email } : input);
 }
 
 function latestUserText(messages: Message[]): string {
@@ -288,4 +327,15 @@ function toHeaders(rawHeaders: Record<string, string | string[] | undefined>): H
     headers.set(key, value);
   }
   return headers;
+}
+
+function parseRequestUser(request: Request): AppUser | undefined {
+  const encoded = request.headers.get("x-service-desk-user");
+  if (!encoded) return undefined;
+
+  try {
+    return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as AppUser;
+  } catch {
+    return undefined;
+  }
 }

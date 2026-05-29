@@ -583,6 +583,134 @@ td small {
   gap: var(--space-3);
 }
 
+.intake-loading {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-weight: 800;
+}
+
+.quality-block,
+.self-service-box,
+.suggestion-card,
+.intake-list,
+.quality-signals {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.quality-block,
+.self-service-box,
+.suggestion-card,
+.intake-list {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.quality-header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.quality-header strong {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.quality-header span,
+.self-service-box p,
+.intake-list li,
+.compact-source span,
+.quality-signal span {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.quality-meter {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+}
+
+.quality-meter span {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background: var(--color-action);
+}
+
+.self-service-box {
+  border-color: #bfdbfe;
+  background: var(--color-info-bg);
+}
+
+.self-service-box h3,
+.self-service-box p,
+.intake-list h3 {
+  margin: 0;
+}
+
+.intake-list ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.suggestion-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  background: #f7fbfa;
+}
+
+.suggestion-card strong,
+.suggestion-card span,
+.compact-source strong,
+.compact-source span,
+.quality-signal strong,
+.quality-signal span {
+  display: block;
+}
+
+.quality-signal {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.quality-signal.ok {
+  border-color: #bbf7d0;
+  background: var(--color-success-bg);
+}
+
+.quality-signal.missing,
+.quality-signal.warning {
+  border-color: #fed7aa;
+  background: var(--color-warning-bg);
+}
+
+.compact-source {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.compact-source:first-of-type {
+  border-top: 0;
+}
+
 .agent-step {
   min-height: 48px;
   display: grid;
@@ -1180,6 +1308,7 @@ td small {
   .evidence-row,
   .admin-grid,
   .task-composer,
+  .suggestion-card,
   .assistant-composer {
     grid-template-columns: 1fr;
   }

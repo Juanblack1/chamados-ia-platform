@@ -44,7 +44,14 @@ export type AgentDecision = {
 export type TicketAgentMemoryEntry = {
   id: string;
   ticketId: string;
-  agent: "ticket-triage" | "rag-retrieval" | "routing" | "resolution-drafter" | "sla-risk" | "ticket-specialist";
+  agent:
+    | "intake-quality"
+    | "ticket-triage"
+    | "rag-retrieval"
+    | "routing"
+    | "resolution-drafter"
+    | "sla-risk"
+    | "ticket-specialist";
   role: "user" | "assistant" | "system";
   actorId: string;
   actorName: string;
@@ -168,6 +175,59 @@ export type CreateTicketPayload = {
   attachments: string[];
 };
 
+export type IntakeReadiness = "ready" | "needs_info" | "self_service";
+
+export type IntakeQualitySignal = {
+  label: string;
+  status: "ok" | "warning" | "missing";
+  detail: string;
+};
+
+export type IntakeSimilarTicket = {
+  id: string;
+  number: string;
+  title: string;
+  status: string;
+  priority: TicketPriority;
+  affectedService: string;
+  score: number;
+};
+
+export type IntakeAssessment = {
+  readiness: IntakeReadiness;
+  shouldCreate: boolean;
+  qualityScore: number;
+  summary: string;
+  blockedReason?: string;
+  detectedIntent: string;
+  sentiment: "neutral" | "negative" | "urgent";
+  language: "pt-BR" | "en" | "unknown";
+  missingInformation: string[];
+  clarificationQuestions: string[];
+  qualitySignals: IntakeQualitySignal[];
+  suggestedFields: {
+    type: TicketType;
+    category: string;
+    priority: TicketPriority;
+    urgency: TicketPriority;
+    impact: TicketPriority;
+    affectedService: string;
+    assignedGroupId: string;
+    assignedGroupName: string;
+    tags: string[];
+    title?: string;
+  };
+  selfService: {
+    canDeflect: boolean;
+    confidence: number;
+    answer: string;
+    sources: RagSource[];
+  };
+  ragSources: RagSource[];
+  similarTickets: IntakeSimilarTicket[];
+  workflow: string[];
+};
+
 export type ServiceDeskCatalog = {
   currentUser: AppUser;
   users: AppUser[];
@@ -176,7 +236,7 @@ export type ServiceDeskCatalog = {
   knowledgeArticles: Array<{ id: string; title: string; source: string; category: string; updatedAt: string }>;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "/api" : "http://localhost:4000/api");
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 export async function login(email: string, password: string): Promise<{ user: AppUser; expiresAt: string }> {
   return request("/auth/login", {
@@ -199,6 +259,13 @@ export async function listTickets(): Promise<Ticket[]> {
 
 export async function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
   return request("/tickets", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function assessTicketIntake(payload: CreateTicketPayload): Promise<IntakeAssessment> {
+  return request("/tickets/intake-assessment", {
     method: "POST",
     body: JSON.stringify(payload)
   });

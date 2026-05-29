@@ -8,6 +8,7 @@ import { TraceRecorder } from "../../observability/traces.js";
 import type { AppUser } from "../../security/authStore.js";
 import { describeAiServiceDeskPlatform, type AiPlatformFocus } from "../platformConfig.js";
 import { QdrantKnowledgeBase } from "../rag/QdrantKnowledgeBase.js";
+import { assessTicketIntakeQuality, type IntakeAssessment } from "./IntakeQualityAgent.js";
 import { ResolutionDraftAgent } from "./ResolutionDraftAgent.js";
 import { TicketSpecialistChatAgent } from "./TicketSpecialistChatAgent.js";
 import { TicketTriageAgent, type TriageResult } from "./TicketTriageAgent.js";
@@ -91,7 +92,59 @@ export class AgentOrchestrator {
     );
   }
 
-  async openTicket(input: CreateTicketInput, traceLink: TraceLink = {}, actor?: AppUser): Promise<Ticket> {
+  async assessIntake(input: CreateTicketInput, traceLink: TraceLink = {}, actor?: AppUser): Promise<IntakeAssessment> {
+    const traceId = traceLink.traceId ?? randomUUID();
+    return this.traces.runSpan<IntakeAssessment>(
+      {
+        traceId,
+        parentSpanId: traceLink.parentSpanId,
+        name: "ticket.intake-assessment",
+        kind: "workflow",
+        inputSummary: `${input.title} / ${input.affectedService}`,
+        summarizeOutput: (assessment) => `${assessment.readiness} ${assessment.qualityScore}/100`
+      },
+      async ({ spanId }) => {
+        const query = `${input.title}\n${input.description}\n${input.businessImpact}`;
+        const sources = await this.traces.runSpan<RagSource[]>(
+          {
+            traceId,
+            parentSpanId: spanId,
+            name: "agent.rag-retrieval",
+            kind: "agent",
+            inputSummary: input.title,
+            metadata: { collection: "service_desk_knowledge", store: "qdrant", phase: "intake" },
+            summarizeOutput: (items) => `${items.length} sources`
+          },
+          ({ spanId: ragSpanId }) => this.searchKnowledge(query, 4, { traceId, parentSpanId: ragSpanId })
+        );
+        const triage = await this.traces.runSpan<TriageResult>(
+          {
+            traceId,
+            parentSpanId: spanId,
+            name: "agent.ticket-triage",
+            kind: "agent",
+            inputSummary: `${input.urgency} ${input.affectedService}`,
+            summarizeOutput: (result) => `${result.category} ${result.priority} ${Math.round(result.confidence * 100)}%`
+          },
+          () => this.triageAgent.run(input, sources)
+        );
+        const existingTickets = actor ? await this.listTicketsForUser(actor) : await this.listTickets();
+        return this.traces.runSpan<IntakeAssessment>(
+          {
+            traceId,
+            parentSpanId: spanId,
+            name: "agent.intake-quality",
+            kind: "agent",
+            inputSummary: `${triage.category} ${input.title}`,
+            summarizeOutput: (assessment) => `${assessment.readiness} ${assessment.qualityScore}/100`
+          },
+          () => Promise.resolve(assessTicketIntakeQuality({ input, triage, sources, existingTickets }))
+        );
+      }
+    );
+  }
+
+  async openTicket(input: CreateTicketInput, traceLink: TraceLink = {}, actor?: AppUser, intakeAssessment?: IntakeAssessment): Promise<Ticket> {
     const traceId = traceLink.traceId ?? randomUUID();
     const created = await this.tickets.create(input);
     if (actor) {
@@ -135,6 +188,24 @@ export class AgentOrchestrator {
             },
             () => this.triageAgent.run(input, sources)
           );
+          const intakeQuality = await this.traces.runSpan<IntakeAssessment>(
+            {
+              traceId,
+              parentSpanId: spanId,
+              name: "agent.intake-quality",
+              kind: "agent",
+              inputSummary: `${triage.category} ${input.title}`,
+              summarizeOutput: (assessment) => `${assessment.readiness} ${assessment.qualityScore}/100`
+            },
+            async () =>
+              intakeAssessment ??
+              assessTicketIntakeQuality({
+                input,
+                triage,
+                sources,
+                existingTickets: actor ? await this.listTicketsForUser(actor) : await this.listTickets()
+              })
+          );
           const routing = await this.traces.runSpan(
             {
               traceId,
@@ -177,11 +248,21 @@ export class AgentOrchestrator {
             assignedGroupId: routing.groupId,
             assignedGroupName: routing.groupName,
             sla: buildSla(triage.priority, created.createdAt),
-            tags: [...new Set([...triage.tags, slaRisk.riskTag])],
+            tags: [...new Set([...triage.tags, ...intakeQuality.suggestedFields.tags, slaRisk.riskTag])],
             ai: {
               retrievedSources: sources,
               agentMemory: [
                 ...(created.ai.agentMemory ?? []),
+                buildMemoryEntry(
+                  created.id,
+                  "intake-quality",
+                  "assistant",
+                  "Sistema",
+                  "system",
+                  intakeQuality.summary,
+                  now,
+                  traceId
+                ),
                 buildMemoryEntry(
                   created.id,
                   "rag-retrieval",
@@ -208,6 +289,7 @@ export class AgentOrchestrator {
                   missingInformation: triage.missingInformation,
                   routing,
                   slaRisk,
+                  intakeQuality,
                   traceId
                 }
               },
@@ -225,6 +307,12 @@ export class AgentOrchestrator {
             },
             timeline: [
               ...created.timeline,
+              {
+                id: randomUUID(),
+                actor: "agent",
+                message: intakeQuality.summary,
+                createdAt: now
+              },
               {
                 id: randomUUID(),
                 actor: "agent",

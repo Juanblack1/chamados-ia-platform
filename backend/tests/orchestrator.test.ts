@@ -10,6 +10,7 @@ import { DomainEventBus } from "../src/domain/events.js";
 import { TicketRepository } from "../src/domain/ticketRepository.js";
 import { AuditLog } from "../src/observability/auditLog.js";
 import { TraceRecorder } from "../src/observability/traces.js";
+import { normalizeCreateTicketInput } from "../src/domain/ticket.js";
 
 const env: AppEnv = {
   NODE_ENV: "test",
@@ -55,7 +56,7 @@ describe("AgentOrchestrator", () => {
       traces
     );
 
-    const ticket = await orchestrator.openTicket({
+    const payload = normalizeCreateTicketInput({
       requesterEmail: "ana@acme.local",
       department: "Financeiro",
       title: "Faturamento bloqueado no ERP",
@@ -63,9 +64,17 @@ describe("AgentOrchestrator", () => {
         "O lote de faturamento do ERP falhou e o fechamento fiscal da filial esta bloqueado desde 09:00.",
       affectedService: "ERP Central",
       urgency: "critical",
+      impact: "critical",
       businessImpact: "Fechamento mensal parado para a filial SP.",
       attachments: []
     });
+    const assessment = await orchestrator.assessIntake(payload);
+    expect(assessment.shouldCreate).toBe(true);
+    expect(assessment.qualityScore).toBeGreaterThanOrEqual(50);
+    expect(assessment.ragSources.length).toBeGreaterThan(0);
+    expect(assessment.workflow).toEqual(expect.arrayContaining(["agent.intake-quality", "agent.rag-retrieval"]));
+
+    const ticket = await orchestrator.openTicket(payload, {}, undefined, assessment);
 
     expect(ticket.number).toMatch(/^INC-/);
     expect(ticket.priority).toBe("critical");
@@ -75,6 +84,7 @@ describe("AgentOrchestrator", () => {
     expect(traces.list().map((span) => span.name)).toEqual(
       expect.arrayContaining([
         "ticket.open",
+        "agent.intake-quality",
         "agent.rag-retrieval",
         "rag.search",
         "agent.ticket-triage",
@@ -83,12 +93,13 @@ describe("AgentOrchestrator", () => {
         "agent.resolution-draft"
       ])
     );
+    expect(ticket.ai.agentMemory?.some((entry) => entry.agent === "intake-quality")).toBe(true);
     expect(ticket.ai.agentMemory?.some((entry) => entry.agent === "rag-retrieval")).toBe(true);
     expect(ticket.ai.agentMemory?.some((entry) => entry.agent === "routing")).toBe(true);
     expect(ticket.ai.agentMemory?.some((entry) => entry.agent === "sla-risk")).toBe(true);
     const platformAgents = orchestrator.describeAiPlatform("agents") as { agents: Array<{ id: string }> };
     expect(platformAgents.agents.map((agent) => agent.id)).toEqual(
-      expect.arrayContaining(["ticket-triage", "rag-retrieval", "routing", "resolution-drafter", "sla-risk", "ticket-specialist"])
+      expect.arrayContaining(["intake-quality", "ticket-triage", "rag-retrieval", "routing", "resolution-drafter", "sla-risk", "ticket-specialist"])
     );
     await expect(orchestrator.searchKnowledge("VPN desconectando com perda de pacote", 2)).resolves.toHaveLength(2);
 
@@ -133,5 +144,38 @@ describe("AgentOrchestrator", () => {
     });
     expect(deletedByAdmin).toBe(true);
     await expect(orchestrator.findTicket(ticket.id)).resolves.toBeUndefined();
+  });
+
+  it("blocks vague intake before a meaningless ticket is created", async () => {
+    const llm = new ModelGateway(env);
+    const orchestrator = new AgentOrchestrator(
+      new TicketRepository(),
+      new QdrantKnowledgeBase(env, llm),
+      new TicketTriageAgent(llm),
+      new ResolutionDraftAgent(llm),
+      new TicketSpecialistChatAgent(llm),
+      new DomainEventBus(),
+      new AuditLog(),
+      new TraceRecorder()
+    );
+
+    const assessment = await orchestrator.assessIntake(
+      normalizeCreateTicketInput({
+        requesterEmail: "ana@acme.local",
+        department: "Operacoes",
+        title: "Problema urgente",
+        description: "Nao funciona. Preciso de ajuda porque esta ruim.",
+        affectedService: "Geral",
+        urgency: "medium",
+        impact: "medium",
+        businessImpact: "Nao sei.",
+        attachments: []
+      })
+    );
+
+    expect(assessment.shouldCreate).toBe(false);
+    expect(assessment.readiness).toBe("needs_info");
+    expect(assessment.missingInformation.length).toBeGreaterThan(0);
+    await expect(orchestrator.listTickets()).resolves.toHaveLength(2);
   });
 });

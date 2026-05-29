@@ -5,7 +5,7 @@ Corporate service desk demo with AI-assisted ticket intake, multi-agent triage, 
 ## Stack
 
 - Node.js, TypeScript, Fastify
-- Mastra agent registry for triage, RAG, routing, resolution draft, SLA risk, and ticket specialist agents
+- Mastra agent registry for intake quality, triage, RAG, routing, resolution draft, SLA risk, and ticket specialist agents
 - LangChain prompt layer
 - Google AI Studio through Vercel AI SDK (`@ai-sdk/google` + `ai`)
 - Qdrant vector search
@@ -33,6 +33,8 @@ Backend: `http://localhost:4000`
 
 Frontend: `http://localhost:5173`
 
+The Vite dev server proxies same-origin `/api` calls to `VITE_DEV_API_TARGET` (`http://localhost:4000` by default). Keep API and CopilotKit same-origin unless you explicitly handle cross-origin auth; the app uses HttpOnly cookies.
+
 Local development creates deterministic demo users in memory:
 
 - `admin@empresa.local` / `admin123`
@@ -59,6 +61,7 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 - `GET /api/tickets`
+- `POST /api/tickets/intake-assessment`
 - `POST /api/tickets`
 - `GET /api/tickets/:id`
 - `POST /api/tickets/:id/assign`
@@ -74,17 +77,17 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 - `GET /api/agents/traces`
 - `GET /api/agents/config`
 - `POST /api/agents/triage-preview`
-- `GET|POST /api/copilotkit/*`
+- `GET|POST /api/copilotkit` and `/api/copilotkit/*`
 
 ## Agent flow
 
-`AgentOrchestrator` creates a trace per ticket, runs RAG retrieval against Qdrant, then executes the triage, routing, SLA-risk, and resolution-draft workflow stages. Each stage stores evidence, decisions, confidence, traces, and agent memory on the ticket, then emits audit events. Mastra agents are registered in `backend/src/ai/mastra/ticketAgent.ts`. The ticket workspace also includes a `ticket-specialist` Mastra agent exposed through an assistant-ui chat; it answers with the active ticket, all user-authorized tickets, RAG evidence, trace context, and persisted agent memory.
+`AgentOrchestrator` first runs an intelligent intake assessment to block vague or self-service-only requests before persistence. When the ticket is allowed, it creates a trace per ticket, runs RAG retrieval against Qdrant, then executes the triage, routing, SLA-risk, and resolution-draft workflow stages. Each stage stores evidence, decisions, confidence, traces, and agent memory on the ticket, then emits audit events. Mastra agents are registered in `backend/src/ai/mastra/ticketAgent.ts`. The ticket workspace also includes a `ticket-specialist` Mastra agent exposed through an assistant-ui chat; it answers with the active ticket, all user-authorized tickets, RAG evidence, trace context, and persisted agent memory.
 
-CopilotKit is backed by a Google model through the Vercel AI SDK and exposes server-side tools to describe the AI architecture, search RAG knowledge, list tickets, preview triage, and create a ticket.
+CopilotKit is backed by a Google model through the Vercel AI SDK and exposes server-side tools to describe the AI architecture, search RAG knowledge, list tickets, assess intake quality, preview triage, and create a ticket. The create-ticket tool runs `assess_ticket_intake` first and returns missing questions or self-service guidance instead of creating low-quality tickets.
 
 ## Image attachments
 
-Use the image drop area in "Novo chamado" or the upload button in the Copilot chat. The API accepts up to 4 image URLs or image data URLs per ticket. Binary image data is stored on the ticket for the demo UI, but agent prompts receive only an attachment summary so base64 is not sent to the LLM.
+Use the image drop area in "Abrir chamado" or the upload button in the Copilot chat. The API accepts up to 4 image URLs or image data URLs per ticket. Binary image data is stored on the ticket for the demo UI, but agent prompts receive only an attachment summary so base64 is not sent to the LLM.
 
 ## Deployment
 

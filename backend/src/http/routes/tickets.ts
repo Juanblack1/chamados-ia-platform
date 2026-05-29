@@ -7,6 +7,21 @@ import { requireUser } from "../../security/authGuard.js";
 export async function registerTicketRoutes(app: FastifyInstance, orchestrator: AgentOrchestrator): Promise<void> {
   app.get("/api/tickets", async (request) => orchestrator.listTicketsForUser(requireUser(request)));
 
+  app.post("/api/tickets/intake-assessment", async (request, reply) => {
+    const parsed = CreateTicketInputSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: "validation_error",
+        message: "Preencha titulo, descricao, solicitante, servico e impacto para analisar o chamado.",
+        issues: parsed.error.issues
+      });
+    }
+
+    const user = requireUser(request);
+    const payload = normalizeCreateTicketInput(user.role === "requester" ? { ...parsed.data, requesterEmail: user.email } : parsed.data);
+    return orchestrator.assessIntake(payload, {}, user);
+  });
+
   app.get<{ Params: { id: string } }>("/api/tickets/:id", async (request, reply) => {
     const ticket = await orchestrator.findTicketForUser(request.params.id, requireUser(request));
     if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found." });
@@ -24,7 +39,16 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
 
     const user = requireUser(request);
     const payload = normalizeCreateTicketInput(user.role === "requester" ? { ...parsed.data, requesterEmail: user.email } : parsed.data);
-    const ticket = await orchestrator.openTicket(payload, {}, user);
+    const assessment = await orchestrator.assessIntake(payload, {}, user);
+    if (!assessment.shouldCreate) {
+      return reply.code(422).send({
+        error: "intake_not_ready",
+        message: assessment.blockedReason ?? assessment.summary,
+        assessment
+      });
+    }
+
+    const ticket = await orchestrator.openTicket(payload, {}, user, assessment);
     return reply.code(201).send(ticket);
   });
 
