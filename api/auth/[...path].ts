@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { buildServer } from "../../backend/src/http/server.js";
 import { loadEnv } from "../../backend/src/config/env.js";
+import { buildServer } from "../../backend/src/http/server.js";
 
 let serverPromise: ReturnType<typeof buildServer> | undefined;
 
