@@ -8,7 +8,7 @@ import { ModelGateway } from "../ai/modelGateway.js";
 import { QdrantKnowledgeBase } from "../ai/rag/QdrantKnowledgeBase.js";
 import type { AppEnv } from "../config/env.js";
 import { DomainEventBus } from "../domain/events.js";
-import { TicketRepository } from "../domain/ticketRepository.js";
+import { createTicketStore } from "../domain/ticketStore.js";
 import { AuditLog } from "../observability/auditLog.js";
 import { TraceRecorder } from "../observability/traces.js";
 import { registerApiKeyGuard } from "../security/apiKeys.js";
@@ -26,7 +26,7 @@ export async function buildServer(env: AppEnv) {
 
   const llm = new ModelGateway(env);
   const knowledge = new QdrantKnowledgeBase(env, llm);
-  const tickets = new TicketRepository();
+  const tickets = await createTicketStore(env);
   const events = new DomainEventBus();
   const audit = new AuditLog();
   const traces = new TraceRecorder();
@@ -41,7 +41,7 @@ export async function buildServer(env: AppEnv) {
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
 
   registerApiKeyGuard(app, env);
-  await registerHealthRoutes(app, llm);
+  await registerHealthRoutes(app, llm, tickets.kind);
   await registerTicketRoutes(app, orchestrator);
   await registerAgentRoutes(app, orchestrator, traces);
   await registerCopilotKitRoutes(app, orchestrator, llm, traces);

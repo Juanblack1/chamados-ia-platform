@@ -101,11 +101,12 @@ function createServiceDeskAgent(
     type: "custom",
     factory: async function* ({ input }): AsyncGenerator<BaseEvent> {
       const userText = latestUserText(input.messages);
+      const tickets = await orchestrator.listTickets();
       const response = await llm.completeText({
         system:
           "You are an enterprise service desk copilot. Help operators open, triage, and govern IT support tickets. Keep answers concise and audit-friendly.",
-        user: `${userText}\n\nTenant: ${tenantId}\nOpen tickets: ${orchestrator.listTickets().length}`,
-        fallback: () => fallbackCopilotResponse(userText, orchestrator.listTickets().length)
+        user: `${userText}\n\nTenant: ${tenantId}\nOpen tickets: ${tickets.length}`,
+        fallback: () => fallbackCopilotResponse(userText, tickets.length)
       });
 
       const messageId = randomUUID();
@@ -135,8 +136,7 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
             summarizeOutput: (items) => `${items.length} tickets`
           },
           async () =>
-            orchestrator
-              .listTickets()
+            (await orchestrator.listTickets())
               .filter((ticket) => !status || ticket.status === status)
               .slice(0, 20)
               .map((ticket) => ({

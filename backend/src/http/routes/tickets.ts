@@ -6,7 +6,7 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
   app.get("/api/tickets", async () => orchestrator.listTickets());
 
   app.get<{ Params: { id: string } }>("/api/tickets/:id", async (request, reply) => {
-    const ticket = orchestrator.findTicket(request.params.id);
+    const ticket = await orchestrator.findTicket(request.params.id);
     if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found." });
     return ticket;
   });

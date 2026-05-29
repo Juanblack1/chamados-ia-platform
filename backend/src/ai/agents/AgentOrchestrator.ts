@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { CreateTicketInput, RagSource, Ticket } from "../../domain/ticket.js";
 import { DomainEventBus } from "../../domain/events.js";
-import { TicketRepository } from "../../domain/ticketRepository.js";
+import type { TicketStore } from "../../domain/ticketRepository.js";
 import { AuditLog } from "../../observability/auditLog.js";
 import { TraceRecorder } from "../../observability/traces.js";
 import { QdrantKnowledgeBase } from "../rag/QdrantKnowledgeBase.js";
@@ -20,7 +20,7 @@ export type TriagePreview = {
 
 export class AgentOrchestrator {
   constructor(
-    private readonly tickets: TicketRepository,
+    private readonly tickets: TicketStore,
     private readonly knowledge: QdrantKnowledgeBase,
     private readonly triageAgent: TicketTriageAgent,
     private readonly resolutionAgent: ResolutionDraftAgent,
@@ -31,11 +31,11 @@ export class AgentOrchestrator {
     this.events.onAny((event) => this.auditLog.record(event));
   }
 
-  listTickets(): Ticket[] {
+  listTickets(): Promise<Ticket[]> {
     return this.tickets.list();
   }
 
-  findTicket(id: string): Ticket | undefined {
+  findTicket(id: string): Promise<Ticket | undefined> {
     return this.tickets.findById(id);
   }
 
@@ -45,7 +45,7 @@ export class AgentOrchestrator {
 
   async openTicket(input: CreateTicketInput, traceLink: TraceLink = {}): Promise<Ticket> {
     const traceId = traceLink.traceId ?? randomUUID();
-    const created = this.tickets.create(input);
+    const created = await this.tickets.create(input);
     this.events.publish({ type: "ticket.created", ticket: created, occurredAt: new Date().toISOString(), traceId });
 
     try {
@@ -97,7 +97,7 @@ export class AgentOrchestrator {
           );
           const now = new Date().toISOString();
 
-          const updated = this.tickets.update(created.id, {
+          const updated = await this.tickets.update(created.id, {
             category: triage.category,
             priority: triage.priority,
             status: triage.priority === "critical" ? "escalated" : "open",

@@ -62,6 +62,8 @@ stages:
                 - script: |
                     kubectl create secret generic ai-service-desk-secrets \
                       --from-literal=googleGenerativeAiApiKey="$(GOOGLE_GENERATIVE_AI_API_KEY)" \
+                      --from-literal=kvRestApiUrl="$(KV_REST_API_URL)" \
+                      --from-literal=kvRestApiToken="$(KV_REST_API_TOKEN)" \
                       --from-literal=apiKeys="$(API_KEYS)" \
                       --dry-run=client -o yaml | kubectl apply -f -
                     kubectl apply -f infra/k8s/platform-config.yaml

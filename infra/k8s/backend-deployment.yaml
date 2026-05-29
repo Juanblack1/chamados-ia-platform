@@ -52,6 +52,26 @@ spec:
                 configMapKeyRef:
                   name: ai-service-desk-config
                   key: embeddingDimension
+            - name: TICKET_STORAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: ticketStorage
+            - name: TICKET_REDIS_PREFIX
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: ticketRedisPrefix
+            - name: KV_REST_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: kvRestApiUrl
+            - name: KV_REST_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: kvRestApiToken
             - name: API_KEYS
               valueFrom:
                 secretKeyRef:

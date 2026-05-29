@@ -21,6 +21,12 @@ const env: AppEnv = {
   GOOGLE_GENERATIVE_AI_MODEL: "gemini-2.5-flash",
   GOOGLE_EMBEDDING_MODEL: "gemini-embedding-001",
   EMBEDDING_DIMENSION: 64,
+  TICKET_STORAGE: "memory",
+  TICKET_REDIS_PREFIX: "ai-service-desk-test",
+  KV_REST_API_URL: "",
+  KV_REST_API_TOKEN: "",
+  UPSTASH_REDIS_REST_URL: "",
+  UPSTASH_REDIS_REST_TOKEN: "",
   QDRANT_URL: "http://localhost:6333",
   QDRANT_API_KEY: "",
   QDRANT_COLLECTION: "service_desk_knowledge_test"

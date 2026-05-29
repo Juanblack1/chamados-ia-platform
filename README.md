@@ -10,6 +10,7 @@ Corporate service desk demo with AI-assisted ticket intake, multi-agent triage, 
 - Google AI Studio through Vercel AI SDK (`@ai-sdk/google` + `ai`)
 - Qdrant vector search
 - React, Vite, CopilotKit runtime/tool calls
+- Upstash/Vercel KV-compatible Redis ticket persistence
 - Docker, Kubernetes manifests, Azure DevOps pipeline
 
 ## Run locally
@@ -25,6 +26,8 @@ Backend: `http://localhost:4000`
 Frontend: `http://localhost:5173`
 
 The backend has deterministic fallback responses when no AI key is configured, so tests and the local demo run without external credentials. For Google AI Studio, put `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`; that file is gitignored. The frontend never receives this key.
+
+Ticket persistence uses memory by default in local/test runs. In production, set `TICKET_STORAGE=redis` plus either `KV_REST_API_URL`/`KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`.
 
 ## API
 
@@ -47,7 +50,7 @@ Use the image drop area in "Novo chamado" or the upload button in the Copilot ch
 
 ## Deployment
 
-`vercel.json` deploys the Vite frontend plus a serverless Fastify API adapter under `/api`. By default it runs without the Google secret, using deterministic fallback. `docker-compose.yml` runs backend, frontend, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY` and `API_KEYS`; no production secret is stored in the repository.
+`vercel.json` deploys the Vite frontend plus a serverless Fastify API adapter under `/api`. By default it runs without the Google secret, using deterministic fallback. For production persistence, connect Upstash for Redis from the Vercel Marketplace and set `TICKET_STORAGE=redis`. `docker-compose.yml` runs backend, frontend, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, and `API_KEYS`; no production secret is stored in the repository.
 
 ## Stitch
 

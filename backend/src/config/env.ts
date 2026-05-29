@@ -17,6 +17,12 @@ const EnvSchema = z.object({
   GOOGLE_GENERATIVE_AI_MODEL: z.string().default("gemini-2.5-flash"),
   GOOGLE_EMBEDDING_MODEL: z.string().default("gemini-embedding-001"),
   EMBEDDING_DIMENSION: z.coerce.number().int().positive().default(64),
+  TICKET_STORAGE: z.enum(["auto", "memory", "redis"]).default("auto"),
+  TICKET_REDIS_PREFIX: z.string().min(1).default("ai-service-desk"),
+  KV_REST_API_URL: z.string().default(""),
+  KV_REST_API_TOKEN: z.string().default(""),
+  UPSTASH_REDIS_REST_URL: z.string().default(""),
+  UPSTASH_REDIS_REST_TOKEN: z.string().default(""),
   QDRANT_URL: z.string().url().default("http://localhost:6333"),
   QDRANT_API_KEY: z.string().default(""),
   QDRANT_COLLECTION: z.string().default("service_desk_knowledge")

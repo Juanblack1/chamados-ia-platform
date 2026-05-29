@@ -8,4 +8,6 @@ data:
   googleGenerativeAiModel: "gemini-2.5-flash"
   googleEmbeddingModel: "gemini-embedding-001"
   embeddingDimension: "64"
+  ticketStorage: "redis"
+  ticketRedisPrefix: "ai-service-desk"
   qdrantUrl: "http://qdrant.ai-platform.svc.cluster.local:6333"

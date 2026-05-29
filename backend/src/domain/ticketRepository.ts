@@ -1,7 +1,18 @@
 import { randomUUID } from "node:crypto";
 import type { CreateTicketInput, Ticket } from "./ticket.js";
 
-export class TicketRepository {
+export type TicketStoreKind = "memory" | "redis";
+
+export interface TicketStore {
+  readonly kind: TicketStoreKind;
+  list(): Promise<Ticket[]>;
+  findById(id: string): Promise<Ticket | undefined>;
+  create(input: CreateTicketInput): Promise<Ticket>;
+  update(id: string, patch: Partial<Ticket>): Promise<Ticket | undefined>;
+}
+
+export class TicketRepository implements TicketStore {
+  readonly kind = "memory";
   private readonly tickets = new Map<string, Ticket>();
   private sequence = 4021;
 
@@ -9,15 +20,15 @@ export class TicketRepository {
     this.seed();
   }
 
-  list(): Ticket[] {
+  async list(): Promise<Ticket[]> {
     return [...this.tickets.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  findById(id: string): Ticket | undefined {
+  async findById(id: string): Promise<Ticket | undefined> {
     return this.tickets.get(id);
   }
 
-  create(input: CreateTicketInput): Ticket {
+  async create(input: CreateTicketInput): Promise<Ticket> {
     const now = new Date().toISOString();
     const ticket: Ticket = {
       id: randomUUID(),
@@ -46,7 +57,7 @@ export class TicketRepository {
     return ticket;
   }
 
-  update(id: string, patch: Partial<Ticket>): Ticket | undefined {
+  async update(id: string, patch: Partial<Ticket>): Promise<Ticket | undefined> {
     const current = this.tickets.get(id);
     if (!current) return undefined;
 
