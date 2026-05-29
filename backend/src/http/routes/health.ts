@@ -6,6 +6,7 @@ export async function registerHealthRoutes(app: FastifyInstance, llm: ModelGatew
   const payload = async () => ({
     status: "ok",
     llmConfigured: llm.isConfigured,
+    modelCascade: llm.modelCascade,
     ticketStorage,
     time: new Date().toISOString()
   });

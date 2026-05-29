@@ -1,10 +1,17 @@
 import { createHash } from "node:crypto";
 import { createGoogleGenerativeAI, type GoogleGenerativeAIProvider } from "@ai-sdk/google";
+import { createXai, type XaiProvider } from "@ai-sdk/xai";
 import { embedMany, generateText, Output, streamText as streamAiText, type LanguageModel } from "ai";
 import type { z } from "zod";
 import type { AppEnv } from "../config/env.js";
 
 export type JsonFallback<T> = () => T;
+type ModelProvider = "google" | "xai";
+type ModelTarget = {
+  provider: ModelProvider;
+  modelId: string;
+  label: string;
+};
 
 export type ModelStreamEvent =
   | {
@@ -25,29 +32,31 @@ export type ModelStreamEvent =
     };
 
 export class ModelGateway {
-  private readonly provider: GoogleGenerativeAIProvider;
-  private readonly textModelIds: string[];
+  private readonly googleProvider: GoogleGenerativeAIProvider;
+  private readonly xaiProvider: XaiProvider;
+  private readonly textModelTargets: ModelTarget[];
 
   constructor(private readonly env: AppEnv) {
-    this.provider = createGoogleGenerativeAI({
+    this.googleProvider = createGoogleGenerativeAI({
       apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY || undefined
     });
-    this.textModelIds = dedupe([
-      env.GOOGLE_GENERATIVE_AI_MODEL,
-      ...env.GOOGLE_GENERATIVE_AI_FALLBACK_MODELS.split(",").map((model) => model.trim())
-    ]);
+    this.xaiProvider = createXai({
+      apiKey: env.XAI_API_KEY || undefined
+    });
+    this.textModelTargets = buildTextModelTargets(env);
   }
 
   get isConfigured(): boolean {
-    return this.env.AI_PROVIDER === "google" && this.env.NODE_ENV !== "test" && Boolean(this.env.GOOGLE_GENERATIVE_AI_API_KEY);
+    return this.env.AI_PROVIDER !== "mock" && this.env.NODE_ENV !== "test" && this.textModelTargets.length > 0;
   }
 
-  languageModel(modelId = this.textModelIds[0] ?? this.env.GOOGLE_GENERATIVE_AI_MODEL): LanguageModel {
-    return this.provider(modelId);
+  languageModel(target = this.defaultTextModelTarget()): LanguageModel {
+    if (target.provider === "xai") return this.xaiProvider(target.modelId);
+    return this.googleProvider(target.modelId);
   }
 
   get modelCascade(): string[] {
-    return [...this.textModelIds];
+    return this.textModelTargets.map((target) => target.label);
   }
 
   async completeObject<T>(params: {
@@ -58,10 +67,10 @@ export class ModelGateway {
   }): Promise<T> {
     if (!this.isConfigured) return params.fallback();
 
-    for (const modelId of this.textModelIds) {
+    for (const target of this.textModelTargets) {
       try {
         const { output } = await generateText({
-          model: this.languageModel(modelId),
+          model: this.languageModel(target),
           system: params.system,
           prompt: params.user,
           output: Output.object({ schema: params.schema }),
@@ -80,10 +89,10 @@ export class ModelGateway {
   async completeText(params: { system: string; user: string; fallback: JsonFallback<string> }): Promise<string> {
     if (!this.isConfigured) return params.fallback();
 
-    for (const modelId of this.textModelIds) {
+    for (const target of this.textModelTargets) {
       try {
         const { text } = await generateText({
-          model: this.languageModel(modelId),
+          model: this.languageModel(target),
           system: params.system,
           prompt: params.user,
           maxRetries: 0
@@ -118,18 +127,18 @@ export class ModelGateway {
       return;
     }
 
-    for (const modelId of this.textModelIds) {
+    for (const target of this.textModelTargets) {
       let emittedText = "";
       yield {
         type: "status",
         phase: "model",
-        model: modelId,
-        message: `Consultando ${modelId}.`
+        model: target.label,
+        message: `Consultando ${target.label}.`
       };
 
       try {
         const result = streamAiText({
-          model: this.languageModel(modelId),
+          model: this.languageModel(target),
           system: params.system,
           prompt: params.user,
           maxRetries: 0
@@ -137,31 +146,31 @@ export class ModelGateway {
 
         for await (const delta of result.textStream) {
           emittedText += delta;
-          yield { type: "delta", text: delta, model: modelId };
+          yield { type: "delta", text: delta, model: target.label };
         }
 
         if (emittedText.trim()) {
-          yield { type: "status", phase: "done", model: modelId, message: "Resposta concluida." };
+          yield { type: "status", phase: "done", model: target.label, message: "Resposta concluida." };
           return;
         }
 
         yield {
           type: "error",
-          model: modelId,
-          message: `${modelId} nao retornou conteudo util.`
+          model: target.label,
+          message: `${target.label} nao retornou conteudo util.`
         };
       } catch (cause) {
         yield {
           type: "error",
-          model: modelId,
-          message: `${modelId} falhou: ${safeErrorMessage(cause)}`
+          model: target.label,
+          message: `${target.label} falhou: ${safeErrorMessage(cause)}`
         };
       }
 
       yield {
         type: "status",
         phase: "fallback",
-        model: modelId,
+        model: target.label,
         message: "Alternando para o proximo modelo da cascata."
       };
     }
@@ -177,12 +186,12 @@ export class ModelGateway {
   }
 
   async embed(texts: string[]): Promise<number[][]> {
-    if (!this.isConfigured) {
+    if (!this.isGoogleEmbeddingConfigured) {
       return texts.map((text) => deterministicEmbedding(text, this.env.EMBEDDING_DIMENSION));
     }
 
     const response = await embedMany({
-      model: this.provider.embedding(this.env.GOOGLE_EMBEDDING_MODEL),
+      model: this.googleProvider.embedding(this.env.GOOGLE_EMBEDDING_MODEL),
       values: texts,
       providerOptions: {
         google: {
@@ -194,6 +203,43 @@ export class ModelGateway {
 
     return response.embeddings;
   }
+
+  private get isGoogleEmbeddingConfigured(): boolean {
+    return this.env.AI_PROVIDER !== "mock" && this.env.NODE_ENV !== "test" && Boolean(this.env.GOOGLE_GENERATIVE_AI_API_KEY);
+  }
+
+  private defaultTextModelTarget(): ModelTarget {
+    return {
+      provider: "google",
+      modelId: this.env.GOOGLE_GENERATIVE_AI_MODEL,
+      label: `google:${this.env.GOOGLE_GENERATIVE_AI_MODEL}`
+    };
+  }
+}
+
+function buildTextModelTargets(env: AppEnv): ModelTarget[] {
+  if (env.AI_PROVIDER === "mock") return [];
+
+  const googleTargets = splitCsv([env.GOOGLE_GENERATIVE_AI_MODEL, env.GOOGLE_GENERATIVE_AI_FALLBACK_MODELS].join(",")).map(
+    (modelId) => ({
+      provider: "google" as const,
+      modelId,
+      label: `google:${modelId}`
+    })
+  );
+  const xaiTargets = splitCsv(env.XAI_MODEL_CASCADE).map((modelId) => ({
+    provider: "xai" as const,
+    modelId,
+    label: `xai:${modelId}`
+  }));
+
+  const orderedTargets = env.AI_PROVIDER === "xai" ? [...xaiTargets, ...googleTargets] : [...googleTargets, ...xaiTargets];
+  return dedupeTargets(orderedTargets).filter((target) => hasProviderCredentials(env, target.provider));
+}
+
+function hasProviderCredentials(env: AppEnv, provider: ModelProvider): boolean {
+  if (provider === "xai") return Boolean(env.XAI_API_KEY);
+  return Boolean(env.GOOGLE_GENERATIVE_AI_API_KEY);
 }
 
 function deterministicEmbedding(text: string, dimensions: number): number[] {
@@ -214,6 +260,24 @@ function deterministicEmbedding(text: string, dimensions: number): number[] {
 
 function dedupe(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
+}
+
+function dedupeTargets(values: ModelTarget[]): ModelTarget[] {
+  const seen = new Set<string>();
+  return values.filter((target) => {
+    if (seen.has(target.label)) return false;
+    seen.add(target.label);
+    return true;
+  });
+}
+
+function splitCsv(value: string): string[] {
+  return dedupe(
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+  );
 }
 
 function safeErrorMessage(cause: unknown): string {

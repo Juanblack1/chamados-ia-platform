@@ -23,6 +23,8 @@ const env: AppEnv = {
   GOOGLE_GENERATIVE_AI_MODEL: "gemini-2.5-flash",
   GOOGLE_GENERATIVE_AI_FALLBACK_MODELS: "gemini-2.5-flash-lite,gemini-2.0-flash",
   GOOGLE_EMBEDDING_MODEL: "gemini-embedding-001",
+  XAI_API_KEY: "",
+  XAI_MODEL_CASCADE: "grok-4-1-fast-non-reasoning,grok-4-fast-non-reasoning,grok-3-mini,grok-3",
   EMBEDDING_DIMENSION: 64,
   AUTH_COOKIE_NAME: "asid",
   AUTH_SESSION_TTL_SECONDS: 28800,

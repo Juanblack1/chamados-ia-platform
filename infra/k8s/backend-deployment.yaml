@@ -67,11 +67,27 @@ spec:
                 configMapKeyRef:
                   name: ai-service-desk-config
                   key: googleGenerativeAiModel
+            - name: GOOGLE_GENERATIVE_AI_FALLBACK_MODELS
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: googleGenerativeAiFallbackModels
             - name: GOOGLE_EMBEDDING_MODEL
               valueFrom:
                 configMapKeyRef:
                   name: ai-service-desk-config
                   key: googleEmbeddingModel
+            - name: XAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: xaiApiKey
+                  optional: true
+            - name: XAI_MODEL_CASCADE
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: xaiModelCascade
             - name: EMBEDDING_DIMENSION
               valueFrom:
                 configMapKeyRef:

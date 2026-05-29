@@ -7,7 +7,7 @@ Corporate service desk demo with AI-assisted ticket intake, multi-agent triage, 
 - Node.js, TypeScript, Fastify
 - Mastra agent registry for intake quality, triage, RAG, routing, resolution draft, SLA risk, and ticket specialist agents
 - LangChain prompt layer
-- Google AI Studio through Vercel AI SDK (`@ai-sdk/google` + `ai`)
+- Google AI Studio and x.ai Grok through Vercel AI SDK (`@ai-sdk/google`, `@ai-sdk/xai` + `ai`)
 - Qdrant vector search
 - React, Vite, CopilotKit runtime/tool calls
 - Upstash/Vercel KV-compatible Redis ticket persistence
@@ -51,8 +51,8 @@ Production test requester on Vercel:
 
 - `solicitante.teste@empresa.local` / `ChamadosTeste@2026!`
 
-The backend has deterministic fallback responses when no AI key is configured, so tests and the local demo run without external credentials. For Google AI Studio, put `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`; that file is gitignored. The frontend never receives this key.
-Text generation uses a model cascade: `GOOGLE_GENERATIVE_AI_MODEL` first, then comma-separated `GOOGLE_GENERATIVE_AI_FALLBACK_MODELS` for rate-limit/provider failures, then a deterministic local fallback.
+The backend has deterministic fallback responses when no AI key is configured, so tests and the local demo run without external credentials. For Google AI Studio, put `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`; for x.ai, put `XAI_API_KEY` in `.env.local`. That file is gitignored. The frontend never receives these keys.
+Text generation uses a provider/model cascade: Google starts with `GOOGLE_GENERATIVE_AI_MODEL`, then `GOOGLE_GENERATIVE_AI_FALLBACK_MODELS`; x.ai models from `XAI_MODEL_CASCADE` are appended as provider fallbacks for rate-limit/provider failures. If every provider fails, the backend returns a deterministic local fallback.
 
 Ticket persistence uses memory by default in local/test runs. In production, set `TICKET_STORAGE=redis` plus either `KV_REST_API_URL`/`KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`. `TICKET_SEED_SAMPLE_DATA` defaults to `false`, so production starts without demo tickets.
 
@@ -105,6 +105,7 @@ Required production secrets:
 - `AUTH_BOOTSTRAP_ADMIN_PASSWORD`
 - `AUTH_TEST_REQUESTER_PASSWORD`
 - `GOOGLE_GENERATIVE_AI_API_KEY`
+- `XAI_API_KEY`
 - `KV_REST_API_URL`
 - `KV_REST_API_TOKEN`
 
@@ -116,8 +117,9 @@ Optional production settings:
 - `API_KEYS`
 - `TICKET_REDIS_PREFIX`
 - `GOOGLE_GENERATIVE_AI_FALLBACK_MODELS`
+- `XAI_MODEL_CASCADE`
 
-`docker-compose.yml` runs backend, frontend, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `AUTH_BOOTSTRAP_ADMIN_PASSWORD`, and `API_KEYS`; no production secret is stored in the repository.
+`docker-compose.yml` runs backend, frontend, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY`, `XAI_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `AUTH_BOOTSTRAP_ADMIN_PASSWORD`, and `API_KEYS`; no production secret is stored in the repository.
 
 ## Stitch
 

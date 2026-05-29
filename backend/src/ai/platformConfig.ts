@@ -83,7 +83,7 @@ export const serviceDeskToolCatalog = [
 export function describeAiServiceDeskPlatform(focus: AiPlatformFocus = "all") {
   const base = {
     product: "Service Desk IA",
-    llm: "Google AI Studio via Vercel AI SDK (@ai-sdk/google + ai)",
+    llm: "Google AI Studio primario e x.ai Grok em cascata via Vercel AI SDK (@ai-sdk/google, @ai-sdk/xai e ai)",
     mastra: {
       registered: true,
       agents: serviceDeskAgentCatalog

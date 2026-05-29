@@ -62,6 +62,7 @@ stages:
                 - script: |
                     kubectl create secret generic ai-service-desk-secrets \
                       --from-literal=googleGenerativeAiApiKey="$(GOOGLE_GENERATIVE_AI_API_KEY)" \
+                      --from-literal=xaiApiKey="$(XAI_API_KEY)" \
                       --from-literal=kvRestApiUrl="$(KV_REST_API_URL)" \
                       --from-literal=kvRestApiToken="$(KV_REST_API_TOKEN)" \
                       --from-literal=authBootstrapAdminPassword="$(AUTH_BOOTSTRAP_ADMIN_PASSWORD)" \
