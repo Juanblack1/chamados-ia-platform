@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { CreateTicketInputSchema, TicketStatusSchema } from "../../domain/ticket.js";
+import { CreateTicketInputSchema, TicketStatusSchema, normalizeCreateTicketInput } from "../../domain/ticket.js";
 import type { AgentOrchestrator } from "../../ai/agents/AgentOrchestrator.js";
 import { requireUser } from "../../security/authGuard.js";
 
@@ -23,7 +23,7 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
     }
 
     const user = requireUser(request);
-    const payload = user.role === "requester" ? { ...parsed.data, requesterEmail: user.email } : parsed.data;
+    const payload = normalizeCreateTicketInput(user.role === "requester" ? { ...parsed.data, requesterEmail: user.email } : parsed.data);
     const ticket = await orchestrator.openTicket(payload, {}, user);
     return reply.code(201).send(ticket);
   });

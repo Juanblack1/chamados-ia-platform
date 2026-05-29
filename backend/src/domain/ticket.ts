@@ -47,7 +47,41 @@ export type TicketPriority = z.infer<typeof TicketPrioritySchema>;
 export type TicketStatus = z.infer<typeof TicketStatusSchema>;
 export type TicketType = z.infer<typeof TicketTypeSchema>;
 export type TicketImpact = z.infer<typeof TicketImpactSchema>;
-export type CreateTicketInput = z.infer<typeof CreateTicketInputSchema>;
+export type CreateTicketPayload = z.input<typeof CreateTicketInputSchema>;
+export type CreateTicketInput = {
+  type: TicketType;
+  entityId: string;
+  entityName: string;
+  requestSource: "portal" | "email" | "phone" | "chat" | "api";
+  requesterEmail: string;
+  department: string;
+  title: string;
+  description: string;
+  affectedService: string;
+  urgency: TicketPriority;
+  impact: TicketImpact;
+  businessImpact: string;
+  attachments: string[];
+};
+
+export function normalizeCreateTicketInput(input: CreateTicketPayload | CreateTicketInput): CreateTicketInput {
+  const parsed = CreateTicketInputSchema.parse(input);
+  return {
+    type: parsed.type ?? "incident",
+    entityId: parsed.entityId ?? "corp",
+    entityName: parsed.entityName ?? "Corporativo",
+    requestSource: parsed.requestSource ?? "portal",
+    requesterEmail: parsed.requesterEmail,
+    department: parsed.department ?? "Nao informado",
+    title: parsed.title,
+    description: parsed.description,
+    affectedService: parsed.affectedService ?? "Geral",
+    urgency: parsed.urgency ?? "medium",
+    impact: parsed.impact ?? "medium",
+    businessImpact: parsed.businessImpact ?? "Nao informado pelo solicitante.",
+    attachments: parsed.attachments ?? []
+  };
+}
 
 export type RagSource = {
   id: string;

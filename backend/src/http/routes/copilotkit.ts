@@ -7,7 +7,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, HTTPMethods } from 
 import { z } from "zod";
 import type { AgentOrchestrator, TriagePreview } from "../../ai/agents/AgentOrchestrator.js";
 import type { ModelGateway } from "../../ai/modelGateway.js";
-import { CreateTicketInputSchema, type Ticket } from "../../domain/ticket.js";
+import { CreateTicketInputSchema, normalizeCreateTicketInput, type Ticket } from "../../domain/ticket.js";
 import type { TraceRecorder } from "../../observability/traces.js";
 
 export async function registerCopilotKitRoutes(
@@ -164,7 +164,7 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
             metadata: { tenantId },
             summarizeOutput: (output) => `${output.triage.category} ${output.triage.priority}`
           },
-          async ({ spanId }) => orchestrator.previewTriage(CreateTicketInputSchema.parse(input), { traceId, parentSpanId: spanId })
+          async ({ spanId }) => orchestrator.previewTriage(normalizeCreateTicketInput(input), { traceId, parentSpanId: spanId })
         )
     }),
     defineTool({
@@ -181,7 +181,7 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
             metadata: { tenantId },
             summarizeOutput: (ticket) => `${ticket.number} ${ticket.priority} ${ticket.status}`
           },
-          async ({ spanId }) => orchestrator.openTicket(CreateTicketInputSchema.parse(input), { traceId, parentSpanId: spanId })
+          async ({ spanId }) => orchestrator.openTicket(normalizeCreateTicketInput(input), { traceId, parentSpanId: spanId })
         )
     })
   ];

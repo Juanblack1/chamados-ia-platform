@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AgentOrchestrator } from "../../ai/agents/AgentOrchestrator.js";
 import { knowledgeArticles, serviceDeskGroups, slaPolicies } from "../../domain/serviceDeskCatalog.js";
-import { CreateTicketInputSchema } from "../../domain/ticket.js";
+import { CreateTicketInputSchema, normalizeCreateTicketInput } from "../../domain/ticket.js";
 import type { TraceRecorder } from "../../observability/traces.js";
 import type { AuthStore } from "../../security/authStore.js";
 import { requireUser } from "../../security/authGuard.js";
@@ -35,6 +35,6 @@ export async function registerAgentRoutes(
       });
     }
 
-    return orchestrator.previewTriage(parsed.data);
+    return orchestrator.previewTriage(normalizeCreateTicketInput(parsed.data));
   });
 }
