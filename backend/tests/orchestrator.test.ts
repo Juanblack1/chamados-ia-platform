@@ -176,6 +176,26 @@ describe("AgentOrchestrator", () => {
     expect(assessment.shouldCreate).toBe(false);
     expect(assessment.readiness).toBe("needs_info");
     expect(assessment.missingInformation.length).toBeGreaterThan(0);
+
+    const genericButLongAssessment = await orchestrator.assessIntake(
+      normalizeCreateTicketInput({
+        requesterEmail: "ana@acme.local",
+        department: "Operacoes",
+        title: "Problema urgente sem detalhes",
+        description: "Nao funciona direito desde ontem e preciso de ajuda urgente, mas nao sei explicar melhor.",
+        affectedService: "Nao sei",
+        urgency: "medium",
+        impact: "medium",
+        businessImpact: "Preciso de ajuda, mas ainda nao informei impacto operacional concreto.",
+        attachments: []
+      })
+    );
+
+    expect(genericButLongAssessment.shouldCreate).toBe(false);
+    expect(genericButLongAssessment.readiness).toBe("needs_info");
+    expect(genericButLongAssessment.missingInformation).toEqual(
+      expect.arrayContaining(["Informe o sistema, aplicacao ou servico afetado."])
+    );
     await expect(orchestrator.listTickets()).resolves.toHaveLength(2);
   });
 });

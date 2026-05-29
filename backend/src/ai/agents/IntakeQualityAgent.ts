@@ -63,28 +63,37 @@ export function assessTicketIntakeQuality(params: {
 }): IntakeAssessment {
   const { input, triage, sources, existingTickets } = params;
   const text = normalize(`${input.title} ${input.description} ${input.businessImpact}`);
+  const unknownService = isUnknownService(input.affectedService);
+  const genericDescription = isGenericDescription(input.description);
+  const genericImpact = isGenericImpact(input.businessImpact);
   const details = {
     hasMeaningfulTitle: wordCount(input.title) >= 3 && normalize(input.title).length >= 10,
-    hasDetailedDescription: wordCount(input.description) >= 12 || normalize(input.description).length >= 80,
-    hasBusinessImpact: normalize(input.businessImpact).length >= 20 && !/nao informado|n\/a|sem impacto/.test(normalize(input.businessImpact)),
-    hasService: normalize(input.affectedService).length >= 3 && normalize(input.affectedService) !== "geral",
+    hasDetailedDescription: (wordCount(input.description) >= 12 || normalize(input.description).length >= 80) && !genericDescription,
+    hasBusinessImpact:
+      normalize(input.businessImpact).length >= 20 &&
+      !genericImpact &&
+      /(parad|bloquead|indisponivel|atras|fila|fatur|pagamento|pedido|cliente|usuario|equipe|filial|operacao|financeiro|seguranca|compliance|\d+)/.test(
+        normalize(input.businessImpact)
+      ),
+    hasService: normalize(input.affectedService).length >= 3 && !unknownService,
     hasTimeWindow: /(desde|hoje|ontem|agora|manha|tarde|noite|\d{1,2}:\d{2}|\d+\s?(min|hora|horas|dia|dias))/.test(text),
     hasAffectedUsers: /(usuario|usuarios|pessoa|pessoas|equipe|time|setor|departamento|filial|todos|cliente|clientes|\d+\s?(user|usuarios|pessoas))/.test(text),
-    hasObservedError: /(erro|falha|codigo|http|timeout|lento|indisponivel|bloqueado|print|anexo|mensagem|log)/.test(text),
+    hasObservedError: /(erro|falha|codigo|http|timeout|lento|indisponivel|bloqueado|nao abre|nao carrega|print|anexo|mensagem|log)/.test(text),
     hasAttemptedAction: /(tentei|testei|reiniciei|limpei|validei|verifiquei|sem workaround|contorno|workaround|reproduzi)/.test(text),
     hasEvidence: input.attachments.length > 0 || /(print|screenshot|log|evidencia|anexo)/.test(text)
   };
   const nonsense = isNonsense(input);
+  const genericVague = isGenericVagueIntake(input, details, unknownService);
   const missingInformation = dedupe([
     ...triage.missingInformation,
     ...buildMissingInformation(details, input)
   ]).slice(0, 8);
-  const score = calculateQualityScore(details, sources, nonsense, missingInformation.length);
+  const score = calculateQualityScore(details, sources, nonsense || genericVague, missingInformation.length);
   const suggestedPriority = calculatePriority(input.urgency, input.impact);
   const group = selectGroup(input);
   const similarTickets = findSimilarTickets(input, existingTickets);
   const selfService = buildSelfServiceSuggestion(input, sources, suggestedPriority, text);
-  const hardBlock = nonsense || score < 50 || missingInformation.length >= 5;
+  const hardBlock = nonsense || genericVague || score < 55 || missingInformation.length >= 5;
   const shouldCreate = !hardBlock && !selfService.canDeflect;
   const readiness: IntakeReadiness = hardBlock ? "needs_info" : selfService.canDeflect ? "self_service" : "ready";
   const titleSuggestion = suggestTitle(input, triage.category);
@@ -100,7 +109,7 @@ export function assessTicketIntakeQuality(params: {
     language: detectLanguage(text),
     missingInformation,
     clarificationQuestions: buildClarificationQuestions(missingInformation, input).slice(0, 5),
-    qualitySignals: buildQualitySignals(details, nonsense),
+    qualitySignals: buildQualitySignals(details, nonsense || genericVague),
     suggestedFields: {
       type: input.type,
       category: triage.category,
@@ -154,6 +163,7 @@ function calculateQualityScore(
 
 function buildMissingInformation(details: Record<string, boolean>, input: CreateTicketInput): string[] {
   const missing: string[] = [];
+  if (!details.hasService) missing.push("Informe o sistema, aplicacao ou servico afetado.");
   if (!details.hasDetailedDescription) missing.push("Descreva o sintoma observado, quando ocorre e como reproduzir.");
   if (!details.hasBusinessImpact) missing.push("Informe o impacto no negocio, area afetada ou processo parado.");
   if (!details.hasTimeWindow) missing.push("Informe desde quando ocorre ou o horario da primeira ocorrencia.");
@@ -293,6 +303,30 @@ function isNonsense(input: CreateTicketInput): boolean {
   if (tokens.length < 5) return true;
   if (new Set(tokens).size <= 3) return true;
   return /^(problema|erro|nao funciona|ajuda|urgente)\s*(problema|erro|nao funciona|ajuda|urgente)?$/.test(text);
+}
+
+function isUnknownService(value: string): boolean {
+  const service = normalize(value);
+  return /^(geral|outro|outros|nao sei|nao definido|indefinido|n\/a|sem servico|sem sistema|nao informado)$/.test(service);
+}
+
+function isGenericDescription(value: string): boolean {
+  const description = normalize(value);
+  return /(nao sei explicar|nao consigo explicar|sem detalhes|nao sei informar|preciso de ajuda|me ajuda|nao funciona direito|problema urgente)/.test(
+    description
+  );
+}
+
+function isGenericImpact(value: string): boolean {
+  const impact = normalize(value);
+  return /(nao informado|n\/a|sem impacto|nao sei|preciso de ajuda|nao informei impacto|impacto operacional concreto|sem detalhe)/.test(impact);
+}
+
+function isGenericVagueIntake(input: CreateTicketInput, details: Record<string, boolean>, unknownService: boolean): boolean {
+  const text = normalize(`${input.title} ${input.description} ${input.businessImpact}`);
+  const genericPhrase = /(sem detalhes|nao sei explicar|nao consigo explicar|nao sei informar|preciso de ajuda|nao funciona direito|problema urgente)/.test(text);
+  const missingOperationalCore = !details.hasService || !details.hasBusinessImpact || (!details.hasObservedError && !details.hasAffectedUsers);
+  return genericPhrase && (unknownService || missingOperationalCore);
 }
 
 function wordCount(value: string): number {
