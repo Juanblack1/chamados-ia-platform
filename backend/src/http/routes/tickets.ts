@@ -89,4 +89,13 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
     if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found or resolution not allowed." });
     return ticket;
   });
+
+  app.delete<{ Params: { id: string } }>("/api/tickets/:id", async (request, reply) => {
+    const user = requireUser(request);
+    if (user.role !== "admin") return reply.code(403).send({ error: "forbidden", message: "Only admins can delete tickets." });
+
+    const deleted = await orchestrator.deleteTicket(request.params.id, user);
+    if (!deleted) return reply.code(404).send({ error: "not_found", message: "Ticket not found." });
+    return reply.code(204).send();
+  });
 }

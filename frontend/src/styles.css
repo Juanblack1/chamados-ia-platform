@@ -320,6 +320,7 @@ p {
 
 .primary-button,
 .secondary-button,
+.danger-button,
 .icon-button {
   min-height: 40px;
   display: inline-flex;
@@ -351,6 +352,16 @@ p {
 .secondary-button:hover,
 .icon-button:hover {
   background: var(--color-surface-muted);
+}
+
+.danger-button {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: #ffc9c2;
+}
+
+.danger-button:hover {
+  background: #ffe3df;
 }
 
 .primary-button.wide {

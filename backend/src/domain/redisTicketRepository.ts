@@ -111,6 +111,14 @@ export class RedisTicketRepository implements TicketStore {
     return next;
   }
 
+  async delete(id: string): Promise<boolean> {
+    const current = await this.findById(id);
+    if (!current) return false;
+
+    await Promise.all([this.redis.del(this.ticketKey(id)), this.redis.zrem(this.indexKey, id)]);
+    return true;
+  }
+
   private async save(ticket: Ticket): Promise<void> {
     await Promise.all([
       this.redis.set(this.ticketKey(ticket.id), ticket),

@@ -223,6 +223,10 @@ export async function resolveTicket(ticketId: string, message: string): Promise<
   });
 }
 
+export async function deleteTicket(ticketId: string): Promise<void> {
+  await request(`/tickets/${ticketId}`, { method: "DELETE" });
+}
+
 export async function listAgentTraces(): Promise<TraceSpan[]> {
   return request("/agents/traces");
 }

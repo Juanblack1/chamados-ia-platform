@@ -71,5 +71,30 @@ describe("AgentOrchestrator", () => {
     expect(traces.list().map((span) => span.name)).toEqual(
       expect.arrayContaining(["ticket.open", "rag.search", "agent.ticket-triage", "agent.resolution-draft"])
     );
+
+    const deletedByRequester = await orchestrator.deleteTicket(ticket.id, {
+      id: "requester-1",
+      email: "ana@acme.local",
+      name: "Ana",
+      role: "requester",
+      entityId: "corp",
+      entityName: "Corporativo",
+      groupIds: [],
+      active: true
+    });
+    expect(deletedByRequester).toBe(false);
+
+    const deletedByAdmin = await orchestrator.deleteTicket(ticket.id, {
+      id: "admin-1",
+      email: "admin@empresa.local",
+      name: "Admin",
+      role: "admin",
+      entityId: "corp",
+      entityName: "Corporativo",
+      groupIds: [],
+      active: true
+    });
+    expect(deletedByAdmin).toBe(true);
+    await expect(orchestrator.findTicket(ticket.id)).resolves.toBeUndefined();
   });
 });

@@ -355,6 +355,11 @@ export class AgentOrchestrator {
     });
   }
 
+  async deleteTicket(id: string, actor: AppUser): Promise<boolean> {
+    if (actor.role !== "admin") return false;
+    return this.tickets.delete(id);
+  }
+
   private async appendAudit(id: string, actor: AppUser, action: string, message: string): Promise<void> {
     const ticket = await this.tickets.findById(id);
     if (!ticket) return;

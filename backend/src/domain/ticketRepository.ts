@@ -10,6 +10,7 @@ export interface TicketStore {
   findById(id: string): Promise<Ticket | undefined>;
   create(input: CreateTicketInput): Promise<Ticket>;
   update(id: string, patch: Partial<Ticket>): Promise<Ticket | undefined>;
+  delete(id: string): Promise<boolean>;
 }
 
 export class TicketRepository implements TicketStore {
@@ -88,6 +89,10 @@ export class TicketRepository implements TicketStore {
 
     this.tickets.set(id, next);
     return next;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.tickets.delete(id);
   }
 
   private seed(): void {

@@ -22,6 +22,7 @@ import {
   Settings,
   ShieldCheck,
   TicketCheck,
+  Trash2,
   UserRound,
   UsersRound,
   X
@@ -32,6 +33,7 @@ import {
   assignTicket,
   completeTask,
   createTicket,
+  deleteTicket,
   getCatalog,
   getSession,
   listAgentTraces,
@@ -189,6 +191,25 @@ export default function App() {
     }
   }
 
+  async function handleDeleteTicket(ticket: Ticket) {
+    const confirmed = window.confirm(`Excluir o chamado ${ticket.number}? Esta acao remove o registro da fila.`);
+    if (!confirmed) return;
+
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await deleteTicket(ticket.id);
+      setTickets((current) => current.filter((item) => item.id !== ticket.id));
+      setSelectedId(null);
+      setView("queue");
+      void refreshWorkspace();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Nao foi possivel excluir o chamado.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   if (isBooting) return <BootScreen />;
 
   if (!user) {
@@ -259,6 +280,7 @@ export default function App() {
             onTask={(title, description) => mutateTicket(() => addTask(selectedTicket.id, title, description))}
             onCompleteTask={(taskId) => mutateTicket(() => completeTask(selectedTicket.id, taskId))}
             onResolve={(message) => mutateTicket(() => resolveTicket(selectedTicket.id, message))}
+            onDelete={() => void handleDeleteTicket(selectedTicket)}
           />
         ) : null}
 
@@ -744,7 +766,8 @@ function DetailView({
   onFollowup,
   onTask,
   onCompleteTask,
-  onResolve
+  onResolve,
+  onDelete
 }: {
   user: AppUser;
   ticket: Ticket;
@@ -756,6 +779,7 @@ function DetailView({
   onTask: (title: string, description?: string) => void;
   onCompleteTask: (taskId: string) => void;
   onResolve: (message: string) => void;
+  onDelete: () => void;
 }) {
   const [followup, setFollowup] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
@@ -790,6 +814,12 @@ function DetailView({
           <button type="button" className="secondary-button small" disabled={isSubmitting} onClick={onAssign}>
             <UserRound size={16} />
             <span>Atribuir para mim</span>
+          </button>
+        ) : null}
+        {user.role === "admin" ? (
+          <button type="button" className="danger-button small" disabled={isSubmitting} onClick={onDelete}>
+            <Trash2 size={16} />
+            <span>Excluir chamado</span>
           </button>
         ) : null}
       </div>
