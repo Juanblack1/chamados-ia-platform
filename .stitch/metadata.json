@@ -30,6 +30,36 @@
       "deviceType": "DESKTOP",
       "html": ".stitch/designs/ticket-detail.html",
       "screenshot": ".stitch/designs/ticket-detail.png"
+    },
+    {
+      "id": "145e5fcefc314f4d8c7efc904e578bc0",
+      "name": "Login - ServiceDesk AI",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/production-login.html"
+    },
+    {
+      "id": "df3fa46d000c4c8ca0bf51b801a902ed",
+      "name": "Minha fila - Analyst Queue",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/production-analyst-queue.html"
+    },
+    {
+      "id": "525f1a2b76c54f7ab5bec35b553ce3f6",
+      "name": "Portal do Solicitante - Meus chamados",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/production-requester-portal.html"
+    },
+    {
+      "id": "fb8639c21a5e41ddbd0d37e2a55fb5ef",
+      "name": "Ticket Workspace - INC-4022",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/production-ticket-workspace.html"
+    },
+    {
+      "id": "8fe55142f5c4467b933b61c2ff358fb7",
+      "name": "Administração - Painel de Controle",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/production-admin.html"
     }
   ]
 }

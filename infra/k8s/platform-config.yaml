@@ -4,10 +4,13 @@ metadata:
   name: ai-service-desk-config
 data:
   frontendOrigin: "https://service-desk.example.com"
+  authBootstrapAdminEmail: "admin@empresa.local"
+  authSessionTtlSeconds: "28800"
   aiProvider: "google"
   googleGenerativeAiModel: "gemini-2.5-flash"
   googleEmbeddingModel: "gemini-embedding-001"
   embeddingDimension: "64"
   ticketStorage: "redis"
   ticketRedisPrefix: "ai-service-desk"
+  ticketSeedSampleData: "false"
   qdrantUrl: "http://qdrant.ai-platform.svc.cluster.local:6333"

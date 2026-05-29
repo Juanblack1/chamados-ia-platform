@@ -27,6 +27,21 @@ spec:
                 configMapKeyRef:
                   name: ai-service-desk-config
                   key: frontendOrigin
+            - name: AUTH_BOOTSTRAP_ADMIN_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: authBootstrapAdminEmail
+            - name: AUTH_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: authBootstrapAdminPassword
+            - name: AUTH_SESSION_TTL_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: authSessionTtlSeconds
             - name: AI_PROVIDER
               valueFrom:
                 configMapKeyRef:
@@ -62,6 +77,11 @@ spec:
                 configMapKeyRef:
                   name: ai-service-desk-config
                   key: ticketRedisPrefix
+            - name: TICKET_SEED_SAMPLE_DATA
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: ticketSeedSampleData
             - name: KV_REST_API_URL
               valueFrom:
                 secretKeyRef:

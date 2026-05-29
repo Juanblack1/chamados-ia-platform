@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#bdc9c6",
+                    "tertiary-fixed-dim": "#ffb59d",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#0d1c2f",
+                    "on-secondary-container": "#57657b",
+                    "error": "#ba1a1a",
+                    "primary-fixed": "#9cf2e8",
+                    "surface-tint": "#006a63",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-dim": "#d8dadc",
+                    "tertiary-container": "#bd3d07",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-primary-container": "#a3faef",
+                    "secondary": "#515f74",
+                    "primary-container": "#0f766e",
+                    "on-tertiary-container": "#ffe4dd",
+                    "on-error-container": "#93000a",
+                    "outline": "#6e7977",
+                    "tertiary": "#952c00",
+                    "on-background": "#191c1e",
+                    "on-secondary-fixed-variant": "#3a485c",
+                    "surface-container-low": "#f2f4f6",
+                    "on-primary-fixed-variant": "#00504a",
+                    "on-error": "#ffffff",
+                    "surface-variant": "#e0e3e5",
+                    "background": "#f7f9fb",
+                    "on-tertiary-fixed-variant": "#832600",
+                    "on-surface-variant": "#3e4947",
+                    "surface-container": "#eceef0",
+                    "secondary-container": "#d5e3fd",
+                    "inverse-surface": "#2d3133",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed": "#390c00",
+                    "primary-fixed-dim": "#80d5cb",
+                    "inverse-primary": "#80d5cb",
+                    "tertiary-fixed": "#ffdbd0",
+                    "on-primary-fixed": "#00201d",
+                    "on-secondary": "#ffffff",
+                    "primary": "#005c55",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#191c1e",
+                    "surface": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5",
+                    "secondary-fixed-dim": "#b9c7e0",
+                    "secondary-fixed": "#d5e3fd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "display": ["Plus Jakarta Sans"],
+                    "body": ["Be Vietnam Pro"],
+                    "label": ["Be Vietnam Pro"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .loading-shimmer {
+            background: linear-gradient(90deg, #eceef0 25%, #f7f9fb 50%, #eceef0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .table-dense td, .table-dense th {
+            padding: 0.5rem 0.75rem;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #bdc9c6; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6e7977; }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface antialiased overflow-hidden h-screen flex">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 bg-surface-container-lowest border-r border-outline-variant w-64 z-50">
+<div class="mb-8 px-2">
+<h1 class="text-headline-sm font-headline font-black text-primary">ServiceDesk AI</h1>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Enterprise Support</p>
+</div>
+<button class="mb-6 flex items-center justify-center gap-2 bg-primary text-on-primary rounded-lg py-3 px-4 font-bold shadow-sm active:opacity-80 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_box</span>
+<span>New Request</span>
+</button>
+<nav class="flex-1 space-y-1">
+<div class="flex items-center gap-3 bg-secondary-container text-on-secondary-container rounded-lg px-3 py-2 font-medium cursor-default">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">move_to_inbox</span>
+<span>My Queue</span>
+</div>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">confirmation_number</span>
+<span>All Tickets</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">add_box</span>
+<span>Open Ticket</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span>Knowledge Base</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span>AI Agents</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Administration</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 border-t border-outline-variant space-y-1">
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors text-label-sm" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Help Center</span>
+</a>
+<div class="flex items-center gap-3 text-on-surface-variant px-3 py-2 text-label-sm">
+<img alt="Agent Profile" class="w-6 h-6 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8S_dOiVPvK3UGZK5kIDAGUtm3Pt1hsr_vTiQkgqe313jKrIVq_cVcCV7cHwrOTZXQX375of9JtOHSNY9EBqe6DEW9z39dh4MJAVTffZ7Re6fk8su1EzBeybJpGHLrQPNIEqElSzH0cT1gVDspuOcBa-89vAnSHFvpg9iDh7a-GZkSv08qt7eDUyryYwKMoEwTHk_jsERGH8UYs9U8QM2ticsvNvgfBvXIkQiTTcLRab8CDcbk2cMGMBY4WsTz-ozQ60YveNzkAjg"/>
+<span class="font-medium">Account</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex-1 flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar Shell -->
+<header class="sticky top-0 z-40 h-16 w-full border-b border-outline-variant bg-surface flex items-center justify-between px-6">
+<div class="flex items-center gap-6">
+<h2 class="font-headline text-headline-sm tracking-tight font-bold text-primary">Minha fila</h2>
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="w-full bg-surface-container text-on-surface text-sm border-none rounded-full pl-10 pr-4 py-1.5 focus:ring-2 focus:ring-primary-container outline-none" placeholder="Search queue..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-on-surface-variant bg-surface-container-low border border-outline-variant rounded-md hover:bg-surface-container-high">
+<span>Status</span>
+<span class="material-symbols-outlined text-xs">expand_more</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-on-surface-variant bg-surface-container-low border border-outline-variant rounded-md hover:bg-surface-container-high">
+<span>SLA</span>
+<span class="material-symbols-outlined text-xs">expand_more</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors active:scale-95" title="Refresh">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+</div>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all">
+                        Abrir chamado
+                    </button>
+</div>
+</div>
+</header>
+<!-- Metric Strip -->
+<div class="px-6 py-4 flex gap-4 overflow-x-auto">
+<div class="flex-shrink-0 bg-surface-container-lowest border border-outline-variant rounded-xl p-3 w-40">
+<p class="text-label-sm text-outline font-medium">Open Tickets</p>
+<p class="text-headline-sm font-bold text-on-surface">124</p>
+<div class="h-1 w-full bg-surface-container rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-primary w-2/3"></div>
+</div>
+</div>
+<div class="flex-shrink-0 bg-surface-container-lowest border border-outline-variant rounded-xl p-3 w-40">
+<p class="text-label-sm text-outline font-medium">Critical SLA</p>
+<p class="text-headline-sm font-bold text-error">12</p>
+<div class="h-1 w-full bg-surface-container rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-error w-1/4"></div>
+</div>
+</div>
+<div class="flex-shrink-0 bg-surface-container-lowest border border-outline-variant rounded-xl p-3 w-40">
+<p class="text-label-sm text-outline font-medium">Avg Confidence</p>
+<p class="text-headline-sm font-bold text-primary">88%</p>
+<div class="h-1 w-full bg-surface-container rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[88%]"></div>
+</div>
+</div>
+</div>
+<!-- Table Container -->
+<div class="flex-1 px-6 pb-6 overflow-hidden flex flex-col">
+<div class="flex-1 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-auto relative">
+<table class="w-full text-left table-dense border-collapse">
+<thead class="sticky top-0 bg-surface-container-low z-20 text-on-surface-variant text-[11px] uppercase tracking-wider font-bold">
+<tr class="border-b border-outline-variant">
+<th class="w-10">
+<input class="rounded border-outline text-primary focus:ring-primary-container" id="selectAll" type="checkbox"/>
+</th>
+<th class="w-24">Numero</th>
+<th class="w-32">Tipo</th>
+<th class="w-28">Prioridade</th>
+<th class="w-32">Status</th>
+<th class="w-24">SLA</th>
+<th class="w-32">Grupo</th>
+<th class="w-32">Tecnico</th>
+<th class="w-40">Solicitante</th>
+<th class="w-40">Servico</th>
+<th class="w-28">Confiança IA</th>
+<th class="w-32">Atualização</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant text-[13px]">
+<!-- Row 1: High Priority -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td><input class="ticket-checkbox rounded border-outline text-primary focus:ring-primary-container" type="checkbox"/></td>
+<td class="font-mono font-bold text-primary">#INC-9218</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">emergency_home</span>
+<span>Incidente</span>
+</div>
+</td>
+<td>
+<span class="bg-error-container text-on-error-container text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Crítica</span>
+</td>
+<td>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span>Aguardando TI</span>
+</div>
+</td>
+<td>
+<span class="text-error font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">timer</span>
+                                    00:15
+                                </span>
+</td>
+<td class="text-on-surface-variant truncate">Cloud Infrastructure</td>
+<td>
+<div class="flex items-center gap-2">
+<img alt="Agent" class="w-5 h-5 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAywrgrdm2E3xF1rTrT574Kct_d-_pUnlp-mXajActNNtaAhmB_QzAZbzAEp2Qq1RMqHqG8-UbIT1lhDwMMg-HmfTLhawbn_gVRUMRUaQij2ozr9z-g7bDLgjvJ_ka79ngTSnOqeNO20hrLDxWyr9yBBarnE5kBLS5k6VlFiFADfLMhkQBLB3wOWzRTUEB30U_8NNBrphlQun070KmKHJzYiGjUMcNmteHsIT8z55gCRuE4x-YBtTqvOA0T15b5SHCDzzrvHzqdhyc"/>
+<span class="truncate">André L.</span>
+</div>
+</td>
+<td>
+<span class="truncate">Marta Oliveira</span>
+</td>
+<td class="text-on-surface-variant italic truncate">Azure VM Outage</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="font-bold">98%</span>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</td>
+<td class="text-outline-variant">2 min atrás</td>
+</tr>
+<!-- Row 2: Medium Priority -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td><input class="ticket-checkbox rounded border-outline text-primary focus:ring-primary-container" type="checkbox"/></td>
+<td class="font-mono font-bold text-primary">#REQ-8542</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-sm">add_task</span>
+<span>Requisição</span>
+</div>
+</td>
+<td>
+<span class="bg-secondary-container text-on-secondary-container text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Média</span>
+</td>
+<td>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span>Em Analise</span>
+</div>
+</td>
+<td>
+<span class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">timer</span>
+                                    12:45
+                                </span>
+</td>
+<td class="text-on-surface-variant truncate">Service Desk L1</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="text-outline italic text-[11px]">Unassigned</span>
+</div>
+</td>
+<td>
+<span class="truncate">Jorge Santos</span>
+</td>
+<td class="text-on-surface-variant italic truncate">Reset Password</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="font-bold">64%</span>
+<span class="material-symbols-outlined text-secondary-container text-[16px]">info</span>
+</div>
+</td>
+<td class="text-outline-variant">15 min atrás</td>
+</tr>
+<!-- Row 3: Loading Skeleton -->
+<tr class="opacity-60 bg-surface-container-lowest">
+<td><div class="w-4 h-4 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-4 w-16 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-4 w-24 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-5 w-20 bg-surface-container rounded-full animate-pulse"></div></td>
+<td><div class="h-4 w-24 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-4 w-12 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-4 w-28 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-5 w-24 bg-surface-container rounded-full animate-pulse"></div></td>
+<td><div class="h-4 w-32 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-4 w-32 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-4 w-16 bg-surface-container rounded animate-pulse"></div></td>
+<td><div class="h-4 w-20 bg-surface-container rounded animate-pulse"></div></td>
+</tr>
+<!-- Repeat Data Rows for Density -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td><input class="ticket-checkbox rounded border-outline text-primary focus:ring-primary-container" type="checkbox"/></td>
+<td class="font-mono font-bold text-primary">#INC-9102</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">emergency_home</span>
+<span>Incidente</span>
+</div>
+</td>
+<td>
+<span class="bg-error-container text-on-error-container text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Alta</span>
+</td>
+<td>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span>Escalado L3</span>
+</div>
+</td>
+<td>
+<span class="text-error font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">timer</span>
+                                    01:20
+                                </span>
+</td>
+<td class="text-on-surface-variant truncate">CyberSecurity</td>
+<td>
+<div class="flex items-center gap-2">
+<img alt="Agent" class="w-5 h-5 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-NqMJQWogBiCTUW8fGSs2yt6kCRa2VPDqbB8agvO2kyz4IwK5ICl8FUmWjiABHP5QFAOAIdVIWaTFAYheWl1F5tum36Ycrd9sQVJAZv6-NofnHWCBdEsP93bK-9L27G-m-Cr10-jSB9oi0peFB_JV_epRAPBhVKAgfHMeabMAp2UDEpZmveZuw_B-6BVhgshpZ1wTvf-PuYdlRZ1pglz1Xn7uViriRhEACCk20JlqaiefzkdvZphvNbhUUg88_5i0r0VCvGTRV4E"/>
+<span class="truncate">Rafael K.</span>
+</div>
+</td>
+<td>
+<span class="truncate">Lucas Mendes</span>
+</td>
+<td class="text-on-surface-variant italic truncate">Access Denied VPN</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="font-bold">92%</span>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</td>
+<td class="text-outline-variant">45 min atrás</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td><input class="ticket-checkbox rounded border-outline text-primary focus:ring-primary-container" type="checkbox"/></td>
+<td class="font-mono font-bold text-primary">#REQ-7781</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-sm">add_task</span>
+<span>Requisição</span>
+</div>
+</td>
+<td>
+<span class="bg-surface-container-high text-on-surface-variant text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Baixa</span>
+</td>
+<td>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span>Novo</span>
+</div>
+</td>
+<td>
+<span class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">timer</span>
+                                    48:00
+                                </span>
+</td>
+<td class="text-on-surface-variant truncate">HR Systems</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="text-outline italic text-[11px]">Unassigned</span>
+</div>
+</td>
+<td>
+<span class="truncate">Beatriz Farias</span>
+</td>
+<td class="text-on-surface-variant italic truncate">Software License</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="font-bold">71%</span>
+<span class="material-symbols-outlined text-secondary-container text-[16px]">info</span>
+</div>
+</td>
+<td class="text-outline-variant">1 hora atrás</td>
+</tr>
+<!-- More Rows... (Simulation) -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td><input class="ticket-checkbox rounded border-outline text-primary focus:ring-primary-container" type="checkbox"/></td>
+<td class="font-mono font-bold text-primary">#INC-9005</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">emergency_home</span>
+<span>Incidente</span>
+</div>
+</td>
+<td>
+<span class="bg-error-container text-on-error-container text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Crítica</span>
+</td>
+<td>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span>Atrasado</span>
+</div>
+</td>
+<td>
+<span class="text-error font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">warning</span>
+                                    -02:10
+                                </span>
+</td>
+<td class="text-on-surface-variant truncate">ERP Management</td>
+<td>
+<div class="flex items-center gap-2">
+<img alt="Agent" class="w-5 h-5 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1sHroSIb7tpeziueXi5kWZDOWNbG-sy379fNNqOVQLpP4-AYmu0hhbMVg1pPcK3Bndm63Ph_zv4nPLhqoTImvy6-6ZpSuSLBgFDb6Yy3IcYc3GMt-ct-pXtnxReW8dAzwSQfJrQALGaQphYkRcxzcXoW3A8VouW_TgQruFDBv0GCLWuEf6Kn2p84qa13ld2mDPY8O7zlMMsjVTR8dqg-hheDlYPzTPeNM9-R7nk-oLEYKFUtu0lZencgQR5pJnkFGNwMarMa13I8"/>
+<span class="truncate">Camila R.</span>
+</div>
+</td>
+<td>
+<span class="truncate">Diretoria</span>
+</td>
+<td class="text-on-surface-variant italic truncate">SAP Payment Error</td>
+<td>
+<div class="flex items-center gap-2">
+<span class="font-bold">100%</span>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</td>
+<td class="text-outline-variant">3 min atrás</td>
+</tr>
+</tbody>
+</table>
+<!-- Bulk Action Bar (Hidden by default) -->
+<div class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-30 transition-all duration-300" id="bulkActions">
+<p class="text-sm font-bold"><span id="selectedCount">0</span> selecionados</p>
+<div class="h-4 w-px bg-outline-variant opacity-30"></div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 text-sm hover:text-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-sm">assignment_ind</span> Atribuir
+                        </button>
+<button class="flex items-center gap-2 text-sm hover:text-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-sm">edit</span> Alterar Status
+                        </button>
+<button class="flex items-center gap-2 text-sm hover:text-error transition-colors">
+<span class="material-symbols-outlined text-sm">delete</span> Excluir
+                        </button>
+</div>
+<button class="ml-2 p-1 hover:bg-surface-variant/20 rounded-full" id="closeBulk">
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+</div>
+</div>
+<!-- Pagination -->
+<div class="mt-4 flex items-center justify-between">
+<p class="text-sm text-outline">Mostrando <span class="font-bold text-on-surface">1 - 25</span> de <span class="font-bold text-on-surface">1,402</span> chamados</p>
+<div class="flex items-center gap-2">
+<button class="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-high disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<div class="flex gap-1">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-on-primary font-bold text-sm">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-sm">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-sm">3</button>
+<span class="w-8 h-8 flex items-center justify-center text-outline">...</span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-sm">56</button>
+</div>
+<button class="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-high">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Checkbox interaction and Bulk Action Bar logic
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.ticket-checkbox');
+        const bulkBar = document.getElementById('bulkActions');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const closeBulk = document.getElementById('closeBulk');
+
+        function updateBulkBar() {
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            if (checkedCount > 0) {
+                bulkBar.classList.remove('hidden');
+                bulkBar.classList.add('flex');
+                selectedCountSpan.textContent = checkedCount;
+            } else {
+                bulkBar.classList.add('hidden');
+                bulkBar.classList.remove('flex');
+            }
+        }
+
+        selectAll.addEventListener('change', (e) => {
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+            updateBulkBar();
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateBulkBar);
+        });
+
+        closeBulk.addEventListener('click', () => {
+            checkboxes.forEach(cb => cb.checked = false);
+            selectAll.checked = false;
+            updateBulkBar();
+        });
+
+        // Atmospheric micro-interaction for rows
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('click', (e) => {
+                if(e.target.type !== 'checkbox') {
+                    // Visual feedback for clicking a row
+                    row.classList.add('bg-primary-container/10');
+                    setTimeout(() => row.classList.remove('bg-primary-container/10'), 200);
+                }
+            });
+        });
+    </script>
+</body></html>

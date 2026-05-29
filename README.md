@@ -13,6 +13,14 @@ Corporate service desk demo with AI-assisted ticket intake, multi-agent triage, 
 - Upstash/Vercel KV-compatible Redis ticket persistence
 - Docker, Kubernetes manifests, Azure DevOps pipeline
 
+## Product surface
+
+- Session login with HttpOnly cookies, bootstrap admin, role-aware access, and API-key support for server-to-server automation.
+- Requester portal for opening incidents and requests with image attachments.
+- Analyst queue with filters, SLA, priority, group routing, and AI/RAG evidence.
+- Ticket workspace with assign-to-me, status transitions, public/internal follow-ups, tasks, task completion, resolution, timeline, and audit trail.
+- Admin/catalog view for users, groups, SLA policies, and knowledge articles.
+
 ## Run locally
 
 ```bash
@@ -25,16 +33,36 @@ Backend: `http://localhost:4000`
 
 Frontend: `http://localhost:5173`
 
+Local development creates deterministic demo users in memory:
+
+- `admin@empresa.local` / `admin123`
+- `supervisor@empresa.local` / `dev123`
+- `tecnico.erp@empresa.local` / `dev123`
+- `tecnico.rede@empresa.local` / `dev123`
+- `solicitante@empresa.local` / `dev123`
+
+These fallback passwords are disabled in `NODE_ENV=production`; production requires `AUTH_BOOTSTRAP_ADMIN_PASSWORD`.
+
 The backend has deterministic fallback responses when no AI key is configured, so tests and the local demo run without external credentials. For Google AI Studio, put `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`; that file is gitignored. The frontend never receives this key.
 
-Ticket persistence uses memory by default in local/test runs. In production, set `TICKET_STORAGE=redis` plus either `KV_REST_API_URL`/`KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`.
+Ticket persistence uses memory by default in local/test runs. In production, set `TICKET_STORAGE=redis` plus either `KV_REST_API_URL`/`KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`. `TICKET_SEED_SAMPLE_DATA` defaults to `false`, so production starts without demo tickets.
 
 ## API
 
 - `GET /health`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
 - `GET /api/tickets`
 - `POST /api/tickets`
 - `GET /api/tickets/:id`
+- `POST /api/tickets/:id/assign`
+- `POST /api/tickets/:id/status`
+- `POST /api/tickets/:id/followups`
+- `POST /api/tickets/:id/tasks`
+- `POST /api/tickets/:id/tasks/:taskId/complete`
+- `POST /api/tickets/:id/resolve`
+- `GET /api/catalog/service-desk`
 - `GET /api/agents/runs`
 - `GET /api/agents/traces`
 - `POST /api/agents/triage-preview`
@@ -50,7 +78,23 @@ Use the image drop area in "Novo chamado" or the upload button in the Copilot ch
 
 ## Deployment
 
-`vercel.json` deploys the Vite frontend plus a serverless Fastify API adapter under `/api`. By default it runs without the Google secret, using deterministic fallback. For production persistence, connect Upstash for Redis from the Vercel Marketplace and set `TICKET_STORAGE=redis`. `docker-compose.yml` runs backend, frontend, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, and `API_KEYS`; no production secret is stored in the repository.
+`vercel.json` deploys the Vite frontend plus a serverless Fastify API adapter under `/api`. By default it runs without the Google secret, using deterministic fallback. For production persistence, connect Upstash for Redis from the Vercel Marketplace and set `TICKET_STORAGE=redis`.
+
+Required production secrets:
+
+- `AUTH_BOOTSTRAP_ADMIN_PASSWORD`
+- `GOOGLE_GENERATIVE_AI_API_KEY`
+- `KV_REST_API_URL`
+- `KV_REST_API_TOKEN`
+
+Optional production settings:
+
+- `AUTH_BOOTSTRAP_ADMIN_EMAIL`
+- `AUTH_SESSION_TTL_SECONDS`
+- `API_KEYS`
+- `TICKET_REDIS_PREFIX`
+
+`docker-compose.yml` runs backend, frontend, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `AUTH_BOOTSTRAP_ADMIN_PASSWORD`, and `API_KEYS`; no production secret is stored in the repository.
 
 ## Stitch
 

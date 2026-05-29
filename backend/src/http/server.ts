@@ -11,8 +11,10 @@ import { DomainEventBus } from "../domain/events.js";
 import { createTicketStore } from "../domain/ticketStore.js";
 import { AuditLog } from "../observability/auditLog.js";
 import { TraceRecorder } from "../observability/traces.js";
-import { registerApiKeyGuard } from "../security/apiKeys.js";
+import { createAuthStore } from "../security/authStore.js";
+import { registerAccessGuard } from "../security/authGuard.js";
 import { registerAgentRoutes } from "./routes/agents.js";
+import { registerAuthRoutes } from "./routes/auth.js";
 import { registerCopilotKitRoutes } from "./routes/copilotkit.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerTicketRoutes } from "./routes/tickets.js";
@@ -27,6 +29,7 @@ export async function buildServer(env: AppEnv) {
   const llm = new ModelGateway(env);
   const knowledge = new QdrantKnowledgeBase(env, llm);
   const tickets = await createTicketStore(env);
+  const auth = await createAuthStore(env);
   const events = new DomainEventBus();
   const audit = new AuditLog();
   const traces = new TraceRecorder();
@@ -40,10 +43,11 @@ export async function buildServer(env: AppEnv) {
   });
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
 
-  registerApiKeyGuard(app, env);
+  registerAccessGuard(app, env, auth);
   await registerHealthRoutes(app, llm, tickets.kind);
+  await registerAuthRoutes(app, env, auth);
   await registerTicketRoutes(app, orchestrator);
-  await registerAgentRoutes(app, orchestrator, traces);
+  await registerAgentRoutes(app, orchestrator, traces, auth);
   await registerCopilotKitRoutes(app, orchestrator, llm, traces);
 
   return app;

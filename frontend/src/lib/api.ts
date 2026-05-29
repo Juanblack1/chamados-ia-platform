@@ -1,5 +1,28 @@
+export type UserRole = "admin" | "supervisor" | "technician" | "requester";
+
+export type AppUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  entityId: string;
+  entityName: string;
+  groupIds: string[];
+  active: boolean;
+};
+
 export type TicketPriority = "low" | "medium" | "high" | "critical";
-export type TicketStatus = "open" | "triaging" | "waiting_customer" | "escalated" | "resolved";
+export type TicketStatus =
+  | "new"
+  | "open"
+  | "triaging"
+  | "in_progress"
+  | "waiting_customer"
+  | "pending_approval"
+  | "escalated"
+  | "resolved"
+  | "closed";
+export type TicketType = "incident" | "request";
 
 export type RagSource = {
   id: string;
@@ -20,7 +43,46 @@ export type AgentDecision = {
 
 export type TimelineEvent = {
   id: string;
-  actor: "requester" | "analyst" | "agent" | "system";
+  actor: "requester" | "analyst" | "technician" | "agent" | "system";
+  message: string;
+  createdAt: string;
+};
+
+export type TicketFollowup = {
+  id: string;
+  authorId: string;
+  authorName: string;
+  visibility: "public" | "internal";
+  message: string;
+  createdAt: string;
+};
+
+export type TicketTask = {
+  id: string;
+  title: string;
+  description?: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  status: "todo" | "doing" | "done";
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+};
+
+export type TicketSla = {
+  policyId: string;
+  label: string;
+  responseDueAt: string;
+  resolutionDueAt: string;
+  breached: boolean;
+  paused: boolean;
+};
+
+export type TicketAuditEntry = {
+  id: string;
+  actorId: string;
+  actorName: string;
+  action: string;
   message: string;
   createdAt: string;
 };
@@ -28,6 +90,10 @@ export type TimelineEvent = {
 export type Ticket = {
   id: string;
   number: string;
+  type: TicketType;
+  entityId: string;
+  entityName: string;
+  requestSource: "portal" | "email" | "phone" | "chat" | "api";
   requesterEmail: string;
   department: string;
   title: string;
@@ -36,8 +102,15 @@ export type Ticket = {
   businessImpact: string;
   attachments: string[];
   category: string;
+  urgency: TicketPriority;
+  impact: TicketPriority;
   priority: TicketPriority;
   status: TicketStatus;
+  assignedGroupId?: string;
+  assignedGroupName?: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  sla: TicketSla;
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -47,6 +120,9 @@ export type Ticket = {
     retrievedSources: RagSource[];
   };
   timeline: TimelineEvent[];
+  followups: TicketFollowup[];
+  tasks: TicketTask[];
+  audit: TicketAuditEntry[];
 };
 
 export type TraceSpan = {
@@ -66,53 +142,110 @@ export type TraceSpan = {
 };
 
 export type CreateTicketPayload = {
+  type: TicketType;
   requesterEmail: string;
   department: string;
   title: string;
   description: string;
   affectedService: string;
   urgency: TicketPriority;
+  impact: TicketPriority;
   businessImpact: string;
   attachments: string[];
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "/api" : "http://localhost:4000/api");
-const API_KEY = import.meta.env.VITE_API_KEY ?? "local-dev-key";
-
-const headers = {
-  "content-type": "application/json",
-  "x-api-key": API_KEY
+export type ServiceDeskCatalog = {
+  currentUser: AppUser;
+  users: AppUser[];
+  groups: Array<{ id: string; name: string; services: string[] }>;
+  slaPolicies: Array<{ id: string; name: string; priority: TicketPriority; responseMinutes: number; resolutionMinutes: number }>;
+  knowledgeArticles: Array<{ id: string; title: string; source: string; category: string; updatedAt: string }>;
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "/api" : "http://localhost:4000/api");
+
+export async function login(email: string, password: string): Promise<{ user: AppUser; expiresAt: string }> {
+  return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password })
+  });
+}
+
+export async function getSession(): Promise<{ user: AppUser }> {
+  return request("/auth/me");
+}
+
+export async function logout(): Promise<void> {
+  await request("/auth/logout", { method: "POST" });
+}
+
 export async function listTickets(): Promise<Ticket[]> {
-  const response = await fetch(`${API_BASE_URL}/tickets`, { headers });
-  if (!response.ok) throw new Error("Could not load tickets.");
-  return response.json() as Promise<Ticket[]>;
+  return request("/tickets");
 }
 
 export async function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
-  const response = await fetch(`${API_BASE_URL}/tickets`, {
+  return request("/tickets", {
     method: "POST",
-    headers,
     body: JSON.stringify(payload)
+  });
+}
+
+export async function assignTicket(ticketId: string): Promise<Ticket> {
+  return request(`/tickets/${ticketId}/assign`, { method: "POST", body: JSON.stringify({}) });
+}
+
+export async function updateTicketStatus(ticketId: string, status: TicketStatus): Promise<Ticket> {
+  return request(`/tickets/${ticketId}/status`, { method: "POST", body: JSON.stringify({ status }) });
+}
+
+export async function addFollowup(ticketId: string, message: string, visibility: "public" | "internal"): Promise<Ticket> {
+  return request(`/tickets/${ticketId}/followups`, {
+    method: "POST",
+    body: JSON.stringify({ message, visibility })
+  });
+}
+
+export async function addTask(ticketId: string, title: string, description?: string): Promise<Ticket> {
+  return request(`/tickets/${ticketId}/tasks`, {
+    method: "POST",
+    body: JSON.stringify({ title, description })
+  });
+}
+
+export async function completeTask(ticketId: string, taskId: string): Promise<Ticket> {
+  return request(`/tickets/${ticketId}/tasks/${taskId}/complete`, { method: "POST" });
+}
+
+export async function resolveTicket(ticketId: string, message: string): Promise<Ticket> {
+  return request(`/tickets/${ticketId}/resolve`, {
+    method: "POST",
+    body: JSON.stringify({ message })
+  });
+}
+
+export async function listAgentTraces(): Promise<TraceSpan[]> {
+  return request("/agents/traces");
+}
+
+export async function getCatalog(): Promise<ServiceDeskCatalog> {
+  return request("/catalog/service-desk");
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+      ...(init.headers ?? {})
+    }
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message ?? "Could not create ticket.");
+    throw new Error(error.message ?? "Nao foi possivel concluir a acao.");
   }
 
-  return response.json() as Promise<Ticket>;
-}
-
-export async function listAgentRuns() {
-  const response = await fetch(`${API_BASE_URL}/agents/runs`, { headers });
-  if (!response.ok) throw new Error("Could not load agent runs.");
-  return response.json();
-}
-
-export async function listAgentTraces(): Promise<TraceSpan[]> {
-  const response = await fetch(`${API_BASE_URL}/agents/traces`, { headers });
-  if (!response.ok) throw new Error("Could not load agent traces.");
-  return response.json() as Promise<TraceSpan[]>;
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
 }

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ServiceDesk AI - Portal do Usuário</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#bdc9c6",
+                    "tertiary-fixed-dim": "#ffb59d",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#0d1c2f",
+                    "on-secondary-container": "#57657b",
+                    "error": "#ba1a1a",
+                    "primary-fixed": "#9cf2e8",
+                    "surface-tint": "#006a63",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-dim": "#d8dadc",
+                    "tertiary-container": "#bd3d07",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-primary-container": "#a3faef",
+                    "secondary": "#515f74",
+                    "primary": "#005c55",
+                    "primary-container": "#0f766e",
+                    "on-tertiary-container": "#ffe4dd",
+                    "on-error-container": "#93000a",
+                    "outline": "#6e7977",
+                    "tertiary": "#952c00",
+                    "on-background": "#191c1e",
+                    "on-secondary-fixed-variant": "#3a485c",
+                    "surface-container-low": "#f2f4f6",
+                    "on-primary-fixed-variant": "#00504a",
+                    "on-error": "#ffffff",
+                    "surface-variant": "#e0e3e5",
+                    "background": "#f7f9fb",
+                    "on-tertiary-fixed-variant": "#832600",
+                    "on-surface-variant": "#3e4947",
+                    "surface-container": "#eceef0",
+                    "secondary-container": "#d5e3fd",
+                    "inverse-surface": "#2d3133",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed": "#390c00",
+                    "primary-fixed-dim": "#80d5cb",
+                    "inverse-primary": "#80d5cb",
+                    "tertiary-fixed": "#ffdbd0",
+                    "on-primary-fixed": "#00201d",
+                    "on-secondary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#191c1e",
+                    "surface": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5",
+                    "secondary-fixed-dim": "#b9c7e0",
+                    "secondary-fixed": "#d5e3fd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "display": ["Plus Jakarta Sans"],
+                    "body": ["Be Vietnam Pro"],
+                    "label": ["Be Vietnam Pro"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen">
+<!-- SideNavBar (Shared Component Execution) -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 bg-surface-container-lowest border-r border-outline-variant w-64 z-50">
+<div class="mb-8 px-2">
+<h1 class="text-headline-sm font-headline font-black text-primary">ServiceDesk AI</h1>
+<p class="text-label-sm font-medium text-on-surface-variant opacity-70">Enterprise Support</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Active Tab: My Queue (Mapped to 'Meus chamados') -->
+<a class="flex items-center gap-3 bg-secondary-container text-on-secondary-container rounded-lg px-3 py-2 transition-colors duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="move_to_inbox">move_to_inbox</span>
+<span class="font-body text-label-sm font-medium">Meus chamados</span>
+</a>
+<!-- Tab: Open Ticket (Mapped to 'Abrir chamado') -->
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="add_box">add_box</span>
+<span class="font-body text-label-sm font-medium">Abrir chamado</span>
+</a>
+<!-- Hidden from simplified view based on prompt logic, but present in JSON structure -->
+<div class="pt-4 mt-4 border-t border-outline-variant opacity-30">
+<p class="px-3 text-[10px] uppercase tracking-wider mb-2">Restricted</p>
+<div class="flex items-center gap-3 text-on-surface-variant px-3 py-2 opacity-50 grayscale cursor-not-allowed">
+<span class="material-symbols-outlined" data-icon="confirmation_number">confirmation_number</span>
+<span class="font-body text-label-sm font-medium">All Tickets</span>
+</div>
+</div>
+</nav>
+<div class="mt-auto pt-4 space-y-2">
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-body text-label-sm font-medium">Help Center</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high px-3 py-2 rounded-lg transition-colors" href="#">
+<div class="w-6 h-6 rounded-full overflow-hidden bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed">
+                    JD
+                </div>
+<span class="font-body text-label-sm font-medium">João Duarte</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar (Shared Component Execution) -->
+<header class="sticky top-0 z-40 flex items-center justify-between px-8 h-16 w-full ml-64 bg-surface border-b border-outline-variant pr-72">
+<div class="flex-1 max-w-xl">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="w-full bg-surface-container border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Buscar em meus chamados..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+</button>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined !text-sm" data-icon="add">add</span>
+                Abrir chamado
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-8 max-w-7xl">
+<!-- Hero Section / CTA -->
+<section class="mb-12">
+<div class="relative overflow-hidden rounded-2xl bg-primary-container p-12 text-on-primary-container shadow-xl">
+<div class="relative z-10 max-w-2xl">
+<h2 class="text-display-sm font-black mb-4 tracking-tight">Olá, João! Como podemos ajudar hoje?</h2>
+<p class="text-on-primary-container/80 text-lg mb-8 font-body">Nossa IA está pronta para resolver seu problema instantaneamente ou encaminhar para o especialista correto.</p>
+<div class="flex flex-wrap gap-4">
+<button class="bg-surface-container-lowest text-primary px-8 py-4 rounded-xl font-bold shadow-lg hover:bg-white transition-all flex items-center gap-3 group">
+<span class="material-symbols-outlined text-primary group-hover:rotate-12 transition-transform" style="font-variation-settings: 'FILL' 1;">bolt</span>
+                            Abrir Novo Chamado
+                        </button>
+<button class="bg-primary/20 backdrop-blur text-on-primary-container px-8 py-4 rounded-xl font-bold border border-primary/30 hover:bg-primary/30 transition-all">
+                            Ver Base de Conhecimento
+                        </button>
+</div>
+</div>
+<!-- Decorative Abstract Pattern -->
+<div class="absolute right-0 top-0 h-full w-1/2 opacity-20 pointer-events-none overflow-hidden">
+<div class="absolute -right-20 -top-20 w-96 h-96 bg-primary-fixed rounded-full blur-[100px]"></div>
+<div class="absolute -right-40 bottom-0 w-64 h-64 bg-tertiary-fixed rounded-full blur-[80px]"></div>
+</div>
+</div>
+</section>
+<!-- Ticket Grid -->
+<section>
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-headline-sm font-bold text-on-surface">Meus chamados ativos</h3>
+<div class="flex gap-2">
+<span class="bg-surface-container px-3 py-1 rounded-full text-xs font-bold text-on-surface-variant">3 Em andamento</span>
+<span class="bg-surface-container px-3 py-1 rounded-full text-xs font-bold text-on-surface-variant">12 Resolvidos</span>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Ticket Card 1: Processing -->
+<div class="glass-card rounded-2xl p-6 shadow-sm border border-outline-variant/50 hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] uppercase tracking-widest text-outline font-bold mb-1 block">TICKET #88241</span>
+<h4 class="text-xl font-bold text-on-surface">Acesso ao VPN instável</h4>
+</div>
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined !text-sm" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                            IA Analisando
+                        </span>
+</div>
+<div class="space-y-4">
+<div class="relative">
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3 rounded-full relative">
+<div class="absolute right-0 top-0 h-full w-4 bg-white/20 animate-pulse"></div>
+</div>
+</div>
+<div class="flex justify-between mt-2 text-[11px] font-bold text-outline uppercase tracking-tight">
+<span>Criado</span>
+<span class="text-primary">Triagem IA</span>
+<span>Suporte N1</span>
+<span>Resolvido</span>
+</div>
+</div>
+<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-xl border border-outline-variant/30">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined">smart_toy</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-medium text-on-surface-variant leading-relaxed">
+<span class="font-bold text-primary">ServiceBot:</span> Estou verificando as configurações do seu perfil de rede. Aguarde um momento.
+                                </p>
+</div>
+</div>
+</div>
+<div class="mt-6 flex items-center justify-between border-t border-outline-variant/30 pt-4">
+<span class="text-xs text-on-surface-variant">Atualizado há 5 min</span>
+<button class="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
+                            Ver Detalhes
+                            <span class="material-symbols-outlined !text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Ticket Card 2: Awaiting User -->
+<div class="glass-card rounded-2xl p-6 shadow-sm border border-outline-variant/50 hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] uppercase tracking-widest text-outline font-bold mb-1 block">TICKET #88235</span>
+<h4 class="text-xl font-bold text-on-surface">Nova Licença Adobe CC</h4>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined !text-sm">pending_actions</span>
+                            Aguardando você
+                        </span>
+</div>
+<div class="space-y-4">
+<div class="relative">
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-3/4 rounded-full"></div>
+</div>
+<div class="flex justify-between mt-2 text-[11px] font-bold text-outline uppercase tracking-tight">
+<span>Criado</span>
+<span>Aprov. Gestor</span>
+<span class="text-tertiary">Sua Ação</span>
+<span>Concluído</span>
+</div>
+</div>
+<div class="flex items-center gap-4 bg-tertiary-container/5 p-4 rounded-xl border border-tertiary-container/20">
+<div class="w-10 h-10 bg-tertiary-fixed rounded-lg flex items-center justify-center text-on-tertiary-fixed">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-medium text-on-surface-variant leading-relaxed">
+                                    Por favor, confirme a versão do Software desejada para finalizarmos a instalação.
+                                </p>
+</div>
+</div>
+</div>
+<div class="mt-6 flex items-center justify-between border-t border-outline-variant/30 pt-4">
+<span class="text-xs text-on-surface-variant">Atualizado há 2 horas</span>
+<button class="bg-tertiary text-on-tertiary px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90">
+                            Responder Agora
+                        </button>
+</div>
+</div>
+<!-- Ticket Card 3: Waiting Tech -->
+<div class="glass-card rounded-2xl p-6 shadow-sm border border-outline-variant/50 hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] uppercase tracking-widest text-outline font-bold mb-1 block">TICKET #88190</span>
+<h4 class="text-xl font-bold text-on-surface">Monitor extra para Home Office</h4>
+</div>
+<span class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined !text-sm">person</span>
+                            Com Analista
+                        </span>
+</div>
+<div class="space-y-4">
+<div class="relative">
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary w-1/4 rounded-full"></div>
+</div>
+<div class="flex justify-between mt-2 text-[11px] font-bold text-outline uppercase tracking-tight">
+<span>Criado</span>
+<span class="text-primary">Fila Suporte</span>
+<span>Envio</span>
+<span>Recebido</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-4 rounded-xl">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+<img alt="Analista" class="w-full h-full object-cover" data-alt="A professional, friendly headshot of a male IT support analyst in a bright, modern office environment. He is wearing a clean casual shirt and has a warm, helpful expression. The lighting is soft and natural, emphasizing a high-trust, professional service atmosphere within a corporate setting. The background is slightly blurred with soft grey and blue tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWI2Esb_YL83xiVk0K10iBm2l-oI0NhOpu6oLGpQWK0bIF-NeakSTjjrcWQEsaCm-PxB9eEMjbdKX0dXtOe4iudSIhMAYFyBjDVbICJcnqA9oUju0UegsUuCy4MUXz_vVq2U1rD4W5s3CXqygwAbMgogzD_EzRYh6UkykE9jCQgiJlheVyk4GRMF7-5r6PuU3nuifTAsgAVEETAE5KlhrgG_UFuAnzIKHCX1eTvXDIFK8ibuVJ8sNd1O4xRRZulnqgD34xnAIcLZA"/>
+</div>
+<div class="flex-1">
+<p class="text-xs font-medium text-on-surface-variant">
+<span class="font-bold">Ricardo Silva</span> foi designado para seu caso.
+                                </p>
+</div>
+</div>
+</div>
+<div class="mt-6 flex items-center justify-between border-t border-outline-variant/30 pt-4">
+<span class="text-xs text-on-surface-variant">Atualizado ontem</span>
+<button class="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
+                            Ver Histórico
+                            <span class="material-symbols-outlined !text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Create New Placeholder Card -->
+<button class="border-2 border-dashed border-outline-variant rounded-2xl p-6 flex flex-col items-center justify-center gap-4 hover:bg-surface-container hover:border-primary/50 transition-all group">
+<div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center text-outline group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined !text-4xl">add_circle</span>
+</div>
+<div class="text-center">
+<p class="font-bold text-on-surface">Precisa de outra coisa?</p>
+<p class="text-sm text-on-surface-variant">Clique para abrir um novo chamado</p>
+</div>
+</button>
+</div>
+</section>
+<!-- Right Side Panel (Internal Scroll Area) -->
+<aside class="fixed top-16 right-0 w-72 h-[calc(100vh-64px)] bg-surface border-l border-outline-variant p-6 overflow-y-auto">
+<h4 class="text-label-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">tips_and_updates</span>
+                Sugestões IA
+            </h4>
+<div class="space-y-4">
+<div class="p-4 rounded-xl bg-primary-fixed/30 border border-primary-fixed">
+<p class="text-xs font-bold text-on-primary-fixed-variant mb-2">Dica de Segurança</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">Notamos que seu token de acesso expira em 3 dias. Deseja renovar agora?</p>
+<button class="mt-3 text-[10px] font-bold text-primary uppercase tracking-wider">Renovar Token</button>
+</div>
+<div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30">
+<p class="text-xs font-bold text-on-surface mb-2">FAQ Rápido</p>
+<ul class="space-y-3">
+<li>
+<a class="text-xs text-primary hover:underline block" href="#">Como configurar e-mail no celular?</a>
+</li>
+<li>
+<a class="text-xs text-primary hover:underline block" href="#">Solicitar novo hardware</a>
+</li>
+<li>
+<a class="text-xs text-primary hover:underline block" href="#">Esqueci minha senha</a>
+</li>
+</ul>
+</div>
+<div class="relative rounded-xl overflow-hidden aspect-square mt-8">
+<img alt="Equipe de Suporte" class="w-full h-full object-cover" data-alt="A group of diverse, professional IT support team members collaborating in a bright, modern open-plan office. They are looking at large screens displaying data visualizations and server statuses. The atmosphere is energetic yet professional, with clean glass partitions and lush green office plants. The lighting is bright and airy, reflecting a high-performance corporate culture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT0ZLu4rocxDEu9DSxUWCPx8P_r3fmXXhfycV9LsSA0FRhAEjWNFg-7RfczDV8ayrDUgz1uVShK-D600TUVJNqVB3QXmpdhE_ffTlq7zqXMFHlyDiAw_4Ew9vtu2qMgBv8GLlqiyrvyW4-mfgDe4PPPCTyBbedlm_Qn6Nas9TnIofKnjhcdelbuL5UZ2wZ8MCD-3H0a6N4lwAMa3v9NPV0Wr-uw1Rk5KdFGseMhXCoEKEEKGFqZ3e1wIj6ImGYKWyrW47gH5a2Jxs"/>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 to-transparent flex items-end p-4">
+<p class="text-[10px] text-white font-medium">Estamos aqui para garantir sua produtividade 24/7.</p>
+</div>
+</div>
+</div>
+</aside>
+</main>
+<!-- Contextual FAB (Suppressed on most pages, but relevant for Dashboard Home) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined !text-3xl">chat</span>
+</button>
+<script>
+        // Micro-interaction for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Search bar focus effect
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('ring-primary/20');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('ring-primary/20');
+        });
+    </script>
+</body></html>

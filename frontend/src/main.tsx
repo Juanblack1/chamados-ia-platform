@@ -6,11 +6,12 @@ import "./styles.css";
 
 const runtimeUrl =
   import.meta.env.VITE_COPILOT_RUNTIME_URL ?? (import.meta.env.PROD ? "/api/copilotkit" : "http://localhost:4000/api/copilotkit");
-const apiKey = import.meta.env.VITE_API_KEY ?? "local-dev-key";
+const configuredApiKey = import.meta.env.VITE_API_KEY as string | undefined;
+const apiHeaders: Record<string, string> = configuredApiKey ? { "x-api-key": configuredApiKey } : {};
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <CopilotKit runtimeUrl={runtimeUrl} headers={{ "x-api-key": apiKey }} showDevConsole={false}>
+    <CopilotKit runtimeUrl={runtimeUrl} headers={apiHeaders} credentials="include" showDevConsole={false}>
       <App />
       <CopilotPopup
         defaultOpen={false}

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#bdc9c6",
+                    "tertiary-fixed-dim": "#ffb59d",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#0d1c2f",
+                    "on-secondary-container": "#57657b",
+                    "error": "#ba1a1a",
+                    "primary-fixed": "#9cf2e8",
+                    "surface-tint": "#006a63",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-dim": "#d8dadc",
+                    "tertiary-container": "#bd3d07",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-primary-container": "#a3faef",
+                    "secondary": "#515f74",
+                    "primary-container": "#0f766e",
+                    "on-tertiary-container": "#ffe4dd",
+                    "on-error-container": "#93000a",
+                    "outline": "#6e7977",
+                    "tertiary": "#952c00",
+                    "on-background": "#191c1e",
+                    "on-secondary-fixed-variant": "#3a485c",
+                    "surface-container-low": "#f2f4f6",
+                    "on-primary-fixed-variant": "#00504a",
+                    "on-error": "#ffffff",
+                    "surface-variant": "#e0e3e5",
+                    "background": "#f7f9fb",
+                    "on-tertiary-fixed-variant": "#832600",
+                    "on-surface-variant": "#3e4947",
+                    "surface-container": "#eceef0",
+                    "secondary-container": "#d5e3fd",
+                    "inverse-surface": "#2d3133",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed": "#390c00",
+                    "primary-fixed-dim": "#80d5cb",
+                    "inverse-primary": "#80d5cb",
+                    "tertiary-fixed": "#ffdbd0",
+                    "on-primary-fixed": "#00201d",
+                    "on-secondary": "#ffffff",
+                    "primary": "#005c55",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#191c1e",
+                    "surface": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5",
+                    "secondary-fixed-dim": "#b9c7e0",
+                    "secondary-fixed": "#d5e3fd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "display": ["Plus Jakarta Sans"],
+                    "body": ["Be Vietnam Pro"],
+                    "label": ["Be Vietnam Pro"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab-indicator {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: theme('colors.primary');
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: theme('colors.outline-variant'); border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body antialiased">
+<!-- Persistent SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 bg-surface-container-lowest dark:bg-inverse-surface h-screen w-64 border-r border-outline-variant z-50">
+<div class="mb-8 px-2">
+<h1 class="text-headline-sm font-headline font-black text-primary dark:text-primary-fixed">ServiceDesk AI</h1>
+<p class="text-label-sm font-medium opacity-70">Enterprise Support</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high px-3 py-2 transition-colors font-body text-label-sm font-medium" href="#">
+<span class="material-symbols-outlined">move_to_inbox</span> My Queue
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high px-3 py-2 transition-colors font-body text-label-sm font-medium" href="#">
+<span class="material-symbols-outlined">confirmation_number</span> All Tickets
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high px-3 py-2 transition-colors font-body text-label-sm font-medium" href="#">
+<span class="material-symbols-outlined">add_box</span> Open Ticket
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high px-3 py-2 transition-colors font-body text-label-sm font-medium" href="#">
+<span class="material-symbols-outlined">menu_book</span> Knowledge Base
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high px-3 py-2 transition-colors font-body text-label-sm font-medium" href="#">
+<span class="material-symbols-outlined">smart_toy</span> AI Agents
+            </a>
+<a class="flex items-center gap-3 bg-secondary-container text-on-secondary-container dark:bg-primary-container dark:text-on-primary-container rounded-lg px-3 py-2 transition-colors font-body text-label-sm font-medium" href="#">
+<span class="material-symbols-outlined">settings</span> Administration
+            </a>
+</nav>
+<div class="mt-auto pt-4 border-t border-outline-variant space-y-1">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high px-3 py-2 transition-colors font-body text-label-sm font-medium" href="#">
+<span class="material-symbols-outlined">help</span> Help Center
+            </a>
+<div class="flex items-center gap-3 px-3 py-4">
+<img class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A professional headshot of a corporate IT administrator with a confident expression, wearing modern business attire. The lighting is crisp and soft, set against a blurred office environment with cool blue and teal tones, maintaining a professional and clean enterprise aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwVx5jRvEFIOvHi-Qd0X6Seoj7kVESX0V1SDoFD3bwEO7xPTsSZLzI8ecgdqnt4kf3_dTHJhQIjRQ-96lW5ldNULaNgon7px5AVg9ANEGNXjmr3RBboTnOkdhHelz39hl_0jZtdQbzWq_zZ_KXp0S8zJX3OIjX1qP4UC32S74gPYiRq5jZf-5oD7g74JVilAt0rjXmCWDMDHcwaJBYpek7-KeyGchUYkADGvqxXtfq2ZcLar1NdkOSVPLXI2Eho254WCn8lClXIjU"/>
+<div class="overflow-hidden">
+<p class="text-label-sm font-bold truncate">Admin User</p>
+<p class="text-[10px] opacity-60">System Architect</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Shell -->
+<main class="ml-64 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-40 flex items-center justify-between px-6 h-16 w-full bg-surface dark:bg-surface-dim border-b border-outline-variant">
+<div class="flex items-center gap-8">
+<div class="relative group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-sm">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border border-outline-variant rounded-full text-sm w-64 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Search configurations..." type="text"/>
+</div>
+<nav class="flex gap-6 items-center">
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors text-sm font-medium" href="#">SLA Status</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors text-sm font-medium" href="#">High Priority</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors text-sm font-medium" href="#">Unassigned</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant">history</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant">tune</span>
+</button>
+</div>
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95">
+                    Create Ticket
+                </button>
+</div>
+</header>
+<!-- Admin Content Canvas -->
+<div class="p-8 max-w-7xl w-full mx-auto space-y-6">
+<!-- Page Header -->
+<div class="flex justify-between items-end">
+<div>
+<h2 class="text-display-sm font-headline font-extrabold tracking-tight">Painel de Administração</h2>
+<p class="text-on-surface-variant mt-1">Configure o ecossistema de suporte e gerencie políticas da organização.</p>
+</div>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                    Novo Item
+                </button>
+</div>
+<!-- Management Tabs -->
+<div class="border-b border-outline-variant flex gap-8">
+<button class="admin-tab relative pb-4 text-sm font-bold transition-all text-primary" data-tab="usuarios" onclick="switchTab('usuarios')">
+                    Usuários
+                    <div class="active-tab-indicator"></div>
+</button>
+<button class="admin-tab relative pb-4 text-sm font-medium transition-all text-on-surface-variant hover:text-primary" data-tab="perfis" onclick="switchTab('perfis')">
+                    Perfis (Roles)
+                </button>
+<button class="admin-tab relative pb-4 text-sm font-medium transition-all text-on-surface-variant hover:text-primary" data-tab="grupos" onclick="switchTab('grupos')">
+                    Grupos
+                </button>
+<button class="admin-tab relative pb-4 text-sm font-medium transition-all text-on-surface-variant hover:text-primary" data-tab="sla" onclick="switchTab('sla')">
+                    Políticas de SLA
+                </button>
+<button class="admin-tab relative pb-4 text-sm font-medium transition-all text-on-surface-variant hover:text-primary" data-tab="kb" onclick="switchTab('kb')">
+                    Base de Conhecimento
+                </button>
+</div>
+<!-- Tab Content: Knowledge Base (Grid View) -->
+<div class="tab-pane hidden" id="content-kb">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- KB Card 1 -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+<div class="flex justify-between mb-4">
+<div class="w-12 h-12 bg-secondary-container text-primary flex items-center justify-center rounded-xl">
+<span class="material-symbols-outlined">vpn_key</span>
+</div>
+<span class="px-2 py-1 bg-surface-container rounded text-[10px] font-bold uppercase tracking-wider text-outline">Segurança</span>
+</div>
+<h3 class="font-headline font-bold text-lg mb-2 group-hover:text-primary transition-colors">Reset de Senha MFA</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed line-clamp-2">Protocolos atualizados para recuperação de acesso com autenticação multifator via tokens corporativos.</p>
+<div class="mt-6 flex items-center justify-between">
+<div class="flex -space-x-2">
+<img class="w-6 h-6 rounded-full border-2 border-surface" data-alt="Close-up portrait of a professional female knowledge base manager, with soft natural light highlighting her features. The background is a clean, modern workspace with subtle geometric patterns in white and soft teal." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWtgIFecR_rg_AFZ-VRzuoaXIWu-GHpMwnJOFt97bp7jQlKX8_dUvqHel9I7SYRCUjCWdepbZWf5RDY7TL5YBAcEv0yFa09bvaadDg3r9NAEDaoJxSbqWwXMd7WnqkHaDzUKJRHfEdVmtVcFOBWPy9BVCGPbcmSLtx2Sau_r3cUGBRpmFYxQm6I1vQfQf9Qm8AJdoELtgUg_GVMJBW2KJ-podC_foWecglaY2lI6E8VO6sFrBYI3phY9gnjT17pBZLkH29gucklb0"/>
+<div class="w-6 h-6 rounded-full bg-outline-variant border-2 border-surface flex items-center justify-center text-[8px] font-bold">+3</div>
+</div>
+<button class="text-primary text-sm font-bold flex items-center gap-1">
+                                Editar <span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+</div>
+<!-- KB Card 2 -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+<div class="flex justify-between mb-4">
+<div class="w-12 h-12 bg-tertiary-container/10 text-tertiary flex items-center justify-center rounded-xl">
+<span class="material-symbols-outlined">wifi</span>
+</div>
+<span class="px-2 py-1 bg-surface-container rounded text-[10px] font-bold uppercase tracking-wider text-outline">Infra</span>
+</div>
+<h3 class="font-headline font-bold text-lg mb-2 group-hover:text-primary transition-colors">Configuração VPN Híbrida</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed line-clamp-2">Manual passo a passo para configuração do cliente VPN em sistemas macOS Sonoma e Windows 11 Enterprise.</p>
+<div class="mt-6 flex items-center justify-between">
+<div class="flex -space-x-2">
+<img class="w-6 h-6 rounded-full border-2 border-surface" data-alt="Portrait of a focused male system engineer in his late 30s, wearing glasses and a minimalist shirt. Background features out-of-focus server racks with soft blinking green lights, creating an enterprise infrastructure mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZ6JuT5HjvRSlBkLlVT3_jTTMLUiCa8uBMvC2Bz4n5YK6W94I-qbzqxruTDYX7kvg95SEKBXHWlpfhp-JhliccqtW973gaFSFXybKP8UGRCgAyP34ua9ggUUb4THRb3jIYeJAFIvR8TEHj-c2h3YfwWiTY2RsnFV7awFkfXS5AzWErmvOEFpB7z55lGYYZlBCmV27FWDrOuo9FZ1mgZOYdhf4mNeEFIh_ZPkUBrRRlIwKWKp7mXdewE6zri4gF7f_xlQAQODFZDZM"/>
+</div>
+<button class="text-primary text-sm font-bold flex items-center gap-1">
+                                Editar <span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+</div>
+<!-- KB Card 3 (Empty State Mockup) -->
+<div class="border-2 border-dashed border-outline-variant rounded-2xl flex flex-col items-center justify-center p-8 text-center bg-surface-container-low/50 hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="w-12 h-12 rounded-full border-2 border-dashed border-outline flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-outline">post_add</span>
+</div>
+<p class="text-sm font-bold text-outline">Novo Artigo KB</p>
+<p class="text-xs text-outline opacity-70">Documente processos e soluções</p>
+</div>
+</div>
+</div>
+<!-- Tab Content: Users (Table View) -->
+<div class="tab-pane block" id="content-usuarios">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-hidden">
+<div class="p-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low/30">
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold">Todos: 1,248</span>
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full text-xs font-medium">Ativos: 1,240</span>
+</div>
+<div class="flex gap-2">
+<button class="p-1.5 hover:bg-surface-container-high rounded-lg text-outline"><span class="material-symbols-outlined text-[18px]">filter_list</span></button>
+<button class="p-1.5 hover:bg-surface-container-high rounded-lg text-outline"><span class="material-symbols-outlined text-[18px]">download</span></button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-6 py-4 font-bold text-on-surface-variant">Nome Completo</th>
+<th class="px-6 py-4 font-bold text-on-surface-variant">E-mail Corporativo</th>
+<th class="px-6 py-4 font-bold text-on-surface-variant">Departamento</th>
+<th class="px-6 py-4 font-bold text-on-surface-variant">Status</th>
+<th class="px-6 py-4 font-bold text-on-surface-variant text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center font-bold text-[10px]">AF</div>
+<div>
+<p class="font-bold">Ana Ferreira</p>
+<p class="text-[11px] text-outline">Analista Senior</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-outline">ana.ferreira@servicedesk.ai</td>
+<td class="px-6 py-4"><span class="text-on-surface-variant">Engenharia Cloud</span></td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-primary">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="font-bold text-xs">Ativo</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed-variant flex items-center justify-center font-bold text-[10px]">RM</div>
+<div>
+<p class="font-bold">Ricardo Mendonça</p>
+<p class="text-[11px] text-outline">Especialista NOC</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-outline">ricardo.m@servicedesk.ai</td>
+<td class="px-6 py-4"><span class="text-on-surface-variant">Operações</span></td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-primary">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-bold text-xs">Ativo</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-outline-variant text-on-surface-variant flex items-center justify-center font-bold text-[10px]">LS</div>
+<div>
+<p class="font-bold">Lucas Silva</p>
+<p class="text-[11px] text-outline">Estagiário de Suporte</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-outline">lucas.silva@servicedesk.ai</td>
+<td class="px-6 py-4"><span class="text-on-surface-variant">Atendimento</span></td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-outline">
+<div class="w-2 h-2 rounded-full bg-outline"></div>
+<span class="font-bold text-xs">Offline</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Empty states for other tabs for demo purposes -->
+<div class="tab-pane hidden p-12 text-center bg-surface-container-low border border-outline-variant border-dashed rounded-2xl" id="content-perfis">
+<span class="material-symbols-outlined text-5xl text-outline mb-4">admin_panel_settings</span>
+<h3 class="font-headline font-bold text-lg">Gerenciamento de Perfis</h3>
+<p class="text-on-surface-variant max-w-md mx-auto mt-2 text-sm">Defina permissões de acesso e níveis de autoridade para analistas e administradores.</p>
+<button class="mt-6 px-4 py-2 border border-primary text-primary font-bold rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-all">Configurar Roles</button>
+</div>
+<div class="tab-pane hidden p-12 text-center bg-surface-container-low border border-outline-variant border-dashed rounded-2xl" id="content-grupos">
+<span class="material-symbols-outlined text-5xl text-outline mb-4">group</span>
+<h3 class="font-headline font-bold text-lg">Configuração de Grupos</h3>
+<p class="text-on-surface-variant max-w-md mx-auto mt-2 text-sm">Agrupe agentes por especialidade ou turno para roteamento automático de tickets.</p>
+<button class="mt-6 px-4 py-2 border border-primary text-primary font-bold rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-all">Novo Grupo</button>
+</div>
+<div class="tab-pane hidden p-12 text-center bg-surface-container-low border border-outline-variant border-dashed rounded-2xl" id="content-sla">
+<span class="material-symbols-outlined text-5xl text-outline mb-4">timer</span>
+<h3 class="font-headline font-bold text-lg">Políticas de SLA</h3>
+<p class="text-on-surface-variant max-w-md mx-auto mt-2 text-sm">Configure tempos de resposta e resolução baseados na prioridade do serviço.</p>
+<button class="mt-6 px-4 py-2 border border-primary text-primary font-bold rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-all">Definir SLA</button>
+</div>
+</div>
+<!-- Footer Utility -->
+<footer class="mt-auto p-6 border-t border-outline-variant text-[11px] text-outline flex justify-between items-center bg-surface-container-lowest">
+<div>© 2024 ServiceDesk AI - Enterprise Configuration Engine v4.2.0</div>
+<div class="flex gap-4">
+<a class="hover:text-primary" href="#">Logs de Auditoria</a>
+<a class="hover:text-primary" href="#">Monitoramento de Sistema</a>
+</div>
+</footer>
+</main>
+<script>
+        function switchTab(tabName) {
+            // Hide all tab content
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.add('hidden');
+                pane.classList.remove('block');
+            });
+
+            // Show selected tab content
+            const activePane = document.getElementById('content-' + tabName);
+            if (activePane) {
+                activePane.classList.remove('hidden');
+                activePane.classList.add('block');
+            }
+
+            // Update tab styles
+            document.querySelectorAll('.admin-tab').forEach(tab => {
+                tab.classList.remove('text-primary', 'font-bold');
+                tab.classList.add('text-on-surface-variant', 'font-medium');
+                
+                // Remove indicator
+                const indicator = tab.querySelector('.active-tab-indicator');
+                if (indicator) indicator.remove();
+            });
+
+            const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+            activeTab.classList.add('text-primary', 'font-bold');
+            activeTab.classList.remove('text-on-surface-variant', 'font-medium');
+            
+            // Add indicator
+            const newIndicator = document.createElement('div');
+            newIndicator.className = 'active-tab-indicator';
+            activeTab.appendChild(newIndicator);
+        }
+
+        // Interaction for side nav hover effect
+        document.querySelectorAll('aside nav a').forEach(link => {
+            link.addEventListener('mousedown', () => {
+                link.classList.add('opacity-80', 'scale-95');
+                setTimeout(() => link.classList.remove('opacity-80', 'scale-95'), 100);
+            });
+        });
+    </script>
+</body></html>
