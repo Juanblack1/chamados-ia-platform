@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>INC-4022 Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "inverse-surface": "#2d3133",
+                "on-primary": "#ffffff",
+                "primary-fixed-dim": "#80d5cb",
+                "secondary-fixed-dim": "#b9c7e0",
+                "on-secondary-fixed-variant": "#3a485c",
+                "surface-variant": "#e0e3e5",
+                "surface-container-high": "#e6e8ea",
+                "secondary": "#515f74",
+                "on-secondary": "#ffffff",
+                "on-primary-container": "#a3faef",
+                "surface-container": "#eceef0",
+                "surface-bright": "#f7f9fb",
+                "inverse-primary": "#80d5cb",
+                "tertiary-fixed-dim": "#ffb59d",
+                "surface-container-lowest": "#ffffff",
+                "primary-container": "#0f766e",
+                "on-tertiary-container": "#ffe4dd",
+                "surface-tint": "#006a63",
+                "on-tertiary-fixed-variant": "#832600",
+                "inverse-on-surface": "#eff1f3",
+                "primary": "#005c55",
+                "error": "#ba1a1a",
+                "on-background": "#191c1e",
+                "outline-variant": "#bdc9c6",
+                "error-container": "#ffdad6",
+                "tertiary-fixed": "#ffdbd0",
+                "surface-container-low": "#f2f4f6",
+                "on-surface-variant": "#3e4947",
+                "surface": "#f7f9fb",
+                "secondary-fixed": "#d5e3fd",
+                "secondary-container": "#d5e3fd",
+                "tertiary-container": "#bd3d07",
+                "background": "#f7f9fb",
+                "on-secondary-container": "#57657b",
+                "on-error-container": "#93000a",
+                "on-error": "#ffffff",
+                "primary-fixed": "#9cf2e8",
+                "on-tertiary-fixed": "#390c00",
+                "on-primary-fixed": "#00201d",
+                "surface-container-highest": "#e0e3e5",
+                "on-surface": "#191c1e",
+                "outline": "#6e7977",
+                "tertiary": "#952c00",
+                "on-secondary-fixed": "#0d1c2f",
+                "on-primary-fixed-variant": "#00504a",
+                "surface-dim": "#d8dadc",
+                "on-tertiary": "#ffffff"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {},
+        "fontFamily": {
+                "headline": [
+                        "Plus Jakarta Sans", "sans-serif"
+                ],
+                "display": [
+                        "Plus Jakarta Sans", "sans-serif"
+                ],
+                "body": [
+                        "Be Vietnam Pro", "sans-serif"
+                ],
+                "label": [
+                        "Be Vietnam Pro", "sans-serif"
+                ]
+        },
+        "fontSize": {}
+},
+    },
+  }
+</script>
+<style>
+    body {
+        font-family: 'Be Vietnam Pro', sans-serif;
+    }
+    h1, h2, h3, h4, h5, h6, .font-headline {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+</style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex text-sm">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-surface-container-lowest h-screen w-64 docked left-0 border-r border-outline-variant dark:border-outline flat no shadows fixed left-0 top-0 h-full flex flex-col z-20">
+<div class="p-6 border-b border-outline-variant flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+</div>
+<div>
+<h1 class="font-headline text-xl font-bold text-primary dark:text-primary-fixed-dim leading-tight">Service Desk</h1>
+<p class="text-on-surface-variant text-xs">AI Support Analyst</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-3">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-primary dark:text-primary-fixed-dim bg-primary-container/20 dark:bg-primary-container/40 font-bold border-r-4 border-primary dark:border-primary-fixed-dim Active: opacity-90 transition-all font-body text-label-md" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="assignment">assignment</span>
+<span>Queue</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-inverse-surface transition-colors font-body text-label-md" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="add_box">add_box</span>
+<span>New Ticket</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-inverse-surface transition-colors font-body text-label-md" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="library_books">library_books</span>
+<span>Knowledge Base</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-inverse-surface transition-colors font-body text-label-md" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="smart_toy">smart_toy</span>
+<span>Agent Runs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-inverse-surface transition-colors font-body text-label-md" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="history">history</span>
+<span>Audit</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-inverse-surface transition-colors font-body text-label-md" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+<div class="p-4 border-t border-outline-variant mt-auto">
+<div class="flex items-center gap-3">
+<img alt="Agent Profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="Close up portrait of a professional corporate employee in an office setting. Soft warm lighting. High quality corporate photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLkxrX4H_408Mdwb9IkmGE6kbGQOaz2hR0o-4kud5GkeMFOdrhSt3wGUNsIenvklN2bGZJLnOE1hlD_6YJ-g3tlaRFL1_L4bw6UlPR6W7FSuBa3_3SSmmp4MINdbRwqoyYgcef_g9E-T7hbDlLhda4LG8Faqoybk-RumoH_QfFJG9eNI-hVuGfpFjy3n0rCLYIR8_bgQ_R2xvsOZuU0mM28m8QIKCgCnTz3zOmtwLtdGV4pUg5vQw-VOi4AzEJEncXIVIEcmOIBJo"/>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium text-on-surface truncate">Admin User</p>
+<p class="text-xs text-on-surface-variant truncate">Level 3 Support</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline flat no shadows fixed top-0 right-0 w-[calc(100%-16rem)] h-16 flex justify-between items-center px-6 z-10 docked full-width top-0">
+<div class="flex items-center gap-4">
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</a>
+<h2 class="font-headline font-bold text-on-surface dark:text-on-surface text-headline-sm">Fila de chamados / INC-4022</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-outline-variant hover:bg-surface-container-low transition-colors text-on-surface-variant">
+<img alt="User Avatar" class="w-5 h-5 rounded-full" data-alt="Small circular avatar portrait of a man with short hair wearing a blue shirt. Soft studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnSN6io5v6NAfHicCoYp6B7Nq4jINbh6MzUqaUCxd3R8s-wdBVGL5JGgDrWIPu1tao2CqDv1jUh1qscSyOXGa3ywD-pk58QE44GrqM0sEvpjGElcgs3N8z1aUavAnHeTm4yhYty18kmttADH-h7ZQQ-ot27WMzKmi7LlkDuQeKgivBuqOX73X2QZHkqJ5D3u4_NEyd3vOgqkQofYEy8CYVFkv5fzNQF8GceQl6vghspuUYHB7ZMffXBPR0yjWLtap0AuAZuaVGAJc"/>
+<span class="text-sm font-medium">Assignee</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_drop_down">arrow_drop_down</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary text-on-primary hover:bg-primary/90 transition-colors font-medium">
+<span>Actions</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="expand_more">expand_more</span>
+</button>
+<div class="flex items-center gap-2 border-l border-outline-variant pl-4 ml-2">
+<button class="text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim Active: scale-95 transition-transform w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]" data-icon="timer">timer</span>
+</button>
+<button class="text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim Active: scale-95 transition-transform w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 mt-16 p-6 overflow-hidden flex flex-col gap-6 bg-background">
+<!-- Ticket Header Info -->
+<div class="bg-surface rounded-xl border border-outline-variant p-5 shadow-sm flex flex-col md:flex-row justify-between gap-4 shrink-0">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-2">
+<span class="px-2 py-0.5 rounded text-xs font-bold bg-error-container text-on-error-container flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="warning">warning</span>
+                            Critical
+                        </span>
+<span class="px-2 py-0.5 rounded text-xs font-medium bg-tertiary-container/10 text-tertiary-container border border-tertiary-container/20">
+                            In Progress
+                        </span>
+<span class="text-xs text-on-surface-variant flex items-center gap-1 font-medium bg-surface-container-high px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px] text-error" data-icon="schedule">schedule</span>
+<span class="text-error font-bold">15m remaining SLA</span>
+</span>
+</div>
+<h2 class="text-xl font-headline font-bold text-on-surface mb-1">INC-4022: Falha crítica no módulo de faturamento</h2>
+<div class="flex items-center gap-4 text-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="person">person</span> Requester: <strong>John Doe</strong></span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="dns">dns</span> Service: <strong>ERP Central</strong></span>
+</div>
+</div>
+</div>
+<!-- 3 Column Layout -->
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
+<!-- Left: Timeline / Chat (Col span 4) -->
+<div class="lg:col-span-4 flex flex-col bg-surface rounded-xl border border-outline-variant shadow-sm overflow-hidden h-full">
+<div class="px-4 py-3 border-b border-outline-variant bg-surface-container-lowest flex justify-between items-center shrink-0">
+<h3 class="font-headline font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary" data-icon="forum">forum</span>
+                            Activity Stream
+                        </h3>
+</div>
+<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+<!-- User Message -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined text-[16px]" data-icon="person">person</span>
+</div>
+<div class="flex-1">
+<div class="flex items-baseline justify-between mb-1">
+<span class="font-medium text-sm">John Doe</span>
+<span class="text-xs text-on-surface-variant">10:42 AM</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg rounded-tl-none p-3 text-sm text-on-surface">
+                                    O sistema de faturamento está retornando erro 500 ao tentar gerar as notas fiscais do lote da manhã. Isso está travando toda a operação.
+                                </div>
+</div>
+</div>
+<!-- System Event -->
+<div class="flex gap-3 items-center px-4">
+<div class="w-px h-8 bg-outline-variant mx-3"></div>
+<span class="text-xs text-on-surface-variant flex items-center gap-1 bg-surface px-2 py-1 rounded-full border border-outline-variant">
+<span class="material-symbols-outlined text-[14px]" data-icon="rule">rule</span>
+                                SLA Priority upgraded to Critical by System Auto-Triage
+                            </span>
+</div>
+<!-- AI Draft Block -->
+<div class="flex gap-3 mt-2">
+<div class="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 relative">
+<span class="material-symbols-outlined text-[16px]" data-icon="smart_toy">smart_toy</span>
+<span class="absolute -bottom-1 -right-1 w-3 h-3 bg-tertiary-container rounded-full border-2 border-surface"></span>
+</div>
+<div class="flex-1">
+<div class="flex items-baseline justify-between mb-1">
+<span class="font-medium text-sm text-primary flex items-center gap-1">
+                                        AI Agent <span class="material-symbols-outlined text-[14px]" data-icon="verified">verified</span>
+</span>
+<span class="text-xs text-tertiary-container font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="pending">pending</span>
+                                        Aguardando aprovação humana
+                                    </span>
+</div>
+<div class="bg-surface-container-low border border-primary/30 rounded-lg rounded-tl-none overflow-hidden flex flex-col shadow-sm">
+<div class="px-3 py-2 bg-primary/5 border-b border-primary/10 text-xs font-medium text-primary flex justify-between items-center">
+<span>Draft Response Generated</span>
+<span class="px-1.5 py-0.5 bg-surface rounded text-on-surface-variant border border-outline-variant text-[10px]">120 tokens</span>
+</div>
+<div class="p-3">
+<textarea class="w-full bg-surface border border-outline-variant rounded p-2 text-sm text-on-surface min-h-[100px] focus:ring-1 focus:ring-primary focus:border-primary resize-none">Olá John, 
+
+Identificamos a falha 500 no módulo ERP Central. Nossos logs indicam um timeout na conexão com o banco de dados de réplica. 
+
+A equipe de infraestrutura já foi acionada para reiniciar os serviços de conexão. Estimo uma resolução em 20 minutos.</textarea>
+</div>
+<div class="px-3 py-2 bg-surface-container-lowest border-t border-outline-variant flex justify-end gap-2">
+<button class="px-3 py-1.5 text-xs font-medium text-on-surface-variant border border-outline-variant rounded hover:bg-surface-container-low transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="refresh">refresh</span> Regenerate
+                                        </button>
+<button class="px-3 py-1.5 text-xs font-medium bg-primary text-on-primary rounded hover:bg-primary/90 transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="send">send</span> Approve &amp; Send
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Chat Input -->
+<div class="p-3 border-t border-outline-variant bg-surface-container-lowest shrink-0">
+<div class="relative">
+<textarea class="w-full bg-surface border border-outline-variant rounded-lg pl-3 pr-10 py-2 text-sm focus:ring-primary focus:border-primary resize-none" placeholder="Type a message or use '/' for AI commands..." rows="2"></textarea>
+<button class="absolute bottom-2 right-2 p-1 text-primary hover:bg-primary/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="send">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Middle: Context & Form (Col span 4) -->
+<div class="lg:col-span-4 flex flex-col gap-4 overflow-y-auto pr-2">
+<!-- Classification Form -->
+<div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-4">
+<h3 class="font-headline font-semibold text-on-surface mb-4 border-b border-outline-variant pb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-secondary" data-icon="label">label</span>
+                            Classification
+                        </h3>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-1">Category</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded text-sm p-2 focus:ring-primary focus:border-primary">
+<option>Application &gt; ERP &gt; Invoicing</option>
+<option>Infrastructure &gt; Database</option>
+<option>Network &gt; Connectivity</option>
+</select>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-1">Impact</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded text-sm p-2 focus:ring-primary focus:border-primary">
+<option>High - Multiple Users</option>
+<option>Medium - Single Dept</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-1">Urgency</label>
+<select class="w-full bg-error/10 border border-error/30 text-error rounded text-sm p-2 focus:ring-error focus:border-error font-medium">
+<option>Critical - Business Halted</option>
+<option>High - Degradation</option>
+</select>
+</div>
+</div>
+</div>
+</div>
+<!-- Runbook Checklist -->
+<div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-4">
+<div class="flex justify-between items-center mb-4 border-b border-outline-variant pb-2">
+<h3 class="font-headline font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-secondary" data-icon="fact_check">fact_check</span>
+                                Runbook Checklist
+                            </h3>
+<span class="text-xs font-medium bg-primary-container text-on-primary-container px-2 py-0.5 rounded-full">3/5 done</span>
+</div>
+<div class="space-y-2 text-sm">
+<label class="flex items-start gap-2 p-2 rounded hover:bg-surface-container-low transition-colors cursor-pointer">
+<input checked="" class="mt-0.5 rounded border-outline-variant text-primary focus:ring-primary" disabled="" type="checkbox"/>
+<span class="text-on-surface line-through opacity-70">Verify ERP module status in Datadog</span>
+</label>
+<label class="flex items-start gap-2 p-2 rounded hover:bg-surface-container-low transition-colors cursor-pointer">
+<input checked="" class="mt-0.5 rounded border-outline-variant text-primary focus:ring-primary" disabled="" type="checkbox"/>
+<span class="text-on-surface line-through opacity-70">Check database replica latency metrics</span>
+</label>
+<label class="flex items-start gap-2 p-2 rounded hover:bg-surface-container-low transition-colors cursor-pointer">
+<input checked="" class="mt-0.5 rounded border-outline-variant text-primary focus:ring-primary" disabled="" type="checkbox"/>
+<span class="text-on-surface line-through opacity-70">Acknowledge PagerDuty alert</span>
+</label>
+<label class="flex items-start gap-2 p-2 rounded bg-primary/5 border border-primary/20 transition-colors cursor-pointer">
+<input class="mt-0.5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+<span class="text-on-surface font-medium">Restart connection pool service on node-1</span>
+</label>
+<label class="flex items-start gap-2 p-2 rounded hover:bg-surface-container-low transition-colors cursor-pointer">
+<input class="mt-0.5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+<span class="text-on-surface">Notify stakeholders via #incidents channel</span>
+</label>
+</div>
+</div>
+<!-- Related Incidents -->
+<div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-4">
+<h3 class="font-headline font-semibold text-on-surface mb-3 border-b border-outline-variant pb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-secondary" data-icon="link">link</span>
+                            Incidentes Relacionados
+                        </h3>
+<div class="space-y-2">
+<div class="p-2 border border-outline-variant rounded-lg bg-surface-container-lowest hover:border-primary/50 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-medium text-primary group-hover:underline">INC-3988</span>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">Closed</span>
+</div>
+<p class="text-xs text-on-surface truncate">Timeout on invoice generation batch</p>
+<p class="text-[10px] text-on-surface-variant mt-1">2 days ago • Resolution: Restarted DB pool</p>
+</div>
+<div class="p-2 border border-outline-variant rounded-lg bg-surface-container-lowest hover:border-primary/50 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-medium text-primary group-hover:underline">INC-3950</span>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">Closed</span>
+</div>
+<p class="text-xs text-on-surface truncate">ERP Central returning 500 intermittently</p>
+<p class="text-[10px] text-on-surface-variant mt-1">Last week • Resolution: Increased connection limit</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: AI Insights (Col span 4) -->
+<div class="lg:col-span-4 flex flex-col gap-4 overflow-y-auto pr-2">
+<!-- AI Agent Activity -->
+<div class="bg-surface-bright rounded-xl border border-primary/20 shadow-sm p-4 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -z-10"></div>
+<h3 class="font-headline font-semibold text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="auto_awesome">auto_awesome</span>
+                            AI Agent Activity
+                        </h3>
+<div class="relative pl-4 space-y-4 before:content-[''] before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-px before:bg-outline-variant">
+<!-- Step 1 -->
+<div class="relative">
+<div class="absolute -left-[21px] top-0.5 w-3 h-3 rounded-full bg-primary ring-4 ring-surface-bright"></div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-sm font-medium text-on-surface">Intake Parser</p>
+<p class="text-[10px] text-on-surface-variant">Extracted entities: Service, Intent</p>
+</div>
+<span class="text-[10px] text-on-surface-variant bg-surface border border-outline-variant px-1.5 py-0.5 rounded">120ms</span>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="relative">
+<div class="absolute -left-[21px] top-0.5 w-3 h-3 rounded-full bg-primary ring-4 ring-surface-bright"></div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-sm font-medium text-on-surface">Knowledge Retrieval</p>
+<p class="text-[10px] text-on-surface-variant">Vector search over Confluence</p>
+</div>
+<span class="text-[10px] text-on-surface-variant bg-surface border border-outline-variant px-1.5 py-0.5 rounded">450ms</span>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="relative">
+<div class="absolute -left-[21px] top-0.5 w-3 h-3 rounded-full bg-primary ring-4 ring-surface-bright"></div>
+<div class="flex justify-between items-start">
+<div>
+<div class="flex items-center gap-2">
+<p class="text-sm font-medium text-on-surface">Triage Classifier</p>
+<span class="text-[10px] bg-primary/10 text-primary px-1 rounded font-bold">94% conf.</span>
+</div>
+<p class="text-[10px] text-on-surface-variant">Mapped to Category &amp; Priority</p>
+</div>
+<span class="text-[10px] text-on-surface-variant bg-surface border border-outline-variant px-1.5 py-0.5 rounded">80ms</span>
+</div>
+</div>
+<!-- Step 4 (Active) -->
+<div class="relative">
+<div class="absolute -left-[21px] top-0.5 w-3 h-3 rounded-full bg-surface-bright border-2 border-primary ring-4 ring-surface-bright flex items-center justify-center">
+<div class="w-1 h-1 bg-primary rounded-full animate-pulse"></div>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-sm font-medium text-primary">Resolution Drafter</p>
+<p class="text-[10px] text-primary/70 animate-pulse">Generating response...</p>
+</div>
+<span class="material-symbols-outlined text-[14px] text-primary animate-spin" data-icon="sync">sync</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RAG Evidence -->
+<div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-4">
+<h3 class="font-headline font-semibold text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-secondary" data-icon="manage_search">manage_search</span>
+                            RAG Evidence
+                        </h3>
+<div class="space-y-3">
+<div class="border border-outline-variant rounded-lg p-2.5 bg-surface-container-lowest">
+<div class="flex justify-between items-start mb-1.5">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary" data-icon="description">description</span>
+<span class="text-xs font-medium text-primary hover:underline cursor-pointer">KB-ERP-Troubleshooting</span>
+</div>
+<span class="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">98% Match</span>
+</div>
+<p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2 border-l-2 border-primary/30 pl-2">
+                                    "...if the invoicing module returns a 500 error during batch processing, immediately check the DB replica connection pool. Restarting the <code class="bg-surface-container-high px-1 rounded text-[10px]">erp-db-pool</code> service resolves 90% of these locks..."
+                                </p>
+</div>
+<div class="border border-outline-variant rounded-lg p-2.5 bg-surface-container-lowest">
+<div class="flex justify-between items-start mb-1.5">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary" data-icon="description">description</span>
+<span class="text-xs font-medium text-primary hover:underline cursor-pointer">Runbook: DB Locks</span>
+</div>
+<span class="text-[10px] font-bold text-secondary bg-surface-container-high px-1.5 py-0.5 rounded">85% Match</span>
+</div>
+<p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2 border-l-2 border-secondary/30 pl-2">
+                                    "High latency on replica nodes often cascades to application layer timeouts. Monitor Datadog dashboard 'ERP-Data-Layer' before issuing resets."
+                                </p>
+</div>
+</div>
+</div>
+<!-- Governance & Security -->
+<div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-4 text-xs">
+<h3 class="font-headline font-semibold text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-secondary" data-icon="shield">shield</span>
+                            Governance &amp; Security
+                        </h3>
+<div class="grid grid-cols-2 gap-y-2 gap-x-4 text-on-surface-variant">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-wider opacity-70">LLM Router</span>
+<span class="font-medium text-on-surface flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed-dim"></span> Azure OpenAI
+                                </span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-wider opacity-70">Policy Check</span>
+<span class="font-medium text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="check_circle">check_circle</span> Pass
+                                </span>
+</div>
+<div class="flex flex-col col-span-2 pt-2 border-t border-outline-variant/50 mt-1">
+<span class="text-[10px] uppercase tracking-wider opacity-70">Audit Trace ID</span>
+<span class="font-mono text-on-surface bg-surface-container-high px-1.5 py-0.5 rounded self-start mt-0.5">AUD-9921-XKF8</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

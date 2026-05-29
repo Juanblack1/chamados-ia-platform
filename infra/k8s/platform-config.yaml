@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-service-desk-config
+data:
+  frontendOrigin: "https://service-desk.example.com"
+  aiProvider: "google"
+  googleGenerativeAiModel: "gemini-2.5-flash"
+  googleEmbeddingModel: "gemini-embedding-001"
+  embeddingDimension: "64"
+  qdrantUrl: "http://qdrant.ai-platform.svc.cluster.local:6333"

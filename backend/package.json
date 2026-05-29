@@ -1,0 +1,39 @@
+{
+  "name": "@ai-service-desk/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ag-ui/client": "^0.0.53",
+    "@ai-sdk/google": "^3.0.80",
+    "@copilotkit/runtime": "^1.58.0",
+    "@copilotkit/shared": "^1.58.0",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@langchain/core": "^1.1.48",
+    "@langchain/openai": "^1.4.7",
+    "@mastra/core": "^1.37.1",
+    "@qdrant/js-client-rest": "^1.18.0",
+    "ai": "^6.0.193",
+    "dotenv": "^17.2.3",
+    "fastify": "^5.8.5",
+    "langchain": "^1.4.2",
+    "openai": "^6.9.1",
+    "pino": "^10.1.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.13"
+  }
+}

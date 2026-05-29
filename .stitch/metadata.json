@@ -1,0 +1,35 @@
+{
+  "projectId": "2598408327523850621",
+  "title": "AI Service Desk - Chamados IA",
+  "designSystem": {
+    "assetId": "11701369362902354641",
+    "displayName": "AI Service Desk Product System",
+    "colorMode": "LIGHT",
+    "headlineFont": "PLUS_JAKARTA_SANS",
+    "bodyFont": "BE_VIETNAM_PRO",
+    "roundness": "ROUND_EIGHT"
+  },
+  "screens": [
+    {
+      "id": "6901e9248f2446709f3c9f0bc2af24fa",
+      "name": "Operational Dashboard - Fila de chamados",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/dashboard.html",
+      "screenshot": ".stitch/designs/dashboard.png"
+    },
+    {
+      "id": "b2eb779c4cb14cd78bab959f6ee34fae",
+      "name": "Novo chamado - AI Intake",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/ticket-intake.html",
+      "screenshot": ".stitch/designs/ticket-intake.png"
+    },
+    {
+      "id": "f52cf03cd0e44516bd57b9412583cbf5",
+      "name": "Ticket Detail - INC-4022 Workspace",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/ticket-detail.html",
+      "screenshot": ".stitch/designs/ticket-detail.png"
+    }
+  ]
+}

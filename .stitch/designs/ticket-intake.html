@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Ticket - AI Service Desk</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#e0e3e5",
+                        "outline": "#6e7977",
+                        "secondary": "#515f74",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "tertiary-fixed-dim": "#ffb59d",
+                        "surface-container": "#eceef0",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#9cf2e8",
+                        "inverse-on-surface": "#eff1f3",
+                        "secondary-fixed": "#d5e3fd",
+                        "on-primary-fixed": "#00201d",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1e",
+                        "inverse-primary": "#80d5cb",
+                        "surface-tint": "#006a63",
+                        "on-surface": "#191c1e",
+                        "on-secondary-container": "#57657b",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdbd0",
+                        "on-error": "#ffffff",
+                        "tertiary": "#952c00",
+                        "surface-bright": "#f7f9fb",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary-container": "#ffe4dd",
+                        "on-tertiary-fixed-variant": "#832600",
+                        "on-primary-container": "#a3faef",
+                        "primary-fixed-dim": "#80d5cb",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#bd3d07",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-low": "#f2f4f6",
+                        "outline-variant": "#bdc9c6",
+                        "background": "#f7f9fb",
+                        "primary": "#005c55",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-high": "#e6e8ea",
+                        "primary-container": "#0f766e",
+                        "on-primary-fixed-variant": "#00504a",
+                        "on-tertiary-fixed": "#390c00",
+                        "on-primary": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "on-surface-variant": "#3e4947",
+                        "secondary-container": "#d5e3fd",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "display": ["Plus Jakarta Sans"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Be Vietnam Pro"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom Scrollbar for high density layout */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: theme('colors.outline-variant'); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: theme('colors.outline'); }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body h-screen flex overflow-hidden antialiased">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-surface-dim h-screen w-64 fixed left-0 top-0 border-r border-outline-variant dark:border-outline flex flex-col h-full py-4 px-3 z-50">
+<!-- Brand Header -->
+<div class="flex items-center gap-3 px-3 mb-8">
+<div class="w-8 h-8 rounded bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined fill text-lg">memory</span>
+</div>
+<div class="flex flex-col">
+<span class="text-lg font-headline font-bold text-primary dark:text-primary-fixed leading-tight">AI Service Desk</span>
+<span class="font-body text-label-sm font-medium tracking-tight text-on-surface-variant text-xs">Enterprise Support</span>
+</div>
+</div>
+<!-- Primary CTA -->
+<div class="mb-6 px-2">
+<button class="w-full bg-primary text-on-primary font-label font-medium rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-sm">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                New Ticket
+            </button>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary transition-colors">assignment</span>
+<span class="font-body text-label-sm font-medium tracking-tight text-sm">Queue</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg font-semibold opacity-90 transition-all duration-100" href="#">
+<span class="material-symbols-outlined fill text-[20px]">add_box</span>
+<span class="font-body text-label-sm font-medium tracking-tight text-sm">New Ticket</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary transition-colors">menu_book</span>
+<span class="font-body text-label-sm font-medium tracking-tight text-sm">Knowledge Base</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary transition-colors">smart_toy</span>
+<span class="font-body text-label-sm font-medium tracking-tight text-sm">Agent Runs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary transition-colors">history_edu</span>
+<span class="font-body text-label-sm font-medium tracking-tight text-sm">Audit</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant group-hover:text-primary transition-colors">settings</span>
+<span class="font-body text-label-sm font-medium tracking-tight text-sm">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-surface relative">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline fixed top-0 right-0 w-[calc(100%-16rem)] h-14 z-40 flex justify-between items-center px-6">
+<!-- Left: Title & Gateway Status -->
+<div class="flex items-center gap-4">
+<h1 class="font-headline text-headline-sm font-semibold text-primary dark:text-primary-fixed text-lg">Abrir chamado</h1>
+<div class="h-4 w-[1px] bg-outline-variant mx-2"></div>
+<!-- AI Gateway Badge -->
+<div class="flex items-center gap-1.5 px-2 py-1 bg-surface-container-low border border-outline-variant rounded text-xs font-label text-on-surface-variant">
+<div class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></div>
+<span>AI Gateway Active</span>
+</div>
+</div>
+<!-- Right: Actions & Profile -->
+<div class="flex items-center gap-4">
+<button class="text-sm font-label font-medium text-on-surface-variant hover:text-primary transition-colors px-3 py-1.5 rounded hover:bg-surface-container">
+                    Salvar rascunho
+                </button>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">help_outline</span>
+</button>
+</div>
+<div class="w-8 h-8 rounded-full bg-secondary-container border border-outline-variant overflow-hidden">
+<img alt="Agent Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a corporate IT support agent. Clean lighting, neutral background, looking approachable yet focused. The overall aesthetic is clean and modern, fitting an enterprise software interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6RAP-1z998CgmkBLiiis1FIdn0zhfdsVuYE0O0eoBIf7m_dfOGzg7mugOt3nC2Py36vw8Nsuk9KqF9fV7niy541JNXvXwmGymh4wjwlLgWQNNmF5vK91EmzRRNbWfMnFoUFiz5kdRiqH_RLPcpS5Xf6tCv1A6Rk4OkhrDcTC595NQH4qWB0IxkZSh7qV0NyuP-uRiAIAJ5iAjDzG7Uq7h_YnmV29BukLzK0qpM8i4WfAkDWXRCseYKuAZ0ygxjddobajFmviL11s"/>
+</div>
+</div>
+</header>
+<!-- Scrollable Content Area -->
+<main class="flex-1 mt-14 overflow-y-auto pb-24">
+<div class="p-6 max-w-[1600px] mx-auto h-full flex gap-6">
+<!-- Left Column: Intake Form -->
+<div class="flex-1 flex flex-col gap-6">
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm">
+<h2 class="font-headline font-semibold text-lg text-on-surface mb-6">Informações do Solicitante</h2>
+<div class="grid grid-cols-2 gap-4">
+<div class="col-span-2 sm:col-span-1">
+<label class="block text-xs font-medium text-on-surface-variant mb-1">E-mail do solicitante <span class="text-error">*</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">person</span>
+<input class="w-full bg-surface-container-low border border-error text-on-surface text-sm rounded-lg pl-9 pr-3 py-2 focus:ring-2 focus:ring-error focus:border-error transition-all outline-none" placeholder="nome@empresa.com" type="email" value=""/>
+</div>
+<span class="text-[11px] text-error mt-1 block">Campo obrigatório</span>
+</div>
+<div class="col-span-2 sm:col-span-1">
+<label class="block text-xs font-medium text-on-surface-variant mb-1">Departamento</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">domain</span>
+<select class="w-full bg-surface-container-low border border-outline-variant text-on-surface text-sm rounded-lg pl-9 pr-8 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none appearance-none">
+<option disabled="" selected="" value="">Selecione...</option>
+<option value="ti">Tecnologia (TI)</option>
+<option value="rh">Recursos Humanos</option>
+<option value="fin">Financeiro</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex-1">
+<h2 class="font-headline font-semibold text-lg text-on-surface mb-6">Detalhes do Incidente</h2>
+<div class="space-y-5">
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-1">Título resumido <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container-low border border-outline-variant text-on-surface text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none" placeholder="Ex: Sistema X indisponível" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-1 flex justify-between">
+<span>Descrição detalhada <span class="text-error">*</span></span>
+<span class="text-primary cursor-pointer hover:underline flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">auto_awesome</span> Gerar com IA</span>
+</label>
+<textarea class="w-full bg-surface-container-low border border-outline-variant text-on-surface text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none resize-none" placeholder="Descreva o problema passo a passo, incluindo mensagens de erro..." rows="6"></textarea>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-1">Serviço Afetado</label>
+<select class="w-full bg-surface-container-low border border-outline-variant text-on-surface text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none">
+<option>ERP Central</option>
+<option>E-mail Corporativo</option>
+<option>Rede Interna</option>
+<option>Acesso VPN</option>
+</select>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-1">Urgência</label>
+<select class="w-full bg-surface-container-low border border-outline-variant text-on-surface text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none">
+<option>Baixa</option>
+<option>Média</option>
+<option>Alta</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-1">Impacto</label>
+<select class="w-full bg-surface-container-low border border-outline-variant text-on-surface text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none">
+<option>Individual</option>
+<option>Departamento</option>
+<option>Empresa</option>
+</select>
+</div>
+</div>
+</div>
+<div>
+<label class="block text-xs font-medium text-on-surface-variant mb-2">Anexos</label>
+<div class="border-2 border-dashed border-outline-variant rounded-lg p-6 flex flex-col items-center justify-center bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-3xl text-outline group-hover:text-primary mb-2 transition-colors">cloud_upload</span>
+<p class="text-sm text-on-surface-variant">Arraste arquivos ou <span class="text-primary font-medium">clique para selecionar</span></p>
+<p class="text-xs text-outline mt-1">PNG, JPG, PDF ou TXT (Max 10MB)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: AI Analysis Panel -->
+<div class="w-96 shrink-0 flex flex-col gap-4">
+<!-- AI Status Header (Low Confidence State) -->
+<div class="bg-error-container text-on-error-container p-4 rounded-xl flex items-start gap-3 shadow-sm border border-[#ffb4ab]">
+<span class="material-symbols-outlined text-error mt-0.5">warning</span>
+<div>
+<h3 class="font-headline font-semibold text-sm">Baixa confiança na análise (45%)</h3>
+<p class="text-xs mt-1 opacity-90 leading-relaxed">A IA não conseguiu classificar o problema com precisão devido a informações insuficientes. Recomendada revisão manual.</p>
+</div>
+</div>
+<!-- Extraction Results -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-5 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline font-semibold text-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[18px]">psychology</span>
+                                Extração Automática
+                            </h3>
+<button class="text-xs text-primary hover:underline">Atualizar</button>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center py-2 border-b border-surface-container-high">
+<span class="text-xs text-on-surface-variant font-medium">Intenção Detectada</span>
+<span class="text-sm text-on-surface font-semibold bg-surface-container-low px-2 py-0.5 rounded">Indefinida</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-container-high">
+<span class="text-xs text-on-surface-variant font-medium">Categoria Sugerida</span>
+<span class="text-sm text-on-surface font-semibold">TI / Acessos</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-container-high">
+<span class="text-xs text-on-surface-variant font-medium">Prioridade IA</span>
+<span class="text-sm font-semibold flex items-center gap-1 text-[#b3261e]">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span> Alta
+                                </span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-container-high">
+<span class="text-xs text-on-surface-variant font-medium">Classe SLA</span>
+<span class="text-sm text-on-surface font-semibold">Crítico (4h)</span>
+</div>
+</div>
+<div class="mt-4">
+<span class="text-xs text-on-surface-variant font-medium block mb-2">Informação Faltante</span>
+<div class="flex flex-wrap gap-2">
+<span class="text-xs bg-error-container text-on-error-container px-2 py-1 rounded-md border border-[#ffb4ab] flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">cancel</span> ID do Sistema
+                                </span>
+<span class="text-xs bg-error-container text-on-error-container px-2 py-1 rounded-md border border-[#ffb4ab] flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">cancel</span> Mensagem de Erro
+                                </span>
+</div>
+</div>
+</div>
+<!-- Retrieved Knowledge -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-5 shadow-sm">
+<h3 class="font-headline font-semibold text-sm text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[18px]">menu_book</span>
+                            Conhecimento Relacionado
+                        </h3>
+<div class="space-y-2">
+<a class="block p-3 rounded-lg border border-surface-container-high hover:border-primary-container hover:bg-surface-container-low transition-all" href="#">
+<div class="text-xs font-semibold text-primary mb-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">article</span> KB-1042
+                                </div>
+<div class="text-sm text-on-surface font-medium truncate">Resolução de timeout no ERP</div>
+<div class="text-[11px] text-outline mt-1 flex justify-between">
+<span>Relevância: Baixa</span>
+<span>Atualizado há 2 dias</span>
+</div>
+</a>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Action Bar -->
+<div class="absolute bottom-0 left-0 right-0 bg-surface border-t border-outline-variant px-6 py-4 flex items-center justify-between z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div class="flex items-center gap-3">
+<label class="flex items-center gap-2 cursor-pointer group">
+<div class="relative flex items-center justify-center">
+<input checked="" class="peer appearance-none w-5 h-5 border-2 border-error rounded bg-error-container focus:ring-2 focus:ring-error focus:ring-offset-1 focus:ring-offset-surface cursor-pointer checked:bg-error checked:border-error transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute text-on-error text-[16px] opacity-0 peer-checked:opacity-100 pointer-events-none">check</span>
+</div>
+<span class="text-sm font-medium text-error group-hover:text-[#93000a] transition-colors">Requer Revisão Manual (IA de baixa confiança)</span>
+</label>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg font-label font-medium text-sm text-on-surface-variant hover:bg-surface-container-high border border-outline-variant transition-colors">
+                    Enviar para humano
+                </button>
+<button class="px-4 py-2 rounded-lg font-label font-medium text-sm text-primary hover:bg-secondary-container transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+                    Reprocessar análise
+                </button>
+<button class="px-6 py-2 rounded-lg font-label font-medium text-sm bg-primary text-on-primary hover:bg-primary-container transition-colors shadow-sm">
+                    Criar chamado
+                </button>
+</div>
+</div>
+</div>
+</body></html>

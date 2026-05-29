@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service-desk-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-service-desk-frontend
+  template:
+    metadata:
+      labels:
+        app: ai-service-desk-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: $(ACR_NAME).azurecr.io/ai-service-desk-frontend:$(Build.BuildId)
+          ports:
+            - containerPort: 5173
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5173
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service-desk-frontend
+spec:
+  selector:
+    app: ai-service-desk-frontend
+  ports:
+    - port: 80
+      targetPort: 5173
