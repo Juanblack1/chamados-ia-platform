@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { buildSla } from "../../domain/serviceDeskCatalog.js";
-import type { CreateTicketInput, RagSource, Ticket, TicketFollowup, TicketStatus, TicketTask } from "../../domain/ticket.js";
+import type { CreateTicketInput, RagSource, Ticket, TicketAgentMemoryEntry, TicketFollowup, TicketStatus, TicketTask } from "../../domain/ticket.js";
 import { DomainEventBus } from "../../domain/events.js";
 import type { TicketStore } from "../../domain/ticketRepository.js";
 import { AuditLog } from "../../observability/auditLog.js";
@@ -8,6 +8,7 @@ import { TraceRecorder } from "../../observability/traces.js";
 import type { AppUser } from "../../security/authStore.js";
 import { QdrantKnowledgeBase } from "../rag/QdrantKnowledgeBase.js";
 import { ResolutionDraftAgent } from "./ResolutionDraftAgent.js";
+import { TicketSpecialistChatAgent } from "./TicketSpecialistChatAgent.js";
 import { TicketTriageAgent, type TriageResult } from "./TicketTriageAgent.js";
 
 export type TraceLink = {
@@ -26,6 +27,7 @@ export class AgentOrchestrator {
     private readonly knowledge: QdrantKnowledgeBase,
     private readonly triageAgent: TicketTriageAgent,
     private readonly resolutionAgent: ResolutionDraftAgent,
+    private readonly specialistAgent: TicketSpecialistChatAgent,
     private readonly events: DomainEventBus,
     private readonly auditLog: AuditLog,
     private readonly traces: TraceRecorder
@@ -120,6 +122,11 @@ export class AgentOrchestrator {
             tags: triage.tags,
             ai: {
               retrievedSources: sources,
+              agentMemory: [
+                ...(created.ai.agentMemory ?? []),
+                buildMemoryEntry(created.id, "ticket-triage", "assistant", "Sistema", "system", triage.summary, now, traceId),
+                buildMemoryEntry(created.id, "resolution-drafter", "assistant", "Sistema", "system", draft.response, now, traceId)
+              ],
               triage: {
                 agent: "ticket-triage",
                 summary: triage.summary,
@@ -355,6 +362,63 @@ export class AgentOrchestrator {
     });
   }
 
+  async chatWithTicket(id: string, actor: AppUser, message: string): Promise<Ticket | undefined> {
+    const ticket = await this.findTicketForUser(id, actor);
+    if (!ticket) return undefined;
+
+    const traceId = randomUUID();
+    return this.traces.runSpan(
+      {
+        traceId,
+        name: "agent.ticket-specialist-chat",
+        kind: "agent",
+        inputSummary: `${ticket.number}: ${message.slice(0, 80)}`,
+        metadata: { ticketId: ticket.id, actorId: actor.id, agent: "ticket-specialist" },
+        summarizeOutput: (updated) => `${updated?.number ?? ticket.number} memory=${updated?.ai.agentMemory?.length ?? 0}`
+      },
+      async ({ spanId }) => {
+        const accessibleTickets = await this.listTicketsForUser(actor);
+        const memory = ticket.ai.agentMemory ?? [];
+        const sources = await this.traces.runSpan(
+          {
+            traceId,
+            parentSpanId: spanId,
+            name: "rag.search",
+            kind: "rag",
+            inputSummary: message,
+            summarizeOutput: (items) => `${items.length} sources`
+          },
+          () => this.knowledge.search(`${ticket.title}\n${ticket.description}\n${message}`)
+        );
+        const answer = await this.specialistAgent.run({
+          activeTicket: ticket,
+          accessibleTickets,
+          actor,
+          message,
+          memory,
+          sources
+        });
+        const now = new Date().toISOString();
+        const nextMemory: TicketAgentMemoryEntry[] = [
+          ...memory,
+          buildMemoryEntry(ticket.id, "ticket-specialist", "user", actor.name, actor.id, message, now, traceId, accessibleTickets),
+          buildMemoryEntry(ticket.id, "ticket-specialist", "assistant", "Agente especialista", "ticket-specialist", answer, now, traceId, accessibleTickets)
+        ];
+
+        const updated = await this.tickets.update(id, {
+          ai: {
+            ...ticket.ai,
+            retrievedSources: mergeSources(ticket.ai.retrievedSources, sources),
+            agentMemory: nextMemory
+          },
+          audit: [...ticket.audit, buildAudit(actor, "agent.chat", "Conversa com agente especialista registrada.", now)]
+        });
+
+        return updated ?? ticket;
+      }
+    );
+  }
+
   async deleteTicket(id: string, actor: AppUser): Promise<boolean> {
     if (actor.role !== "admin") return false;
     return this.tickets.delete(id);
@@ -392,4 +456,35 @@ function buildAudit(actor: AppUser, action: string, message: string, createdAt: 
     message,
     createdAt
   };
+}
+
+function buildMemoryEntry(
+  ticketId: string,
+  agent: TicketAgentMemoryEntry["agent"],
+  role: TicketAgentMemoryEntry["role"],
+  actorName: string,
+  actorId: string,
+  content: string,
+  createdAt: string,
+  traceId?: string,
+  contextTickets: Ticket[] = []
+): TicketAgentMemoryEntry {
+  return {
+    id: randomUUID(),
+    ticketId,
+    agent,
+    role,
+    actorId,
+    actorName,
+    content,
+    createdAt,
+    traceId,
+    contextTicketIds: contextTickets.map((ticket) => ticket.id)
+  };
+}
+
+function mergeSources(current: RagSource[], next: RagSource[]): RagSource[] {
+  const byId = new Map(current.map((source) => [source.id, source]));
+  next.forEach((source) => byId.set(source.id, source));
+  return [...byId.values()].sort((a, b) => b.relevance - a.relevance).slice(0, 8);
 }

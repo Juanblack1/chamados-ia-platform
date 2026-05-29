@@ -90,6 +90,18 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
     return ticket;
   });
 
+  app.post<{ Params: { id: string } }>("/api/tickets/:id/chat", async (request, reply) => {
+    const parsed = z.object({ message: z.string().trim().min(2).max(2000) }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "validation_error", issues: parsed.error.issues });
+
+    const ticket = await orchestrator.chatWithTicket(request.params.id, requireUser(request), parsed.data.message);
+    if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found or chat not allowed." });
+    return {
+      ticket,
+      messages: ticket.ai.agentMemory ?? []
+    };
+  });
+
   app.delete<{ Params: { id: string } }>("/api/tickets/:id", async (request, reply) => {
     const user = requireUser(request);
     if (user.role !== "admin") return reply.code(403).send({ error: "forbidden", message: "Only admins can delete tickets." });

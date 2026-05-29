@@ -100,6 +100,19 @@ export type AgentDecision = {
   metadata?: Record<string, unknown>;
 };
 
+export type TicketAgentMemoryEntry = {
+  id: string;
+  ticketId: string;
+  agent: "ticket-triage" | "resolution-drafter" | "ticket-specialist";
+  role: "user" | "assistant" | "system";
+  actorId: string;
+  actorName: string;
+  content: string;
+  createdAt: string;
+  traceId?: string;
+  contextTicketIds?: string[];
+};
+
 export type TimelineEvent = {
   id: string;
   actor: "requester" | "analyst" | "technician" | "agent" | "system";
@@ -186,6 +199,7 @@ export type Ticket = {
     triage?: AgentDecision;
     resolutionDraft?: AgentDecision;
     retrievedSources: RagSource[];
+    agentMemory?: TicketAgentMemoryEntry[];
   };
   timeline: TimelineEvent[];
   followups: TicketFollowup[];

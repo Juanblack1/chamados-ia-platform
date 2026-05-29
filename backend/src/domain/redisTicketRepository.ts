@@ -68,7 +68,8 @@ export class RedisTicketRepository implements TicketStore {
       createdAt: now,
       updatedAt: now,
       ai: {
-        retrievedSources: []
+        retrievedSources: [],
+        agentMemory: []
       },
       timeline: [
         {
@@ -163,7 +164,7 @@ function seedTickets(): Ticket[] {
       tags: ["erp", "billing", "sla-risk"],
       createdAt: now,
       updatedAt: now,
-      ai: { retrievedSources: [] },
+      ai: { retrievedSources: [], agentMemory: [] },
       timeline: [],
       followups: [],
       tasks: [],
@@ -195,7 +196,7 @@ function seedTickets(): Ticket[] {
       tags: ["vpn", "network"],
       createdAt: now,
       updatedAt: now,
-      ai: { retrievedSources: [] },
+      ai: { retrievedSources: [], agentMemory: [] },
       timeline: [],
       followups: [],
       tasks: [],

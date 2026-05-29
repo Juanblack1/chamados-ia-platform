@@ -31,26 +31,34 @@ export class ModelGateway {
   }): Promise<T> {
     if (!this.isConfigured) return params.fallback();
 
-    const { output } = await generateText({
-      model: this.languageModel(),
-      system: params.system,
-      prompt: params.user,
-      output: Output.object({ schema: params.schema })
-    });
+    try {
+      const { output } = await generateText({
+        model: this.languageModel(),
+        system: params.system,
+        prompt: params.user,
+        output: Output.object({ schema: params.schema })
+      });
 
-    return output;
+      return output;
+    } catch {
+      return params.fallback();
+    }
   }
 
   async completeText(params: { system: string; user: string; fallback: JsonFallback<string> }): Promise<string> {
     if (!this.isConfigured) return params.fallback();
 
-    const { text } = await generateText({
-      model: this.languageModel(),
-      system: params.system,
-      prompt: params.user
-    });
+    try {
+      const { text } = await generateText({
+        model: this.languageModel(),
+        system: params.system,
+        prompt: params.user
+      });
 
-    return text.trim() || params.fallback();
+      return text.trim() || params.fallback();
+    } catch {
+      return params.fallback();
+    }
   }
 
   async embed(texts: string[]): Promise<number[][]> {

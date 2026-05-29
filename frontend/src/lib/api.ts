@@ -41,6 +41,19 @@ export type AgentDecision = {
   metadata?: Record<string, unknown>;
 };
 
+export type TicketAgentMemoryEntry = {
+  id: string;
+  ticketId: string;
+  agent: "ticket-triage" | "resolution-drafter" | "ticket-specialist";
+  role: "user" | "assistant" | "system";
+  actorId: string;
+  actorName: string;
+  content: string;
+  createdAt: string;
+  traceId?: string;
+  contextTicketIds?: string[];
+};
+
 export type TimelineEvent = {
   id: string;
   actor: "requester" | "analyst" | "technician" | "agent" | "system";
@@ -118,6 +131,7 @@ export type Ticket = {
     triage?: AgentDecision;
     resolutionDraft?: AgentDecision;
     retrievedSources: RagSource[];
+    agentMemory?: TicketAgentMemoryEntry[];
   };
   timeline: TimelineEvent[];
   followups: TicketFollowup[];
@@ -225,6 +239,13 @@ export async function resolveTicket(ticketId: string, message: string): Promise<
 
 export async function deleteTicket(ticketId: string): Promise<void> {
   await request(`/tickets/${ticketId}`, { method: "DELETE" });
+}
+
+export async function chatWithTicket(ticketId: string, message: string): Promise<{ ticket: Ticket; messages: TicketAgentMemoryEntry[] }> {
+  return request(`/tickets/${ticketId}/chat`, {
+    method: "POST",
+    body: JSON.stringify({ message })
+  });
 }
 
 export async function listAgentTraces(): Promise<TraceSpan[]> {

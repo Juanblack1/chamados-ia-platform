@@ -185,6 +185,7 @@ export class RedisAuthStore implements AuthStore {
 async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
   const adminPassword = env.AUTH_BOOTSTRAP_ADMIN_PASSWORD || (env.NODE_ENV === "production" ? "" : "admin123");
   const devPassword = env.NODE_ENV === "production" ? "" : "dev123";
+  const testRequesterPassword = env.AUTH_TEST_REQUESTER_PASSWORD || (env.NODE_ENV === "production" ? "" : devPassword);
 
   return Promise.all([
     withPassword(
@@ -251,6 +252,19 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         active: true
       },
       devPassword
+    ),
+    withPassword(
+      {
+        id: "usr-requester-test",
+        email: env.AUTH_TEST_REQUESTER_EMAIL,
+        name: "Solicitante Teste",
+        role: "requester",
+        entityId: "corp",
+        entityName: "Corporativo",
+        groupIds: [],
+        active: true
+      },
+      testRequesterPassword
     )
   ]);
 }

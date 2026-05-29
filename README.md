@@ -40,8 +40,9 @@ Local development creates deterministic demo users in memory:
 - `tecnico.erp@empresa.local` / `dev123`
 - `tecnico.rede@empresa.local` / `dev123`
 - `solicitante@empresa.local` / `dev123`
+- `solicitante.teste@empresa.local` / `dev123`
 
-These fallback passwords are disabled in `NODE_ENV=production`; production requires `AUTH_BOOTSTRAP_ADMIN_PASSWORD`.
+These fallback passwords are disabled in `NODE_ENV=production`; production requires `AUTH_BOOTSTRAP_ADMIN_PASSWORD`. A production requester test account can be enabled with `AUTH_TEST_REQUESTER_EMAIL` and `AUTH_TEST_REQUESTER_PASSWORD`.
 
 The backend has deterministic fallback responses when no AI key is configured, so tests and the local demo run without external credentials. For Google AI Studio, put `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`; that file is gitignored. The frontend never receives this key.
 
@@ -62,6 +63,8 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 - `POST /api/tickets/:id/tasks`
 - `POST /api/tickets/:id/tasks/:taskId/complete`
 - `POST /api/tickets/:id/resolve`
+- `POST /api/tickets/:id/chat`
+- `DELETE /api/tickets/:id`
 - `GET /api/catalog/service-desk`
 - `GET /api/agents/runs`
 - `GET /api/agents/traces`
@@ -70,7 +73,7 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 
 ## Agent flow
 
-`AgentOrchestrator` creates a trace per ticket, retrieves RAG context from Qdrant, runs the triage and resolution agents, stores evidence/confidence on the ticket, and emits audit events. CopilotKit is backed by a Google model through the Vercel AI SDK and exposes server-side tools to list tickets, preview triage, and create a ticket.
+`AgentOrchestrator` creates a trace per ticket, retrieves RAG context from Qdrant, runs the triage and resolution agents, stores evidence/confidence on the ticket, and emits audit events. The ticket workspace also includes a `ticket-specialist` Mastra agent exposed through an assistant-ui chat; it answers with the active ticket, all user-authorized tickets, RAG evidence, trace context, and persisted agent memory. CopilotKit is backed by a Google model through the Vercel AI SDK and exposes server-side tools to list tickets, preview triage, and create a ticket.
 
 ## Image attachments
 
@@ -83,6 +86,7 @@ Use the image drop area in "Novo chamado" or the upload button in the Copilot ch
 Required production secrets:
 
 - `AUTH_BOOTSTRAP_ADMIN_PASSWORD`
+- `AUTH_TEST_REQUESTER_PASSWORD`
 - `GOOGLE_GENERATIVE_AI_API_KEY`
 - `KV_REST_API_URL`
 - `KV_REST_API_TOKEN`
@@ -90,6 +94,7 @@ Required production secrets:
 Optional production settings:
 
 - `AUTH_BOOTSTRAP_ADMIN_EMAIL`
+- `AUTH_TEST_REQUESTER_EMAIL`
 - `AUTH_SESSION_TTL_SECONDS`
 - `API_KEYS`
 - `TICKET_REDIS_PREFIX`

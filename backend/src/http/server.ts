@@ -3,6 +3,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { AgentOrchestrator } from "../ai/agents/AgentOrchestrator.js";
 import { ResolutionDraftAgent } from "../ai/agents/ResolutionDraftAgent.js";
+import { TicketSpecialistChatAgent } from "../ai/agents/TicketSpecialistChatAgent.js";
 import { TicketTriageAgent } from "../ai/agents/TicketTriageAgent.js";
 import { ModelGateway } from "../ai/modelGateway.js";
 import { QdrantKnowledgeBase } from "../ai/rag/QdrantKnowledgeBase.js";
@@ -35,7 +36,8 @@ export async function buildServer(env: AppEnv) {
   const traces = new TraceRecorder();
   const triageAgent = new TicketTriageAgent(llm);
   const resolutionAgent = new ResolutionDraftAgent(llm);
-  const orchestrator = new AgentOrchestrator(tickets, knowledge, triageAgent, resolutionAgent, events, audit, traces);
+  const specialistAgent = new TicketSpecialistChatAgent(llm);
+  const orchestrator = new AgentOrchestrator(tickets, knowledge, triageAgent, resolutionAgent, specialistAgent, events, audit, traces);
 
   await app.register(cors, {
     origin: [env.FRONTEND_ORIGIN, "http://localhost:5173"],

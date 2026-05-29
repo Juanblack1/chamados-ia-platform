@@ -1,0 +1,102 @@
+import type { RagSource, Ticket, TicketAgentMemoryEntry } from "../../domain/ticket.js";
+import type { AppUser } from "../../security/authStore.js";
+import type { ModelGateway } from "../modelGateway.js";
+import { ticketSpecialistMastraAgent } from "../mastra/ticketAgent.js";
+
+export type TicketSpecialistChatContext = {
+  activeTicket: Ticket;
+  accessibleTickets: Ticket[];
+  actor: AppUser;
+  message: string;
+  memory: TicketAgentMemoryEntry[];
+  sources: RagSource[];
+};
+
+export class TicketSpecialistChatAgent {
+  readonly mastraAgent = ticketSpecialistMastraAgent;
+
+  constructor(private readonly llm: ModelGateway) {}
+
+  async run(context: TicketSpecialistChatContext): Promise<string> {
+    return this.llm.completeText({
+      system: [
+        "Voce e o agente Mastra ticket-specialist, especialista senior em service desk corporativo.",
+        "Responda em portugues do Brasil, com orientacao objetiva, passos acionaveis e cuidado com SLA.",
+        "Use apenas chamados autorizados, memoria do agente, historico do chamado, evidencias RAG e politicas informadas.",
+        "Nao invente dados externos. Quando faltar informacao, diga exatamente o que coletar."
+      ].join(" "),
+      user: JSON.stringify(
+        {
+          agent: {
+            id: "ticket-specialist",
+            name: "Ticket Specialist Agent"
+          },
+          actor: {
+            id: context.actor.id,
+            role: context.actor.role,
+            email: context.actor.email
+          },
+          activeTicket: summarizeTicket(context.activeTicket, true),
+          allAuthorizedTicketsContext: context.accessibleTickets.map((ticket) => summarizeTicket(ticket, false)),
+          recentAgentMemory: context.memory.slice(-12).map((item) => ({
+            agent: item.agent,
+            role: item.role,
+            actorName: item.actorName,
+            content: item.content,
+            createdAt: item.createdAt
+          })),
+          ragSources: context.sources,
+          userMessage: context.message
+        },
+        null,
+        2
+      ),
+      fallback: () => fallbackAnswer(context)
+    });
+  }
+}
+
+function summarizeTicket(ticket: Ticket, includeDetails: boolean) {
+  return {
+    id: ticket.id,
+    number: ticket.number,
+    title: ticket.title,
+    requesterEmail: ticket.requesterEmail,
+    department: ticket.department,
+    affectedService: ticket.affectedService,
+    category: ticket.category,
+    priority: ticket.priority,
+    status: ticket.status,
+    assignedGroupName: ticket.assignedGroupName,
+    assigneeName: ticket.assigneeName,
+    sla: ticket.sla,
+    tags: ticket.tags,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+    ...(includeDetails
+      ? {
+          description: ticket.description,
+          businessImpact: ticket.businessImpact,
+          triage: ticket.ai.triage,
+          resolutionDraft: ticket.ai.resolutionDraft,
+          followups: ticket.followups.slice(-8),
+          tasks: ticket.tasks,
+          audit: ticket.audit.slice(-8)
+        }
+      : {})
+  };
+}
+
+function fallbackAnswer(context: TicketSpecialistChatContext): string {
+  const ticket = context.activeTicket;
+  const openTasks = ticket.tasks.filter((task) => task.status !== "done").map((task) => task.title);
+  const nextStep = openTasks[0] ?? "registrar um acompanhamento claro com impacto, horario e evidencias coletadas";
+  const source = context.sources[0]?.title ?? "a base de conhecimento disponivel";
+
+  return [
+    `Analisei o chamado ${ticket.number} e o contexto autorizado da fila.`,
+    `Status atual: ${ticket.status}. Prioridade: ${ticket.priority}. Grupo: ${ticket.assignedGroupName ?? "sem grupo"}.`,
+    `Proximo passo recomendado: ${nextStep}.`,
+    `Use ${source} como referencia e mantenha o solicitante informado antes de alterar a solucao final.`
+  ].join("\n");
+}

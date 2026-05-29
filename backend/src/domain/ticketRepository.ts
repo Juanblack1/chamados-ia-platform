@@ -48,7 +48,8 @@ export class TicketRepository implements TicketStore {
       createdAt: now,
       updatedAt: now,
       ai: {
-        retrievedSources: []
+        retrievedSources: [],
+        agentMemory: []
       },
       timeline: [
         {
@@ -123,7 +124,7 @@ export class TicketRepository implements TicketStore {
         tags: ["erp", "billing", "sla-risk"],
         createdAt: now,
         updatedAt: now,
-        ai: { retrievedSources: [] },
+        ai: { retrievedSources: [], agentMemory: [] },
         timeline: [],
         followups: [],
         tasks: [],
@@ -155,7 +156,7 @@ export class TicketRepository implements TicketStore {
         tags: ["vpn", "network"],
         createdAt: now,
         updatedAt: now,
-        ai: { retrievedSources: [] },
+        ai: { retrievedSources: [], agentMemory: [] },
         timeline: [],
         followups: [],
         tasks: [],

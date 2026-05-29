@@ -37,6 +37,16 @@ spec:
                 secretKeyRef:
                   name: ai-service-desk-secrets
                   key: authBootstrapAdminPassword
+            - name: AUTH_TEST_REQUESTER_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: authTestRequesterEmail
+            - name: AUTH_TEST_REQUESTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: authTestRequesterPassword
             - name: AUTH_SESSION_TTL_SECONDS
               valueFrom:
                 configMapKeyRef:

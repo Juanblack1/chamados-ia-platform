@@ -5,6 +5,7 @@ metadata:
 data:
   frontendOrigin: "https://service-desk.example.com"
   authBootstrapAdminEmail: "admin@empresa.local"
+  authTestRequesterEmail: "solicitante.teste@empresa.local"
   authSessionTtlSeconds: "28800"
   aiProvider: "google"
   googleGenerativeAiModel: "gemini-2.5-flash"

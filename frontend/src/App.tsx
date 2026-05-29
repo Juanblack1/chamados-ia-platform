@@ -1,5 +1,16 @@
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
+  AssistantRuntimeProvider,
+  ComposerPrimitive,
+  MessagePartPrimitive,
+  MessagePrimitive,
+  ThreadPrimitive,
+  useExternalStoreRuntime,
+  useMessage,
+  type AppendMessage,
+  type ThreadMessageLike
+} from "@assistant-ui/react";
+import {
   Activity,
   AlertTriangle,
   BookOpen,
@@ -31,6 +42,7 @@ import {
   addFollowup,
   addTask,
   assignTicket,
+  chatWithTicket,
   completeTask,
   createTicket,
   deleteTicket,
@@ -46,6 +58,7 @@ import {
   type CreateTicketPayload,
   type ServiceDeskCatalog,
   type Ticket,
+  type TicketAgentMemoryEntry,
   type TicketPriority,
   type TicketStatus,
   type TraceSpan
@@ -210,6 +223,13 @@ export default function App() {
     }
   }
 
+  async function handleTicketChat(ticket: Ticket, message: string) {
+    await mutateTicket(async () => {
+      const response = await chatWithTicket(ticket.id, message);
+      return response.ticket;
+    });
+  }
+
   if (isBooting) return <BootScreen />;
 
   if (!user) {
@@ -281,6 +301,7 @@ export default function App() {
             onCompleteTask={(taskId) => mutateTicket(() => completeTask(selectedTicket.id, taskId))}
             onResolve={(message) => mutateTicket(() => resolveTicket(selectedTicket.id, message))}
             onDelete={() => void handleDeleteTicket(selectedTicket)}
+            onChat={(message) => handleTicketChat(selectedTicket, message)}
           />
         ) : null}
 
@@ -311,6 +332,7 @@ function LoginScreen({
   const [email, setEmail] = useState("admin@empresa.local");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const testRequesterEmail = "solicitante.teste@empresa.local";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -354,6 +376,10 @@ function LoginScreen({
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
+        <button type="button" className="secondary-button wide" onClick={() => setEmail(testRequesterEmail)}>
+          <UserRound size={18} />
+          <span>Usar solicitante teste</span>
+        </button>
         <button type="submit" className="primary-button wide" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="spin" size={18} /> : <LockKeyhole size={18} />}
           <span>Entrar</span>
@@ -767,7 +793,8 @@ function DetailView({
   onTask,
   onCompleteTask,
   onResolve,
-  onDelete
+  onDelete,
+  onChat
 }: {
   user: AppUser;
   ticket: Ticket;
@@ -780,6 +807,7 @@ function DetailView({
   onCompleteTask: (taskId: string) => void;
   onResolve: (message: string) => void;
   onDelete: () => void;
+  onChat: (message: string) => Promise<void>;
 }) {
   const [followup, setFollowup] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
@@ -894,6 +922,7 @@ function DetailView({
         </section>
         <AgentRail ticket={ticket} traces={traces} />
       </div>
+      <TicketAssistantChat ticket={ticket} isSubmitting={isSubmitting} onChat={onChat} />
       <section className="panel evidence-panel" aria-labelledby="evidence-title">
         <div className="panel-heading">
           <div>
@@ -917,6 +946,109 @@ function DetailView({
       </section>
     </section>
   );
+}
+
+function TicketAssistantChat({
+  ticket,
+  isSubmitting,
+  onChat
+}: {
+  ticket: Ticket;
+  isSubmitting: boolean;
+  onChat: (message: string) => Promise<void>;
+}) {
+  const specialistMemory = useMemo(
+    () => (ticket.ai.agentMemory ?? []).filter((entry) => entry.agent === "ticket-specialist" && entry.role !== "system"),
+    [ticket.ai.agentMemory]
+  );
+
+  const runtime = useExternalStoreRuntime<TicketAgentMemoryEntry>({
+    messages: specialistMemory,
+    isRunning: isSubmitting,
+    isSendDisabled: isSubmitting,
+    convertMessage: convertSpecialistMemory,
+    onNew: async (message: AppendMessage) => {
+      const text = appendMessageToText(message);
+      if (!text) return;
+      await onChat(text);
+    }
+  });
+
+  return (
+    <section className="panel assistant-chat-panel" aria-labelledby="ticket-chat-title">
+      <div className="panel-heading">
+        <div>
+          <h2 id="ticket-chat-title">Chat do chamado</h2>
+          <p>Agente especialista Mastra com memoria do chamado, RAG e contexto da fila autorizada.</p>
+        </div>
+        <Badge tone="info">assistant-ui</Badge>
+      </div>
+      <AssistantRuntimeProvider runtime={runtime}>
+        <ThreadPrimitive.Root className="assistant-thread">
+          <ThreadPrimitive.Viewport className="assistant-viewport">
+            <ThreadPrimitive.Empty>
+              <div className="assistant-empty">
+                <Bot size={22} />
+                <strong>Pergunte sobre diagnostico, SLA, proximos passos ou resposta ao solicitante.</strong>
+                <span>O agente usa este chamado, os chamados acessiveis e a memoria ja registrada.</span>
+              </div>
+            </ThreadPrimitive.Empty>
+            <ThreadPrimitive.Messages components={{ Message: AssistantThreadMessage }} />
+            <ThreadPrimitive.ViewportFooter>
+              <ComposerPrimitive.Root className="assistant-composer">
+                <ComposerPrimitive.Input
+                  className="assistant-input"
+                  placeholder="Converse com o agente especialista deste chamado"
+                  submitMode="ctrlEnter"
+                  rows={2}
+                />
+                <ComposerPrimitive.Send className="primary-button small assistant-send">
+                  {isSubmitting ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
+                  <span>Enviar</span>
+                </ComposerPrimitive.Send>
+              </ComposerPrimitive.Root>
+            </ThreadPrimitive.ViewportFooter>
+          </ThreadPrimitive.Viewport>
+        </ThreadPrimitive.Root>
+      </AssistantRuntimeProvider>
+    </section>
+  );
+}
+
+function AssistantThreadMessage() {
+  const role = useMessage((message) => message.role);
+  return (
+    <MessagePrimitive.Root className={`assistant-message ${role}`}>
+      <div className="assistant-message-meta">{role === "assistant" ? "Agente especialista" : "Voce"}</div>
+      <div className="assistant-message-bubble">
+        <MessagePrimitive.Parts components={{ Text: AssistantMessageText }} />
+      </div>
+    </MessagePrimitive.Root>
+  );
+}
+
+function AssistantMessageText() {
+  return (
+    <p>
+      <MessagePartPrimitive.Text />
+    </p>
+  );
+}
+
+function convertSpecialistMemory(message: TicketAgentMemoryEntry): ThreadMessageLike {
+  return {
+    id: message.id,
+    role: message.role === "assistant" ? "assistant" : "user",
+    content: [{ type: "text", text: message.content }],
+    createdAt: new Date(message.createdAt)
+  };
+}
+
+function appendMessageToText(message: AppendMessage): string {
+  return message.content
+    .map((part) => ("text" in part ? part.text : ""))
+    .join("\n")
+    .trim();
 }
 
 function AgentRail({ ticket, traces }: { ticket?: Ticket; traces: TraceSpan[] }) {

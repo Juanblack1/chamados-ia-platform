@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AgentOrchestrator } from "../src/ai/agents/AgentOrchestrator.js";
 import { ResolutionDraftAgent } from "../src/ai/agents/ResolutionDraftAgent.js";
+import { TicketSpecialistChatAgent } from "../src/ai/agents/TicketSpecialistChatAgent.js";
 import { TicketTriageAgent } from "../src/ai/agents/TicketTriageAgent.js";
 import { ModelGateway } from "../src/ai/modelGateway.js";
 import { QdrantKnowledgeBase } from "../src/ai/rag/QdrantKnowledgeBase.js";
@@ -25,6 +26,8 @@ const env: AppEnv = {
   AUTH_SESSION_TTL_SECONDS: 28800,
   AUTH_BOOTSTRAP_ADMIN_EMAIL: "admin@empresa.local",
   AUTH_BOOTSTRAP_ADMIN_PASSWORD: "",
+  AUTH_TEST_REQUESTER_EMAIL: "solicitante.teste@empresa.local",
+  AUTH_TEST_REQUESTER_PASSWORD: "",
   TICKET_STORAGE: "memory",
   TICKET_REDIS_PREFIX: "ai-service-desk-test",
   TICKET_SEED_SAMPLE_DATA: false,
@@ -46,6 +49,7 @@ describe("AgentOrchestrator", () => {
       new QdrantKnowledgeBase(env, llm),
       new TicketTriageAgent(llm),
       new ResolutionDraftAgent(llm),
+      new TicketSpecialistChatAgent(llm),
       new DomainEventBus(),
       new AuditLog(),
       traces
@@ -71,6 +75,23 @@ describe("AgentOrchestrator", () => {
     expect(traces.list().map((span) => span.name)).toEqual(
       expect.arrayContaining(["ticket.open", "rag.search", "agent.ticket-triage", "agent.resolution-draft"])
     );
+
+    const chatted = await orchestrator.chatWithTicket(
+      ticket.id,
+      {
+        id: "admin-1",
+        email: "admin@empresa.local",
+        name: "Admin",
+        role: "admin",
+        entityId: "corp",
+        entityName: "Corporativo",
+        groupIds: [],
+        active: true
+      },
+      "Quais proximos passos devo tomar neste chamado?"
+    );
+    expect(chatted?.ai.agentMemory?.some((entry) => entry.agent === "ticket-specialist" && entry.role === "assistant")).toBe(true);
+    expect(chatted?.ai.agentMemory?.at(-1)?.contextTicketIds?.length).toBeGreaterThan(0);
 
     const deletedByRequester = await orchestrator.deleteTicket(ticket.id, {
       id: "requester-1",

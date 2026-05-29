@@ -21,6 +21,8 @@ const EnvSchema = z.object({
   AUTH_SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 8),
   AUTH_BOOTSTRAP_ADMIN_EMAIL: z.string().email().default("admin@empresa.local"),
   AUTH_BOOTSTRAP_ADMIN_PASSWORD: z.string().default(""),
+  AUTH_TEST_REQUESTER_EMAIL: z.string().email().default("solicitante.teste@empresa.local"),
+  AUTH_TEST_REQUESTER_PASSWORD: z.string().default(""),
   TICKET_STORAGE: z.enum(["auto", "memory", "redis"]).default("auto"),
   TICKET_REDIS_PREFIX: z.string().min(1).default("ai-service-desk"),
   TICKET_SEED_SAMPLE_DATA: z.coerce.boolean().default(false),
