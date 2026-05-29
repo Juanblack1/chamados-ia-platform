@@ -44,6 +44,10 @@ Local development creates deterministic demo users in memory:
 
 These fallback passwords are disabled in `NODE_ENV=production`; production requires `AUTH_BOOTSTRAP_ADMIN_PASSWORD`. A production requester test account can be enabled with `AUTH_TEST_REQUESTER_EMAIL` and `AUTH_TEST_REQUESTER_PASSWORD`.
 
+Production test requester on Vercel:
+
+- `solicitante.teste@empresa.local` / `ChamadosTeste@2026!`
+
 The backend has deterministic fallback responses when no AI key is configured, so tests and the local demo run without external credentials. For Google AI Studio, put `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`; that file is gitignored. The frontend never receives this key.
 
 Ticket persistence uses memory by default in local/test runs. In production, set `TICKET_STORAGE=redis` plus either `KV_REST_API_URL`/`KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`. `TICKET_SEED_SAMPLE_DATA` defaults to `false`, so production starts without demo tickets.

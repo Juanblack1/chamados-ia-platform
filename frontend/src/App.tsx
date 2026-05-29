@@ -333,6 +333,7 @@ function LoginScreen({
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const testRequesterEmail = "solicitante.teste@empresa.local";
+  const testRequesterPassword = "ChamadosTeste@2026!";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -376,9 +377,16 @@ function LoginScreen({
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
-        <button type="button" className="secondary-button wide" onClick={() => setEmail(testRequesterEmail)}>
+        <button
+          type="button"
+          className="secondary-button wide"
+          onClick={() => {
+            setEmail(testRequesterEmail);
+            setPassword(testRequesterPassword);
+          }}
+        >
           <UserRound size={18} />
-          <span>Usar solicitante teste</span>
+          <span>Usar conta teste</span>
         </button>
         <button type="submit" className="primary-button wide" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="spin" size={18} /> : <LockKeyhole size={18} />}
