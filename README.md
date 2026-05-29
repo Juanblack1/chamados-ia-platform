@@ -5,7 +5,7 @@ Corporate service desk demo with AI-assisted ticket intake, multi-agent triage, 
 ## Stack
 
 - Node.js, TypeScript, Fastify
-- Mastra-ready agent definition
+- Mastra agent registry for triage, RAG, routing, resolution draft, SLA risk, and ticket specialist agents
 - LangChain prompt layer
 - Google AI Studio through Vercel AI SDK (`@ai-sdk/google` + `ai`)
 - Qdrant vector search
@@ -72,12 +72,15 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 - `GET /api/catalog/service-desk`
 - `GET /api/agents/runs`
 - `GET /api/agents/traces`
+- `GET /api/agents/config`
 - `POST /api/agents/triage-preview`
 - `GET|POST /api/copilotkit/*`
 
 ## Agent flow
 
-`AgentOrchestrator` creates a trace per ticket, retrieves RAG context from Qdrant, runs the triage and resolution agents, stores evidence/confidence on the ticket, and emits audit events. The ticket workspace also includes a `ticket-specialist` Mastra agent exposed through an assistant-ui chat; it answers with the active ticket, all user-authorized tickets, RAG evidence, trace context, and persisted agent memory. CopilotKit is backed by a Google model through the Vercel AI SDK and exposes server-side tools to list tickets, preview triage, and create a ticket.
+`AgentOrchestrator` creates a trace per ticket, runs RAG retrieval against Qdrant, then executes the triage, routing, SLA-risk, and resolution-draft workflow stages. Each stage stores evidence, decisions, confidence, traces, and agent memory on the ticket, then emits audit events. Mastra agents are registered in `backend/src/ai/mastra/ticketAgent.ts`. The ticket workspace also includes a `ticket-specialist` Mastra agent exposed through an assistant-ui chat; it answers with the active ticket, all user-authorized tickets, RAG evidence, trace context, and persisted agent memory.
+
+CopilotKit is backed by a Google model through the Vercel AI SDK and exposes server-side tools to describe the AI architecture, search RAG knowledge, list tickets, preview triage, and create a ticket.
 
 ## Image attachments
 

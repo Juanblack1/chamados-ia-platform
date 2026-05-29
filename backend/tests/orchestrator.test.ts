@@ -73,8 +73,24 @@ describe("AgentOrchestrator", () => {
     expect(ticket.ai.retrievedSources.length).toBeGreaterThan(0);
     expect(ticket.ai.triage?.metadata?.traceId).toBeTruthy();
     expect(traces.list().map((span) => span.name)).toEqual(
-      expect.arrayContaining(["ticket.open", "rag.search", "agent.ticket-triage", "agent.resolution-draft"])
+      expect.arrayContaining([
+        "ticket.open",
+        "agent.rag-retrieval",
+        "rag.search",
+        "agent.ticket-triage",
+        "agent.routing",
+        "agent.sla-risk",
+        "agent.resolution-draft"
+      ])
     );
+    expect(ticket.ai.agentMemory?.some((entry) => entry.agent === "rag-retrieval")).toBe(true);
+    expect(ticket.ai.agentMemory?.some((entry) => entry.agent === "routing")).toBe(true);
+    expect(ticket.ai.agentMemory?.some((entry) => entry.agent === "sla-risk")).toBe(true);
+    const platformAgents = orchestrator.describeAiPlatform("agents") as { agents: Array<{ id: string }> };
+    expect(platformAgents.agents.map((agent) => agent.id)).toEqual(
+      expect.arrayContaining(["ticket-triage", "rag-retrieval", "routing", "resolution-drafter", "sla-risk", "ticket-specialist"])
+    );
+    await expect(orchestrator.searchKnowledge("VPN desconectando com perda de pacote", 2)).resolves.toHaveLength(2);
 
     const chatted = await orchestrator.chatWithTicket(
       ticket.id,

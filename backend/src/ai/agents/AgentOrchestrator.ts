@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { buildSla } from "../../domain/serviceDeskCatalog.js";
+import { buildSla, selectGroup } from "../../domain/serviceDeskCatalog.js";
 import type { CreateTicketInput, RagSource, Ticket, TicketAgentMemoryEntry, TicketFollowup, TicketStatus, TicketTask } from "../../domain/ticket.js";
 import { DomainEventBus } from "../../domain/events.js";
 import type { TicketStore } from "../../domain/ticketRepository.js";
 import { AuditLog } from "../../observability/auditLog.js";
 import { TraceRecorder } from "../../observability/traces.js";
 import type { AppUser } from "../../security/authStore.js";
+import { describeAiServiceDeskPlatform, type AiPlatformFocus } from "../platformConfig.js";
 import { QdrantKnowledgeBase } from "../rag/QdrantKnowledgeBase.js";
 import { ResolutionDraftAgent } from "./ResolutionDraftAgent.js";
 import { TicketSpecialistChatAgent } from "./TicketSpecialistChatAgent.js";
@@ -19,6 +20,19 @@ export type TraceLink = {
 export type TriagePreview = {
   triage: TriageResult;
   sources: RagSource[];
+};
+
+type RoutingDecision = {
+  groupId: string;
+  groupName: string;
+  summary: string;
+};
+
+type SlaRiskDecision = {
+  risk: "normal" | "watch" | "escalate";
+  riskTag: string;
+  requiresHumanApproval: boolean;
+  summary: string;
 };
 
 export class AgentOrchestrator {
@@ -57,6 +71,26 @@ export class AgentOrchestrator {
     return this.auditLog.list();
   }
 
+  describeAiPlatform(focus: AiPlatformFocus = "all") {
+    return describeAiServiceDeskPlatform(focus);
+  }
+
+  async searchKnowledge(query: string, limit = 4, traceLink: TraceLink = {}): Promise<RagSource[]> {
+    const traceId = traceLink.traceId ?? randomUUID();
+    return this.traces.runSpan(
+      {
+        traceId,
+        parentSpanId: traceLink.parentSpanId,
+        name: "rag.search",
+        kind: "rag",
+        inputSummary: query.slice(0, 120),
+        metadata: { collection: "service_desk_knowledge", limit },
+        summarizeOutput: (items) => `${items.length} sources`
+      },
+      () => this.knowledge.search(query, limit)
+    );
+  }
+
   async openTicket(input: CreateTicketInput, traceLink: TraceLink = {}, actor?: AppUser): Promise<Ticket> {
     const traceId = traceLink.traceId ?? randomUUID();
     const created = await this.tickets.create(input);
@@ -78,17 +112,17 @@ export class AgentOrchestrator {
         },
         async ({ spanId }) => {
           const query = `${input.title}\n${input.description}\n${input.businessImpact}`;
-          const sources = await this.traces.runSpan(
+          const sources = await this.traces.runSpan<RagSource[]>(
             {
               traceId,
               parentSpanId: spanId,
-              name: "rag.search",
-              kind: "rag",
+              name: "agent.rag-retrieval",
+              kind: "agent",
               inputSummary: input.title,
-              metadata: { collection: "service_desk_knowledge" },
+              metadata: { collection: "service_desk_knowledge", store: "qdrant" },
               summarizeOutput: (items) => `${items.length} sources`
             },
-            () => this.knowledge.search(query)
+            ({ spanId: ragSpanId }) => this.searchKnowledge(query, 4, { traceId, parentSpanId: ragSpanId })
           );
           const triage = await this.traces.runSpan(
             {
@@ -100,6 +134,28 @@ export class AgentOrchestrator {
               summarizeOutput: (result) => `${result.category} ${result.priority} ${Math.round(result.confidence * 100)}%`
             },
             () => this.triageAgent.run(input, sources)
+          );
+          const routing = await this.traces.runSpan(
+            {
+              traceId,
+              parentSpanId: spanId,
+              name: "agent.routing",
+              kind: "agent",
+              inputSummary: `${triage.category} ${input.affectedService}`,
+              summarizeOutput: (result) => result.groupName
+            },
+            () => Promise.resolve(buildRoutingDecision(input, triage))
+          );
+          const slaRisk = await this.traces.runSpan(
+            {
+              traceId,
+              parentSpanId: spanId,
+              name: "agent.sla-risk",
+              kind: "agent",
+              inputSummary: `${triage.priority} confidence=${triage.confidence}`,
+              summarizeOutput: (result) => `${result.risk} approval=${result.requiresHumanApproval}`
+            },
+            () => Promise.resolve(assessSlaRisk(input, triage, sources))
           );
           const draft = await this.traces.runSpan(
             {
@@ -118,13 +174,27 @@ export class AgentOrchestrator {
             category: triage.category,
             priority: triage.priority,
             status: triage.priority === "critical" ? "escalated" : "open",
+            assignedGroupId: routing.groupId,
+            assignedGroupName: routing.groupName,
             sla: buildSla(triage.priority, created.createdAt),
-            tags: triage.tags,
+            tags: [...new Set([...triage.tags, slaRisk.riskTag])],
             ai: {
               retrievedSources: sources,
               agentMemory: [
                 ...(created.ai.agentMemory ?? []),
+                buildMemoryEntry(
+                  created.id,
+                  "rag-retrieval",
+                  "assistant",
+                  "Sistema",
+                  "system",
+                  `RAG retrieval attached ${sources.length} source(s): ${sources.map((source) => source.id).join(", ") || "none"}.`,
+                  now,
+                  traceId
+                ),
                 buildMemoryEntry(created.id, "ticket-triage", "assistant", "Sistema", "system", triage.summary, now, traceId),
+                buildMemoryEntry(created.id, "routing", "assistant", "Sistema", "system", routing.summary, now, traceId),
+                buildMemoryEntry(created.id, "sla-risk", "assistant", "Sistema", "system", slaRisk.summary, now, traceId),
                 buildMemoryEntry(created.id, "resolution-drafter", "assistant", "Sistema", "system", draft.response, now, traceId)
               ],
               triage: {
@@ -136,6 +206,8 @@ export class AgentOrchestrator {
                 metadata: {
                   slaClass: triage.slaClass,
                   missingInformation: triage.missingInformation,
+                  routing,
+                  slaRisk,
                   traceId
                 }
               },
@@ -157,6 +229,18 @@ export class AgentOrchestrator {
                 id: randomUUID(),
                 actor: "agent",
                 message: triage.summary,
+                createdAt: now
+              },
+              {
+                id: randomUUID(),
+                actor: "agent",
+                message: routing.summary,
+                createdAt: now
+              },
+              {
+                id: randomUUID(),
+                actor: "agent",
+                message: slaRisk.summary,
                 createdAt: now
               },
               {
@@ -440,6 +524,30 @@ function canAccessTicket(ticket: Ticket, user: AppUser): boolean {
     return Boolean(ticket.assigneeId === user.id || (ticket.assignedGroupId && user.groupIds.includes(ticket.assignedGroupId)));
   }
   return false;
+}
+
+function buildRoutingDecision(input: CreateTicketInput, triage: TriageResult): RoutingDecision {
+  const group = selectGroup(input);
+  return {
+    groupId: group.id,
+    groupName: group.name,
+    summary: `Routing agent assigned ${triage.category} to ${group.name}.`
+  };
+}
+
+function assessSlaRisk(input: CreateTicketInput, triage: TriageResult, sources: RagSource[]): SlaRiskDecision {
+  const criticalSignals = `${input.title} ${input.description} ${input.businessImpact}`.toLowerCase();
+  const hasHardImpact = /(parado|bloqueado|indisponivel|security|seguranca|faturamento|revenue|compliance)/.test(criticalSignals);
+  const risk = triage.priority === "critical" || hasHardImpact ? "escalate" : triage.confidence < 0.7 ? "watch" : "normal";
+  const requiresHumanApproval = risk !== "normal" || triage.confidence < 0.75;
+  const evidence = sources[0]?.id ? ` Evidence: ${sources[0].id}.` : "";
+
+  return {
+    risk,
+    riskTag: risk === "escalate" ? "sla-risk" : risk === "watch" ? "sla-watch" : "sla-normal",
+    requiresHumanApproval,
+    summary: `SLA risk agent marked risk as ${risk} for ${triage.priority} priority.${evidence}`
+  };
 }
 
 function canWorkTicket(ticket: Ticket, user: AppUser): boolean {

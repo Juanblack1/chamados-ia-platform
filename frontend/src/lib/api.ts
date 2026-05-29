@@ -44,7 +44,7 @@ export type AgentDecision = {
 export type TicketAgentMemoryEntry = {
   id: string;
   ticketId: string;
-  agent: "ticket-triage" | "resolution-drafter" | "ticket-specialist";
+  agent: "ticket-triage" | "rag-retrieval" | "routing" | "resolution-drafter" | "sla-risk" | "ticket-specialist";
   role: "user" | "assistant" | "system";
   actorId: string;
   actorName: string;

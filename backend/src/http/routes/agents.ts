@@ -14,6 +14,7 @@ export async function registerAgentRoutes(
 ): Promise<void> {
   app.get("/api/agents/runs", async () => orchestrator.listAuditEvents());
   app.get("/api/agents/traces", async () => traces.list());
+  app.get("/api/agents/config", async () => orchestrator.describeAiPlatform());
   app.get("/api/catalog/service-desk", async (request) => {
     const user = requireUser(request);
     const users = (await auth.listUsers()).filter((item) => item.role !== "requester" || user.role === "admin");
