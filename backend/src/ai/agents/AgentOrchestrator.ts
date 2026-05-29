@@ -5,7 +5,7 @@ import { DomainEventBus } from "../../domain/events.js";
 import type { TicketStore } from "../../domain/ticketRepository.js";
 import { AuditLog } from "../../observability/auditLog.js";
 import { TraceRecorder } from "../../observability/traces.js";
-import type { AppUser } from "../../security/authStore.js";
+import { hasPermission, type AppUser } from "../../security/authStore.js";
 import { describeAiServiceDeskPlatform, type AiPlatformFocus } from "../platformConfig.js";
 import { QdrantKnowledgeBase } from "../rag/QdrantKnowledgeBase.js";
 import { assessTicketIntakeQuality, type IntakeAssessment } from "./IntakeQualityAgent.js";
@@ -719,7 +719,7 @@ export class AgentOrchestrator {
   }
 
   async deleteTicket(id: string, actor: AppUser): Promise<boolean> {
-    if (actor.role !== "admin") return false;
+    if (!hasPermission(actor, "tickets.delete")) return false;
     return this.tickets.delete(id);
   }
 
@@ -733,9 +733,10 @@ export class AgentOrchestrator {
 }
 
 function canAccessTicket(ticket: Ticket, user: AppUser): boolean {
-  if (user.role === "admin" || user.role === "supervisor") return true;
+  if (!hasPermission(user, "tickets.read")) return false;
+  if (user.role === "admin" || user.role === "manager") return true;
   if (ticket.requesterEmail.toLowerCase() === user.email.toLowerCase()) return true;
-  if (user.role === "technician") {
+  if (user.role === "employee") {
     return Boolean(ticket.assigneeId === user.id || (ticket.assignedGroupId && user.groupIds.includes(ticket.assignedGroupId)));
   }
   return false;
@@ -766,8 +767,9 @@ function assessSlaRisk(input: CreateTicketInput, triage: TriageResult, sources: 
 }
 
 function canWorkTicket(ticket: Ticket, user: AppUser): boolean {
-  if (user.role === "admin" || user.role === "supervisor") return true;
-  return user.role === "technician" && canAccessTicket(ticket, user);
+  if (!hasPermission(user, "tickets.work")) return false;
+  if (user.role === "admin" || user.role === "manager") return true;
+  return user.role === "employee" && canAccessTicket(ticket, user);
 }
 
 function buildAudit(actor: AppUser, action: string, message: string, createdAt: string) {

@@ -1,4 +1,5 @@
-export type UserRole = "admin" | "supervisor" | "technician" | "requester";
+export type UserRole = "admin" | "manager" | "employee" | "requester";
+export type PermissionKey = "tickets.open" | "tickets.read" | "tickets.work" | "tickets.delete" | "users.manage";
 
 export type AppUser = {
   id: string;
@@ -8,6 +9,7 @@ export type AppUser = {
   entityId: string;
   entityName: string;
   groupIds: string[];
+  permissions: PermissionKey[];
   active: boolean;
 };
 
@@ -243,6 +245,7 @@ export type CreateUserPayload = {
   entityId?: string;
   entityName?: string;
   groupIds?: string[];
+  permissions?: PermissionKey[];
   active?: boolean;
   password: string;
 };

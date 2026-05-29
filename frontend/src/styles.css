@@ -1248,6 +1248,70 @@ td small {
   gap: var(--space-4);
 }
 
+.users-page {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.users-list-panel {
+  position: sticky;
+  top: var(--space-6);
+  display: grid;
+  gap: var(--space-3);
+  overflow: hidden;
+}
+
+.user-list {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.user-list-row {
+  width: calc(100% - var(--space-6));
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.user-list-row:hover,
+.user-list-row.active {
+  border-color: #8fb8b2;
+  background: #f0faf7;
+}
+
+.user-list-row strong,
+.user-list-row span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-list-row span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.users-detail {
+  min-width: 0;
+}
+
+.user-detail-panel {
+  overflow: hidden;
+}
+
 .profile-layout {
   max-width: 760px;
 }
@@ -1265,6 +1329,10 @@ td small {
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+}
+
+.admin-row.compact {
+  min-height: 44px;
 }
 
 .admin-row strong,
@@ -1346,6 +1414,55 @@ td small {
   background: #ffffff;
 }
 
+.permission-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.permission-checkboxes legend {
+  padding: 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.permission-checkboxes label {
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fbfcfc;
+}
+
+.permission-checkboxes strong,
+.permission-checkboxes small {
+  display: block;
+}
+
+.permission-checkboxes small,
+.permission-checkboxes p {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.permission-checkboxes p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.permission-checkboxes:disabled label {
+  opacity: 0.74;
+}
+
 .group-checkboxes legend {
   padding: 0 var(--space-1);
   color: var(--color-text-muted);
@@ -1359,6 +1476,15 @@ td small {
   gap: var(--space-2);
   color: var(--color-text);
   font-size: 13px;
+}
+
+.detail-fields {
+  padding: var(--space-4);
+}
+
+.user-active-switch {
+  align-self: end;
+  min-height: 42px;
 }
 
 .empty-state {
@@ -1416,11 +1542,16 @@ td small {
   .content-grid,
   .intake-layout,
   .detail-grid,
-  .admin-grid {
+  .admin-grid,
+  .users-page {
     grid-template-columns: 1fr;
   }
 
   .agent-rail {
+    position: static;
+  }
+
+  .users-list-panel {
     position: static;
   }
 }
@@ -1488,8 +1619,10 @@ td small {
   .metric-strip,
   .form-grid,
   .admin-form-grid,
+  .permission-checkboxes,
   .evidence-row,
   .admin-grid,
+  .users-page,
   .task-composer,
   .suggestion-card,
   .assistant-composer {

@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppEnv } from "../config/env.js";
 import { parseApiKeys } from "../config/env.js";
-import type { AppUser, AuthStore } from "./authStore.js";
+import { permissionKeys, type AppUser, type AuthStore } from "./authStore.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -32,6 +32,7 @@ export function registerAccessGuard(app: FastifyInstance, env: AppEnv, auth: Aut
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform"],
+        permissions: [...permissionKeys],
         active: true
       };
       return;

@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { AppEnv } from "../../config/env.js";
-import type { AuthStore } from "../../security/authStore.js";
+import { hasPermission, permissionKeys, type AuthStore } from "../../security/authStore.js";
 import {
   buildExpiredSessionCookie,
   buildSessionCookie,
@@ -10,7 +10,8 @@ import {
   requireUser
 } from "../../security/authGuard.js";
 
-const UserRoleSchema = z.enum(["admin", "supervisor", "technician", "requester"]);
+const UserRoleSchema = z.enum(["admin", "manager", "employee", "requester"]);
+const PermissionSchema = z.enum(permissionKeys);
 
 const CreateUserSchema = z.object({
   email: z.string().email(),
@@ -19,6 +20,7 @@ const CreateUserSchema = z.object({
   entityId: z.string().trim().min(1).max(80).default("corp"),
   entityName: z.string().trim().min(2).max(120).default("Corporativo"),
   groupIds: z.array(z.string().trim().min(1)).default([]),
+  permissions: z.array(PermissionSchema).optional(),
   active: z.boolean().default(true),
   password: z.string().min(8).max(120)
 });
@@ -81,13 +83,13 @@ export async function registerAuthRoutes(app: FastifyInstance, env: AppEnv, auth
 
   app.get("/api/users", async (request, reply) => {
     const actor = requireUser(request);
-    if (actor.role !== "admin") return reply.code(403).send({ error: "forbidden", message: "Somente administradores podem listar usuarios." });
+    if (!hasPermission(actor, "users.manage")) return reply.code(403).send({ error: "forbidden", message: "Somente administradores podem listar usuarios." });
     return { users: await auth.listUsers() };
   });
 
   app.post("/api/users", async (request, reply) => {
     const actor = requireUser(request);
-    if (actor.role !== "admin") return reply.code(403).send({ error: "forbidden", message: "Somente administradores podem criar usuarios." });
+    if (!hasPermission(actor, "users.manage")) return reply.code(403).send({ error: "forbidden", message: "Somente administradores podem criar usuarios." });
 
     const parsed = CreateUserSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "validation_error", issues: parsed.error.issues });
@@ -102,7 +104,7 @@ export async function registerAuthRoutes(app: FastifyInstance, env: AppEnv, auth
 
   app.patch<{ Params: { id: string } }>("/api/users/:id", async (request, reply) => {
     const actor = requireUser(request);
-    if (actor.role !== "admin") return reply.code(403).send({ error: "forbidden", message: "Somente administradores podem editar usuarios." });
+    if (!hasPermission(actor, "users.manage")) return reply.code(403).send({ error: "forbidden", message: "Somente administradores podem editar usuarios." });
 
     const parsed = UpdateUserSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "validation_error", issues: parsed.error.issues });

@@ -6,7 +6,10 @@ import { hasRedisTicketStoreConfig } from "../domain/redisTicketRepository.js";
 
 const scrypt = promisify(scryptCallback);
 
-export type UserRole = "admin" | "supervisor" | "technician" | "requester";
+export const permissionKeys = ["tickets.open", "tickets.read", "tickets.work", "tickets.delete", "users.manage"] as const;
+
+export type PermissionKey = (typeof permissionKeys)[number];
+export type UserRole = "admin" | "manager" | "employee" | "requester";
 
 export type AppUser = {
   id: string;
@@ -16,6 +19,7 @@ export type AppUser = {
   entityId: string;
   entityName: string;
   groupIds: string[];
+  permissions: PermissionKey[];
   active: boolean;
 };
 
@@ -26,6 +30,7 @@ export type CreateUserInput = {
   entityId?: string;
   entityName?: string;
   groupIds?: string[];
+  permissions?: PermissionKey[];
   active?: boolean;
   password: string;
 };
@@ -261,20 +266,22 @@ export class RedisAuthStore implements AuthStore {
 }
 
 function buildUser(input: CreateUserInput): AppUser {
+  const role = normalizeRole(input.role);
   return {
     id: randomUUID(),
     email: input.email.toLowerCase(),
     name: input.name.trim(),
-    role: input.role,
+    role,
     entityId: input.entityId?.trim() || "corp",
     entityName: input.entityName?.trim() || "Corporativo",
-    groupIds: normalizeGroupIds(input.role, input.groupIds ?? []),
+    groupIds: normalizeGroupIds(role, input.groupIds ?? []),
+    permissions: normalizePermissions(role, input.permissions),
     active: input.active ?? true
   };
 }
 
 function normalizeUpdatedUser(current: StoredUser, input: UpdateUserInput): AppUser {
-  const role = input.role ?? current.role;
+  const role = normalizeRole(input.role ?? current.role);
   return {
     id: current.id,
     email: input.email?.toLowerCase() ?? current.email,
@@ -283,6 +290,7 @@ function normalizeUpdatedUser(current: StoredUser, input: UpdateUserInput): AppU
     entityId: input.entityId?.trim() || current.entityId,
     entityName: input.entityName?.trim() || current.entityName,
     groupIds: normalizeGroupIds(role, input.groupIds ?? current.groupIds),
+    permissions: normalizePermissions(role, input.permissions ?? current.permissions),
     active: input.active ?? current.active
   };
 }
@@ -290,6 +298,31 @@ function normalizeUpdatedUser(current: StoredUser, input: UpdateUserInput): AppU
 function normalizeGroupIds(role: UserRole, groupIds: string[]): string[] {
   if (role === "requester") return [];
   return [...new Set(groupIds.map((groupId) => groupId.trim()).filter(Boolean))];
+}
+
+export function hasPermission(user: AppUser, permission: PermissionKey): boolean {
+  return normalizePermissions(normalizeRole(user.role), user.permissions).includes(permission);
+}
+
+function normalizeRole(role: UserRole | string): UserRole {
+  if (role === "supervisor") return "manager";
+  if (role === "technician") return "employee";
+  if (role === "admin" || role === "manager" || role === "employee" || role === "requester") return role;
+  return "requester";
+}
+
+function normalizePermissions(role: UserRole, permissions?: string[]): PermissionKey[] {
+  if (role === "admin") return [...permissionKeys];
+  const allowed = new Set(permissionKeys);
+  const defaultPermissions = defaultPermissionsForRole(role);
+  const requested = permissions?.filter((permission): permission is PermissionKey => allowed.has(permission as PermissionKey));
+  return [...new Set(requested?.length ? requested : defaultPermissions)];
+}
+
+function defaultPermissionsForRole(role: UserRole): PermissionKey[] {
+  if (role === "manager") return ["tickets.open", "tickets.read", "tickets.work"];
+  if (role === "employee") return ["tickets.open", "tickets.read", "tickets.work"];
+  return ["tickets.open", "tickets.read"];
 }
 
 async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
@@ -307,6 +340,7 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform"],
+        permissions: [...permissionKeys],
         active: true
       },
       adminPassword
@@ -316,10 +350,11 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         id: "usr-supervisor",
         email: "supervisor@empresa.local",
         name: "Carla Menezes",
-        role: "supervisor",
+        role: "manager",
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform"],
+        permissions: defaultPermissionsForRole("manager"),
         active: true
       },
       devPassword
@@ -329,10 +364,11 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         id: "usr-tech-erp",
         email: "tecnico.erp@empresa.local",
         name: "Rafael Torres",
-        role: "technician",
+        role: "employee",
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: ["grp-erp"],
+        permissions: defaultPermissionsForRole("employee"),
         active: true
       },
       devPassword
@@ -342,10 +378,11 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         id: "usr-tech-network",
         email: "tecnico.rede@empresa.local",
         name: "Bianca Rocha",
-        role: "technician",
+        role: "employee",
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: ["grp-network", "grp-iam"],
+        permissions: defaultPermissionsForRole("employee"),
         active: true
       },
       devPassword
@@ -359,6 +396,7 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: [],
+        permissions: defaultPermissionsForRole("requester"),
         active: true
       },
       devPassword
@@ -372,6 +410,7 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: [],
+        permissions: defaultPermissionsForRole("requester"),
         active: true
       },
       testRequesterPassword
@@ -403,5 +442,11 @@ function hashSessionToken(token: string): string {
 
 function toPublicUser(user: StoredUser): AppUser {
   const { passwordHash: _passwordHash, ...publicUser } = user;
-  return publicUser;
+  const role = normalizeRole(publicUser.role);
+  return {
+    ...publicUser,
+    role,
+    groupIds: normalizeGroupIds(role, publicUser.groupIds ?? []),
+    permissions: normalizePermissions(role, publicUser.permissions)
+  };
 }

@@ -36,7 +36,6 @@ import {
   Save,
   Search,
   Send,
-  Settings,
   ShieldCheck,
   TicketCheck,
   Trash2,
@@ -69,6 +68,7 @@ import {
   type CreateUserPayload,
   type CreateTicketPayload,
   type IntakeAssessment,
+  type PermissionKey,
   type ServiceDeskCatalog,
   type Ticket,
   type TicketAgentMemoryEntry,
@@ -78,7 +78,7 @@ import {
   type TraceSpan
 } from "./lib/api";
 
-type View = "queue" | "new" | "detail" | "admin" | "profile";
+type View = "queue" | "new" | "detail" | "users" | "profile";
 
 const MAX_ATTACHMENTS = 4;
 const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
@@ -199,7 +199,7 @@ export default function App() {
     setError(null);
 
     try {
-      const payload = user.role === "requester" ? { ...form, requesterEmail: user.email } : form;
+      const payload = canOpenTicketForOthers(user) ? form : { ...form, requesterEmail: user.email };
       const assessment = await runIntakeAssessment(payload);
       if (!assessment.shouldCreate) {
         setError(assessment.blockedReason ?? assessment.summary);
@@ -234,7 +234,7 @@ export default function App() {
     if (!user) return;
     setError(null);
     try {
-      const payload = user.role === "requester" ? { ...form, requesterEmail: user.email } : form;
+      const payload = canOpenTicketForOthers(user) ? form : { ...form, requesterEmail: user.email };
       await runIntakeAssessment(payload);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Nao foi possivel analisar o chamado.");
@@ -395,8 +395,8 @@ export default function App() {
 
           {view === "profile" ? <ProfileView user={user} onUpdated={(updated) => void handleCurrentUserUpdated(updated)} /> : null}
 
-          {view === "admin" ? (
-            <AdminView
+          {view === "users" ? (
+            <UsersView
               user={user}
               catalog={catalog}
               onUserSaved={(updated) => {
@@ -531,8 +531,7 @@ function Sidebar({
     { id: "queue" as const, label: requester ? "Meus chamados" : "Minha fila", icon: ClipboardList },
     { id: "new" as const, label: "Abrir chamado", icon: Plus },
     ...(requester ? [] : [{ id: "detail" as const, label: "Workspace", icon: TicketCheck }]),
-    ...(user.role === "admin" ? [{ id: "admin" as const, label: "Administracao", icon: Settings }] : []),
-    { id: "profile" as const, label: "Perfil", icon: UserRound }
+    ...(canManageUsers(user) ? [{ id: "users" as const, label: "Usuarios", icon: UsersRound }] : [])
   ];
 
   return (
@@ -612,8 +611,8 @@ function Topbar({
       ? "Abrir chamado"
       : view === "detail"
         ? "Workspace do chamado"
-        : view === "admin"
-          ? "Administracao"
+        : view === "users"
+          ? "Usuarios"
           : view === "profile"
             ? "Perfil"
             : user.role === "requester"
@@ -803,6 +802,7 @@ function IntakeView({
 }) {
   const remainingAttachments = MAX_ATTACHMENTS - form.attachments.length;
   const shouldBlockCreate = Boolean(assessment && !assessment.shouldCreate);
+  const canChooseRequester = canOpenTicketForOthers(user);
 
   async function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -842,8 +842,8 @@ function IntakeView({
             <input
               required
               type="email"
-              disabled={user.role === "requester"}
-              value={user.role === "requester" ? user.email : form.requesterEmail}
+              disabled={!canChooseRequester}
+              value={canChooseRequester ? form.requesterEmail : user.email}
               onChange={(event) => setForm({ ...form, requesterEmail: event.target.value })}
             />
           </Field>
@@ -1100,7 +1100,8 @@ function DetailView({
   const [followup, setFollowup] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
   const [resolution, setResolution] = useState(ticket.ai.resolutionDraft?.summary ?? "");
-  const canWork = user.role !== "requester";
+  const canWork = hasPermission(user, "tickets.work");
+  const canDelete = hasPermission(user, "tickets.delete");
 
   return (
     <section className="detail-layout" aria-label="Detalhe do chamado">
@@ -1132,7 +1133,7 @@ function DetailView({
             <span>Atribuir para mim</span>
           </button>
         ) : null}
-        {user.role === "admin" ? (
+        {canDelete ? (
           <button type="button" className="danger-button small" disabled={isSubmitting} onClick={onDelete}>
             <Trash2 size={16} />
             <span>Excluir chamado</span>
@@ -1545,6 +1546,88 @@ function ProfileView({ user, onUpdated }: { user: AppUser; onUpdated: (user: App
   );
 }
 
+function UsersView({
+  user,
+  catalog,
+  onUserSaved
+}: {
+  user: AppUser;
+  catalog: ServiceDeskCatalog | null;
+  onUserSaved: (user: AppUser) => void;
+}) {
+  const users = catalog?.users ?? [];
+  const [selectedId, setSelectedId] = useState<string>("__new");
+  const selectedUser = users.find((item) => item.id === selectedId);
+
+  useEffect(() => {
+    if (selectedId !== "__new" && users.length > 0 && !users.some((item) => item.id === selectedId)) {
+      setSelectedId(users[0].id);
+    }
+  }, [selectedId, users]);
+
+  if (!canManageUsers(user)) {
+    return (
+      <div className="panel empty-state">
+        <ShieldCheck size={28} />
+        <h3>Acesso restrito</h3>
+        <p>Somente usuarios com permissao de administracao podem ver e editar contas.</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="users-page" aria-label="Usuarios">
+      <aside className="panel users-list-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Usuarios</h2>
+            <p>Contas, cargos e acesso por permissao.</p>
+          </div>
+          <Badge tone="neutral">{users.length}</Badge>
+        </div>
+        <button type="button" className={selectedId === "__new" ? "user-list-row active" : "user-list-row"} onClick={() => setSelectedId("__new")}>
+          <UserPlus size={18} />
+          <div>
+            <strong>Criar usuario</strong>
+            <span>Nova conta de acesso</span>
+          </div>
+        </button>
+        <div className="user-list">
+          {users.map((item) => (
+            <button key={item.id} type="button" className={selectedId === item.id ? "user-list-row active" : "user-list-row"} onClick={() => setSelectedId(item.id)}>
+              <UserRound size={18} />
+              <div>
+                <strong>{item.name}</strong>
+                <span>{item.email}</span>
+              </div>
+              <Badge tone={item.active ? "success" : "neutral"}>{roleLabel(item.role)}</Badge>
+            </button>
+          ))}
+        </div>
+      </aside>
+      <div className="users-detail">
+        {selectedId === "__new" ? (
+          <CreateUserForm
+            catalog={catalog}
+            onUserSaved={(created) => {
+              onUserSaved(created);
+              setSelectedId(created.id);
+            }}
+          />
+        ) : selectedUser ? (
+          <UserDetailPanel item={selectedUser} catalog={catalog} onUserSaved={onUserSaved} />
+        ) : (
+          <div className="panel empty-state">
+            <UsersRound size={28} />
+            <h3>Selecione um usuario</h3>
+            <p>Abra o detalhe para alterar cargo, grupos e permissoes.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function AdminView({
   user,
   catalog,
@@ -1618,10 +1701,11 @@ function CreateUserForm({
   const [form, setForm] = useState<CreateUserPayload>({
     email: "",
     name: "",
-    role: "requester",
+    role: "employee",
     entityId: "corp",
     entityName: "Corporativo",
     groupIds: [],
+    permissions: defaultPermissionsForRole("employee"),
     active: true,
     password: ""
   });
@@ -1635,7 +1719,7 @@ function CreateUserForm({
     try {
       const response = await createUser(form);
       onUserSaved(response.user);
-      setForm({ ...form, email: "", name: "", password: "", groupIds: [] });
+      setForm({ ...form, email: "", name: "", password: "", groupIds: [], permissions: defaultPermissionsForRole(form.role) });
       setMessage("Usuario criado.");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Nao foi possivel criar o usuario.");
@@ -1659,14 +1743,33 @@ function CreateUserForm({
           <input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
         </Field>
         <Field label="Perfil">
-          <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value as AppUser["role"], groupIds: event.target.value === "requester" ? [] : form.groupIds })}>
+          <select
+            value={form.role}
+            onChange={(event) => {
+              const nextRole = event.target.value as AppUser["role"];
+              setForm({
+                ...form,
+                role: nextRole,
+                groupIds: nextRole === "requester" ? [] : form.groupIds,
+                permissions: defaultPermissionsForRole(nextRole)
+              });
+            }}
+          >
             {roleOptions().map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
           </select>
+        </Field>
+        <Field label="Entidade">
+          <input required minLength={2} value={form.entityName} onChange={(event) => setForm({ ...form, entityName: event.target.value })} />
         </Field>
         <Field label="Senha">
           <input required type="password" minLength={8} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
         </Field>
       </div>
+      <PermissionCheckboxes
+        role={form.role}
+        selected={form.permissions ?? []}
+        onChange={(permissions) => setForm({ ...form, permissions })}
+      />
       <GroupCheckboxes
         groups={catalog?.groups ?? []}
         selected={form.groupIds ?? []}
@@ -1677,6 +1780,122 @@ function CreateUserForm({
         {isSaving ? <Loader2 className="spin" size={16} /> : <UserPlus size={16} />}
         <span>Criar usuario</span>
       </button>
+    </form>
+  );
+}
+
+function UserDetailPanel({
+  item,
+  catalog,
+  onUserSaved
+}: {
+  item: AppUser;
+  catalog: ServiceDeskCatalog | null;
+  onUserSaved: (user: AppUser) => void;
+}) {
+  const [name, setName] = useState(item.name);
+  const [email, setEmail] = useState(item.email);
+  const [role, setRole] = useState(item.role);
+  const [entityName, setEntityName] = useState(item.entityName);
+  const [active, setActive] = useState(item.active);
+  const [groupIds, setGroupIds] = useState(item.groupIds);
+  const [permissions, setPermissions] = useState<PermissionKey[]>(item.permissions ?? defaultPermissionsForRole(item.role));
+  const [password, setPassword] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setName(item.name);
+    setEmail(item.email);
+    setRole(item.role);
+    setEntityName(item.entityName);
+    setActive(item.active);
+    setGroupIds(item.groupIds);
+    setPermissions(item.permissions ?? defaultPermissionsForRole(item.role));
+    setPassword("");
+    setMessage(null);
+  }, [item]);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const response = await updateUser(item.id, {
+        name,
+        email,
+        role,
+        entityName,
+        active,
+        groupIds,
+        permissions,
+        password: password.trim() ? password : undefined
+      });
+      setPassword("");
+      onUserSaved(response.user);
+      setMessage("Usuario salvo.");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Nao foi possivel salvar o usuario.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <form className="panel user-detail-panel" onSubmit={save}>
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">{item.email}</p>
+          <h2>{item.name}</h2>
+          <p>Edite cargo, grupos e permissoes operacionais.</p>
+        </div>
+        <Badge tone={active ? "success" : "neutral"}>{active ? "Ativo" : "Inativo"}</Badge>
+      </div>
+      {message ? <div className="inline-alert compact" role="status">{message}</div> : null}
+      <div className="admin-form-grid detail-fields">
+        <Field label="Nome">
+          <input required minLength={2} value={name} onChange={(event) => setName(event.target.value)} />
+        </Field>
+        <Field label="E-mail">
+          <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+        </Field>
+        <Field label="Cargo">
+          <select
+            value={role}
+            onChange={(event) => {
+              const nextRole = event.target.value as AppUser["role"];
+              setRole(nextRole);
+              setGroupIds(nextRole === "requester" ? [] : groupIds);
+              setPermissions(defaultPermissionsForRole(nextRole));
+            }}
+          >
+            {roleOptions().map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </Field>
+        <Field label="Entidade">
+          <input required minLength={2} value={entityName} onChange={(event) => setEntityName(event.target.value)} />
+        </Field>
+        <Field label="Nova senha">
+          <input type="password" minLength={8} placeholder="Manter senha atual" value={password} onChange={(event) => setPassword(event.target.value)} />
+        </Field>
+        <label className="switch-row user-active-switch">
+          <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
+          <span>Usuario ativo</span>
+        </label>
+      </div>
+      <PermissionCheckboxes role={role} selected={permissions} onChange={setPermissions} />
+      <GroupCheckboxes
+        groups={catalog?.groups ?? []}
+        selected={groupIds}
+        disabled={role === "requester"}
+        onChange={setGroupIds}
+      />
+      <div className="sticky-actions">
+        <button type="submit" className="primary-button" disabled={isSaving}>
+          {isSaving ? <Loader2 className="spin" size={18} /> : <Save size={18} />}
+          <span>Salvar usuario</span>
+        </button>
+      </div>
     </form>
   );
 }
@@ -1799,13 +2018,67 @@ function GroupCheckboxes({
   );
 }
 
+function PermissionCheckboxes({
+  role,
+  selected,
+  onChange
+}: {
+  role: AppUser["role"];
+  selected: PermissionKey[];
+  onChange: (permissions: PermissionKey[]) => void;
+}) {
+  const isAdmin = role === "admin";
+  const effectiveSelected = isAdmin ? permissionOptions().map((permission) => permission.value) : selected;
+
+  return (
+    <fieldset className="permission-checkboxes" disabled={isAdmin}>
+      <legend>Permissoes</legend>
+      {permissionOptions().map((permission) => (
+        <label key={permission.value}>
+          <input
+            type="checkbox"
+            checked={effectiveSelected.includes(permission.value)}
+            onChange={(event) => {
+              const next = event.target.checked
+                ? [...selected, permission.value]
+                : selected.filter((item) => item !== permission.value);
+              onChange(next);
+            }}
+          />
+          <span>
+            <strong>{permission.label}</strong>
+            <small>{permission.description}</small>
+          </span>
+        </label>
+      ))}
+      {isAdmin ? <p>Administradores sempre mantem todas as permissoes.</p> : null}
+    </fieldset>
+  );
+}
+
 function roleOptions(): Array<{ value: AppUser["role"]; label: string }> {
   return [
+    { value: "employee", label: "Funcionario" },
+    { value: "manager", label: "Gestor" },
     { value: "requester", label: "Solicitante" },
-    { value: "technician", label: "Tecnico" },
-    { value: "supervisor", label: "Supervisor" },
     { value: "admin", label: "Administrador" }
   ];
+}
+
+function permissionOptions(): Array<{ value: PermissionKey; label: string; description: string }> {
+  return [
+    { value: "tickets.open", label: "Abrir chamados", description: "Pode registrar novos chamados no portal." },
+    { value: "tickets.read", label: "Ler chamados", description: "Pode acessar chamados dentro do escopo do cargo e grupos." },
+    { value: "tickets.work", label: "Tratar chamados", description: "Pode atribuir, mudar status, criar tarefas e resolver." },
+    { value: "tickets.delete", label: "Excluir chamados", description: "Pode remover chamados da base operacional." },
+    { value: "users.manage", label: "Gerenciar usuarios", description: "Pode criar usuarios e alterar cargos, grupos e permissoes." }
+  ];
+}
+
+function defaultPermissionsForRole(role: AppUser["role"]): PermissionKey[] {
+  if (role === "admin") return permissionOptions().map((permission) => permission.value);
+  if (role === "manager" || role === "employee") return ["tickets.open", "tickets.read", "tickets.work"];
+  return ["tickets.open", "tickets.read"];
 }
 
 function AdminPanel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
@@ -1908,10 +2181,22 @@ function relativeDue(due: Date) {
   return `${Math.round(hours / 24)} d`;
 }
 
+function hasPermission(user: AppUser, permission: PermissionKey): boolean {
+  return (user.permissions ?? defaultPermissionsForRole(user.role)).includes(permission);
+}
+
+function canManageUsers(user: AppUser): boolean {
+  return hasPermission(user, "users.manage");
+}
+
+function canOpenTicketForOthers(user: AppUser): boolean {
+  return hasPermission(user, "tickets.work") || hasPermission(user, "users.manage");
+}
+
 function roleLabel(role: string) {
   if (role === "admin") return "Administrador";
-  if (role === "supervisor") return "Supervisor";
-  if (role === "technician") return "Tecnico";
+  if (role === "manager" || role === "supervisor") return "Gestor";
+  if (role === "employee" || role === "technician") return "Funcionario";
   return "Solicitante";
 }
 

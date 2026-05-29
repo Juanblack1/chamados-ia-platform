@@ -116,6 +116,7 @@ describe("AgentOrchestrator", () => {
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: [],
+        permissions: ["tickets.open", "tickets.read", "tickets.work", "tickets.delete", "users.manage"],
         active: true
       },
       "Quais proximos passos devo tomar neste chamado?"
@@ -134,6 +135,7 @@ describe("AgentOrchestrator", () => {
         entityId: "corp",
         entityName: "Corporativo",
         groupIds: [],
+        permissions: ["tickets.open", "tickets.read", "tickets.work", "tickets.delete", "users.manage"],
         active: true
       },
       "Resuma o andamento em streaming."
@@ -144,6 +146,21 @@ describe("AgentOrchestrator", () => {
     expect(streamEvents.some((event) => event.type === "delta")).toBe(true);
     expect(streamEvents.at(-1)?.type).toBe("ticket");
 
+    const readOnlyManager = {
+      id: "manager-readonly-1",
+      email: "gestor.leitura@empresa.local",
+      name: "Gestor Leitura",
+      role: "manager" as const,
+      entityId: "corp",
+      entityName: "Corporativo",
+      groupIds: [],
+      permissions: ["tickets.open", "tickets.read"],
+      active: true
+    };
+    await expect(orchestrator.findTicketForUser(ticket.id, readOnlyManager)).resolves.toBeTruthy();
+    await expect(orchestrator.updateStatus(ticket.id, readOnlyManager, "resolved")).resolves.toBeUndefined();
+    await expect(orchestrator.addTask(ticket.id, readOnlyManager, "Investigar sem permissao")).resolves.toBeUndefined();
+
     const deletedByRequester = await orchestrator.deleteTicket(ticket.id, {
       id: "requester-1",
       email: "ana@acme.local",
@@ -152,6 +169,7 @@ describe("AgentOrchestrator", () => {
       entityId: "corp",
       entityName: "Corporativo",
       groupIds: [],
+      permissions: ["tickets.open", "tickets.read"],
       active: true
     });
     expect(deletedByRequester).toBe(false);
@@ -164,6 +182,7 @@ describe("AgentOrchestrator", () => {
       entityId: "corp",
       entityName: "Corporativo",
       groupIds: [],
+      permissions: ["tickets.open", "tickets.read", "tickets.work", "tickets.delete", "users.manage"],
       active: true
     });
     expect(deletedByAdmin).toBe(true);

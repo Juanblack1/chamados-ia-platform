@@ -3,7 +3,7 @@ import type { AgentOrchestrator } from "../../ai/agents/AgentOrchestrator.js";
 import { knowledgeArticles, serviceDeskGroups, slaPolicies } from "../../domain/serviceDeskCatalog.js";
 import { CreateTicketInputSchema, normalizeCreateTicketInput } from "../../domain/ticket.js";
 import type { TraceRecorder } from "../../observability/traces.js";
-import type { AuthStore } from "../../security/authStore.js";
+import { hasPermission, type AuthStore } from "../../security/authStore.js";
 import { requireUser } from "../../security/authGuard.js";
 
 export async function registerAgentRoutes(
@@ -17,7 +17,7 @@ export async function registerAgentRoutes(
   app.get("/api/agents/config", async () => orchestrator.describeAiPlatform());
   app.get("/api/catalog/service-desk", async (request) => {
     const user = requireUser(request);
-    const users = (await auth.listUsers()).filter((item) => item.role !== "requester" || user.role === "admin");
+    const users = hasPermission(user, "users.manage") ? await auth.listUsers() : [];
     return {
       currentUser: user,
       users,

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { CreateTicketInputSchema, TicketStatusSchema, normalizeCreateTicketInput } from "../../domain/ticket.js";
 import type { AgentOrchestrator } from "../../ai/agents/AgentOrchestrator.js";
 import { requireUser } from "../../security/authGuard.js";
+import { hasPermission } from "../../security/authStore.js";
 
 export async function registerTicketRoutes(app: FastifyInstance, orchestrator: AgentOrchestrator): Promise<void> {
   app.get("/api/tickets", async (request) => orchestrator.listTicketsForUser(requireUser(request)));
@@ -19,7 +20,8 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
     }
 
     const user = requireUser(request);
-    const payload = normalizeCreateTicketInput(user.role === "requester" ? { ...parsed.data, requesterEmail: user.email } : parsed.data);
+    if (!hasPermission(user, "tickets.open")) return reply.code(403).send({ error: "forbidden", message: "Voce nao tem permissao para abrir chamados." });
+    const payload = normalizeCreateTicketInput(hasPermission(user, "tickets.work") ? parsed.data : { ...parsed.data, requesterEmail: user.email });
     return orchestrator.assessIntake(payload, {}, user);
   });
 
@@ -39,7 +41,8 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
     }
 
     const user = requireUser(request);
-    const payload = normalizeCreateTicketInput(user.role === "requester" ? { ...parsed.data, requesterEmail: user.email } : parsed.data);
+    if (!hasPermission(user, "tickets.open")) return reply.code(403).send({ error: "forbidden", message: "Voce nao tem permissao para abrir chamados." });
+    const payload = normalizeCreateTicketInput(hasPermission(user, "tickets.work") ? parsed.data : { ...parsed.data, requesterEmail: user.email });
     const assessment = await orchestrator.assessIntake(payload, {}, user);
     if (!assessment.shouldCreate) {
       return reply.code(422).send({
@@ -155,7 +158,7 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
 
   app.delete<{ Params: { id: string } }>("/api/tickets/:id", async (request, reply) => {
     const user = requireUser(request);
-    if (user.role !== "admin") return reply.code(403).send({ error: "forbidden", message: "Only admins can delete tickets." });
+    if (!hasPermission(user, "tickets.delete")) return reply.code(403).send({ error: "forbidden", message: "Somente usuarios com permissao podem excluir chamados." });
 
     const deleted = await orchestrator.deleteTicket(request.params.id, user);
     if (!deleted) return reply.code(404).send({ error: "not_found", message: "Ticket not found." });
