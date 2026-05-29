@@ -19,6 +19,21 @@ export type AppUser = {
   active: boolean;
 };
 
+export type CreateUserInput = {
+  email: string;
+  name: string;
+  role: UserRole;
+  entityId?: string;
+  entityName?: string;
+  groupIds?: string[];
+  active?: boolean;
+  password: string;
+};
+
+export type UpdateUserInput = Partial<Omit<CreateUserInput, "password">> & {
+  password?: string;
+};
+
 type StoredUser = AppUser & {
   passwordHash?: string;
 };
@@ -34,6 +49,8 @@ export interface AuthStore {
   listUsers(): Promise<AppUser[]>;
   findUserById(id: string): Promise<AppUser | undefined>;
   verifyCredentials(email: string, password: string): Promise<AppUser | undefined>;
+  createUser(input: CreateUserInput): Promise<AppUser>;
+  updateUser(id: string, input: UpdateUserInput): Promise<AppUser | undefined>;
   createSession(userId: string): Promise<{ token: string; expiresAt: string }>;
   findSessionUser(token: string): Promise<AppUser | undefined>;
   revokeSession(token: string): Promise<void>;
@@ -78,6 +95,27 @@ export class MemoryAuthStore implements AuthStore {
     return (await verifyPassword(password, user.passwordHash)) ? toPublicUser(user) : undefined;
   }
 
+  async createUser(input: CreateUserInput): Promise<AppUser> {
+    this.ensureEmailAvailable(input.email);
+    const user = await withPassword(buildUser(input), input.password);
+    this.users.set(user.id, user);
+    return toPublicUser(user);
+  }
+
+  async updateUser(id: string, input: UpdateUserInput): Promise<AppUser | undefined> {
+    const current = this.users.get(id);
+    if (!current) return undefined;
+    if (input.email) this.ensureEmailAvailable(input.email, id);
+
+    const nextPublic: AppUser = normalizeUpdatedUser(current, input);
+    const next: StoredUser = {
+      ...nextPublic,
+      passwordHash: input.password ? await hashPassword(input.password) : current.passwordHash
+    };
+    this.users.set(id, next);
+    return toPublicUser(next);
+  }
+
   async createSession(userId: string): Promise<{ token: string; expiresAt: string }> {
     const token = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + this.env.AUTH_SESSION_TTL_SECONDS * 1000).toISOString();
@@ -98,6 +136,13 @@ export class MemoryAuthStore implements AuthStore {
 
   async revokeSession(token: string): Promise<void> {
     this.sessions.delete(hashSessionToken(token));
+  }
+
+  private ensureEmailAvailable(email: string, exceptId?: string): void {
+    const conflict = [...this.users.values()].find(
+      (candidate) => candidate.id !== exceptId && candidate.email.toLowerCase() === email.toLowerCase()
+    );
+    if (conflict) throw new Error("email_already_exists");
   }
 }
 
@@ -121,7 +166,12 @@ export class RedisAuthStore implements AuthStore {
 
   async initialize(): Promise<void> {
     const users = await buildInitialUsers(this.env);
-    await Promise.all(users.map((user) => this.saveUser(user)));
+    await Promise.all(
+      users.map(async (user) => {
+        const existing = await this.redis.get<StoredUser>(this.userKey(user.id));
+        if (!existing) await this.saveUser(user);
+      })
+    );
   }
 
   async listUsers(): Promise<AppUser[]> {
@@ -140,6 +190,27 @@ export class RedisAuthStore implements AuthStore {
     const user = users.find((candidate) => candidate.email.toLowerCase() === email.toLowerCase());
     if (!user?.active || !user.passwordHash) return undefined;
     return (await verifyPassword(password, user.passwordHash)) ? toPublicUser(user) : undefined;
+  }
+
+  async createUser(input: CreateUserInput): Promise<AppUser> {
+    await this.ensureEmailAvailable(input.email);
+    const user = await withPassword(buildUser(input), input.password);
+    await this.saveUser(user);
+    return toPublicUser(user);
+  }
+
+  async updateUser(id: string, input: UpdateUserInput): Promise<AppUser | undefined> {
+    const current = await this.redis.get<StoredUser>(this.userKey(id));
+    if (!current) return undefined;
+    if (input.email) await this.ensureEmailAvailable(input.email, id);
+
+    const nextPublic = normalizeUpdatedUser(current, input);
+    const next: StoredUser = {
+      ...nextPublic,
+      passwordHash: input.password ? await hashPassword(input.password) : current.passwordHash
+    };
+    await this.saveUser(next);
+    return toPublicUser(next);
   }
 
   async createSession(userId: string): Promise<{ token: string; expiresAt: string }> {
@@ -173,6 +244,13 @@ export class RedisAuthStore implements AuthStore {
     await Promise.all([this.redis.sadd(this.userIndexKey, user.id), this.redis.set(this.userKey(user.id), user)]);
   }
 
+  private async ensureEmailAvailable(email: string, exceptId?: string): Promise<void> {
+    const conflict = (await this.listStoredUsers()).find(
+      (candidate) => candidate.id !== exceptId && candidate.email.toLowerCase() === email.toLowerCase()
+    );
+    if (conflict) throw new Error("email_already_exists");
+  }
+
   private userKey(id: string): string {
     return `${this.prefix}:auth:users:item:${id}`;
   }
@@ -180,6 +258,38 @@ export class RedisAuthStore implements AuthStore {
   private sessionKey(token: string): string {
     return `${this.prefix}:auth:sessions:${hashSessionToken(token)}`;
   }
+}
+
+function buildUser(input: CreateUserInput): AppUser {
+  return {
+    id: randomUUID(),
+    email: input.email.toLowerCase(),
+    name: input.name.trim(),
+    role: input.role,
+    entityId: input.entityId?.trim() || "corp",
+    entityName: input.entityName?.trim() || "Corporativo",
+    groupIds: normalizeGroupIds(input.role, input.groupIds ?? []),
+    active: input.active ?? true
+  };
+}
+
+function normalizeUpdatedUser(current: StoredUser, input: UpdateUserInput): AppUser {
+  const role = input.role ?? current.role;
+  return {
+    id: current.id,
+    email: input.email?.toLowerCase() ?? current.email,
+    name: input.name?.trim() || current.name,
+    role,
+    entityId: input.entityId?.trim() || current.entityId,
+    entityName: input.entityName?.trim() || current.entityName,
+    groupIds: normalizeGroupIds(role, input.groupIds ?? current.groupIds),
+    active: input.active ?? current.active
+  };
+}
+
+function normalizeGroupIds(role: UserRole, groupIds: string[]): string[] {
+  if (role === "requester") return [];
+  return [...new Set(groupIds.map((groupId) => groupId.trim()).filter(Boolean))];
 }
 
 async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {

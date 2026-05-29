@@ -31,6 +31,10 @@ export class TraceRecorder {
     return this.spans.slice(-limit).reverse();
   }
 
+  recordSpan(span: TraceSpan): void {
+    this.record(span);
+  }
+
   async runSpan<T>(
     params: {
       traceId?: string;

@@ -21,6 +21,7 @@ const env: AppEnv = {
   AI_PROVIDER: "mock",
   GOOGLE_GENERATIVE_AI_API_KEY: "",
   GOOGLE_GENERATIVE_AI_MODEL: "gemini-2.5-flash",
+  GOOGLE_GENERATIVE_AI_FALLBACK_MODELS: "gemini-2.5-flash-lite,gemini-2.0-flash",
   GOOGLE_EMBEDDING_MODEL: "gemini-embedding-001",
   EMBEDDING_DIMENSION: 64,
   AUTH_COOKIE_NAME: "asid",
@@ -119,6 +120,27 @@ describe("AgentOrchestrator", () => {
     );
     expect(chatted?.ai.agentMemory?.some((entry) => entry.agent === "ticket-specialist" && entry.role === "assistant")).toBe(true);
     expect(chatted?.ai.agentMemory?.at(-1)?.contextTicketIds?.length).toBeGreaterThan(0);
+
+    const streamEvents = [];
+    for await (const event of orchestrator.streamChatWithTicket(
+      ticket.id,
+      {
+        id: "admin-1",
+        email: "admin@empresa.local",
+        name: "Admin",
+        role: "admin",
+        entityId: "corp",
+        entityName: "Corporativo",
+        groupIds: [],
+        active: true
+      },
+      "Resuma o andamento em streaming."
+    )) {
+      streamEvents.push(event);
+    }
+    expect(streamEvents.some((event) => event.type === "status")).toBe(true);
+    expect(streamEvents.some((event) => event.type === "delta")).toBe(true);
+    expect(streamEvents.at(-1)?.type).toBe("ticket");
 
     const deletedByRequester = await orchestrator.deleteTicket(ticket.id, {
       id: "requester-1",

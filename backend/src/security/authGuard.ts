@@ -96,7 +96,7 @@ export function readCookie(header: string | undefined, name: string): string | u
 
 function isPublicRoute(request: FastifyRequest): boolean {
   const url = request.url.split("?")[0];
-  return url === "/health" || url === "/api/health" || url === "/api/auth/login";
+  return url === "/health" || url === "/api/health" || url === "/api/auth/login" || url === "/api/auth/logout";
 }
 
 function readHeaderValue(value: string | string[] | undefined): string | undefined {

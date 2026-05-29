@@ -1,6 +1,6 @@
 import type { RagSource, Ticket, TicketAgentMemoryEntry } from "../../domain/ticket.js";
 import type { AppUser } from "../../security/authStore.js";
-import type { ModelGateway } from "../modelGateway.js";
+import type { ModelGateway, ModelStreamEvent } from "../modelGateway.js";
 import { ticketSpecialistMastraAgent } from "../mastra/ticketAgent.js";
 
 export type TicketSpecialistChatContext = {
@@ -19,41 +19,54 @@ export class TicketSpecialistChatAgent {
 
   async run(context: TicketSpecialistChatContext): Promise<string> {
     return this.llm.completeText({
-      system: [
-        "Voce e o agente Mastra ticket-specialist, especialista senior em service desk corporativo.",
-        "Responda em portugues do Brasil, com orientacao objetiva, passos acionaveis e cuidado com SLA.",
-        "Use apenas chamados autorizados, memoria do agente, historico do chamado, evidencias RAG e politicas informadas.",
-        "Nao invente dados externos. Quando faltar informacao, diga exatamente o que coletar."
-      ].join(" "),
-      user: JSON.stringify(
-        {
-          agent: {
-            id: "ticket-specialist",
-            name: "Ticket Specialist Agent"
-          },
-          actor: {
-            id: context.actor.id,
-            role: context.actor.role,
-            email: context.actor.email
-          },
-          activeTicket: summarizeTicket(context.activeTicket, true),
-          allAuthorizedTicketsContext: context.accessibleTickets.map((ticket) => summarizeTicket(ticket, false)),
-          recentAgentMemory: context.memory.slice(-12).map((item) => ({
-            agent: item.agent,
-            role: item.role,
-            actorName: item.actorName,
-            content: item.content,
-            createdAt: item.createdAt
-          })),
-          ragSources: context.sources,
-          userMessage: context.message
-        },
-        null,
-        2
-      ),
+      ...buildPrompt(context),
       fallback: () => fallbackAnswer(context)
     });
   }
+
+  stream(context: TicketSpecialistChatContext): AsyncGenerator<ModelStreamEvent> {
+    return this.llm.streamText({
+      ...buildPrompt(context),
+      fallback: () => fallbackAnswer(context)
+    });
+  }
+}
+
+function buildPrompt(context: TicketSpecialistChatContext): { system: string; user: string } {
+  return {
+    system: [
+      "Voce e o agente Mastra ticket-specialist, especialista senior em service desk corporativo.",
+      "Responda em portugues do Brasil, com orientacao objetiva, passos acionaveis e cuidado com SLA.",
+      "Use apenas chamados autorizados, memoria do agente, historico do chamado, evidencias RAG e politicas informadas.",
+      "Nao invente dados externos. Quando faltar informacao, diga exatamente o que coletar."
+    ].join(" "),
+    user: JSON.stringify(
+      {
+        agent: {
+          id: "ticket-specialist",
+          name: "Ticket Specialist Agent"
+        },
+        actor: {
+          id: context.actor.id,
+          role: context.actor.role,
+          email: context.actor.email
+        },
+        activeTicket: summarizeTicket(context.activeTicket, true),
+        allAuthorizedTicketsContext: context.accessibleTickets.map((ticket) => summarizeTicket(ticket, false)),
+        recentAgentMemory: context.memory.slice(-12).map((item) => ({
+          agent: item.agent,
+          role: item.role,
+          actorName: item.actorName,
+          content: item.content,
+          createdAt: item.createdAt
+        })),
+        ragSources: context.sources,
+        userMessage: context.message
+      },
+      null,
+      2
+    )
+  };
 }
 
 function summarizeTicket(ticket: Ticket, includeDetails: boolean) {

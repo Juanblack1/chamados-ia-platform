@@ -18,7 +18,8 @@ Corporate service desk demo with AI-assisted ticket intake, multi-agent triage, 
 - Session login with HttpOnly cookies, bootstrap admin, role-aware access, and API-key support for server-to-server automation.
 - Requester portal for opening incidents and requests with image attachments.
 - Analyst queue with filters, SLA, priority, group routing, and AI/RAG evidence.
-- Ticket workspace with assign-to-me, status transitions, public/internal follow-ups, tasks, task completion, resolution, timeline, and audit trail.
+- Ticket workspace with assign-to-me, status transitions, public/internal follow-ups, tasks, task completion, resolution, timeline, audit trail, and streaming assistant chat.
+- Profile editing for the logged user and admin user management with roles, groups, activation, and password reset.
 - Admin/catalog view for users, groups, SLA policies, and knowledge articles.
 
 ## Run locally
@@ -51,6 +52,7 @@ Production test requester on Vercel:
 - `solicitante.teste@empresa.local` / `ChamadosTeste@2026!`
 
 The backend has deterministic fallback responses when no AI key is configured, so tests and the local demo run without external credentials. For Google AI Studio, put `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`; that file is gitignored. The frontend never receives this key.
+Text generation uses a model cascade: `GOOGLE_GENERATIVE_AI_MODEL` first, then comma-separated `GOOGLE_GENERATIVE_AI_FALLBACK_MODELS` for rate-limit/provider failures, then a deterministic local fallback.
 
 Ticket persistence uses memory by default in local/test runs. In production, set `TICKET_STORAGE=redis` plus either `KV_REST_API_URL`/`KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`. `TICKET_SEED_SAMPLE_DATA` defaults to `false`, so production starts without demo tickets.
 
@@ -60,6 +62,10 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
+- `PATCH /api/users/me`
+- `GET /api/users`
+- `POST /api/users`
+- `PATCH /api/users/:id`
 - `GET /api/tickets`
 - `POST /api/tickets/intake-assessment`
 - `POST /api/tickets`
@@ -71,6 +77,7 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 - `POST /api/tickets/:id/tasks/:taskId/complete`
 - `POST /api/tickets/:id/resolve`
 - `POST /api/tickets/:id/chat`
+- `POST /api/tickets/:id/chat/stream`
 - `DELETE /api/tickets/:id`
 - `GET /api/catalog/service-desk`
 - `GET /api/agents/runs`
@@ -81,7 +88,7 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 
 ## Agent flow
 
-`AgentOrchestrator` first runs an intelligent intake assessment to block vague or self-service-only requests before persistence. When the ticket is allowed, it creates a trace per ticket, runs RAG retrieval against Qdrant, then executes the triage, routing, SLA-risk, and resolution-draft workflow stages. Each stage stores evidence, decisions, confidence, traces, and agent memory on the ticket, then emits audit events. Mastra agents are registered in `backend/src/ai/mastra/ticketAgent.ts`. The ticket workspace also includes a `ticket-specialist` Mastra agent exposed through an assistant-ui chat; it answers with the active ticket, all user-authorized tickets, RAG evidence, trace context, and persisted agent memory.
+`AgentOrchestrator` first runs an intelligent intake assessment to block vague or self-service-only requests before persistence. When the ticket is allowed, it creates a trace per ticket, runs RAG retrieval against Qdrant, then executes the triage, routing, SLA-risk, and resolution-draft workflow stages. Each stage stores evidence, decisions, confidence, traces, and agent memory on the ticket, then emits audit events. Mastra agents are registered in `backend/src/ai/mastra/ticketAgent.ts`. The ticket workspace also includes a `ticket-specialist` Mastra agent exposed through an assistant-ui chat; it streams status/model/delta events over SSE, answers with the active ticket, all user-authorized tickets, RAG evidence, trace context, and persisted agent memory.
 
 CopilotKit is backed by a Google model through the Vercel AI SDK and exposes server-side tools to describe the AI architecture, search RAG knowledge, list tickets, assess intake quality, preview triage, and create a ticket. The create-ticket tool runs `assess_ticket_intake` first and returns missing questions or self-service guidance instead of creating low-quality tickets.
 
@@ -108,6 +115,7 @@ Optional production settings:
 - `AUTH_SESSION_TTL_SECONDS`
 - `API_KEYS`
 - `TICKET_REDIS_PREFIX`
+- `GOOGLE_GENERATIVE_AI_FALLBACK_MODELS`
 
 `docker-compose.yml` runs backend, frontend, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `AUTH_BOOTSTRAP_ADMIN_PASSWORD`, and `API_KEYS`; no production secret is stored in the repository.
 

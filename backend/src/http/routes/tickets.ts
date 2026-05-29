@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { once } from "node:events";
 import { z } from "zod";
 import { CreateTicketInputSchema, TicketStatusSchema, normalizeCreateTicketInput } from "../../domain/ticket.js";
 import type { AgentOrchestrator } from "../../ai/agents/AgentOrchestrator.js";
@@ -124,6 +125,32 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
       ticket,
       messages: ticket.ai.agentMemory ?? []
     };
+  });
+
+  app.post<{ Params: { id: string } }>("/api/tickets/:id/chat/stream", async (request, reply) => {
+    const parsed = z.object({ message: z.string().trim().min(2).max(2000) }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "validation_error", issues: parsed.error.issues });
+
+    const user = requireUser(request);
+    const existing = await orchestrator.findTicketForUser(request.params.id, user);
+    if (!existing) return reply.code(404).send({ error: "not_found", message: "Ticket not found or chat not allowed." });
+
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+      "x-accel-buffering": "no"
+    });
+
+    try {
+      for await (const event of orchestrator.streamChatWithTicket(request.params.id, user, parsed.data.message)) {
+        const ok = reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+        if (!ok) await once(reply.raw, "drain");
+      }
+    } finally {
+      reply.raw.end();
+    }
   });
 
   app.delete<{ Params: { id: string } }>("/api/tickets/:id", async (request, reply) => {

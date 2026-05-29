@@ -123,6 +123,11 @@ a:focus-visible {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr);
+  transition: grid-template-columns 180ms ease;
+}
+
+.app-shell:has(.sidebar.collapsed) {
+  grid-template-columns: 86px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -135,6 +140,7 @@ a:focus-visible {
   padding: var(--space-5);
   background: var(--color-sidebar);
   color: #f8fbfa;
+  transition: transform 180ms ease, padding 180ms ease;
 }
 
 .brand,
@@ -142,6 +148,50 @@ a:focus-visible {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+.brand {
+  position: relative;
+}
+
+.sidebar-toggle {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 8%);
+  color: #ffffff;
+}
+
+.sidebar.collapsed {
+  align-items: center;
+  padding-inline: var(--space-4);
+}
+
+.sidebar.collapsed .brand {
+  justify-content: center;
+}
+
+.sidebar.collapsed .brand div:not(.brand-mark),
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .user-block div,
+.sidebar.collapsed .nav-item.logout span {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+  position: absolute;
+  right: -6px;
+  bottom: -38px;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .brand-mark {
@@ -219,6 +269,21 @@ a:focus-visible {
   border-top: 1px solid rgb(255 255 255 / 14%);
 }
 
+.user-block-button {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.user-block-button:hover {
+  background: rgb(255 255 255 / 8%);
+}
+
 .workspace {
   min-width: 0;
   padding: var(--space-6);
@@ -287,6 +352,10 @@ p {
 .topbar-actions {
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.mobile-menu-button {
+  display: none;
 }
 
 .search-box,
@@ -441,7 +510,7 @@ p {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
 }
@@ -911,7 +980,7 @@ td small {
 
 .detail-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr) 360px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
   gap: var(--space-4);
   align-items: start;
 }
@@ -1041,6 +1110,18 @@ td small {
   overflow: hidden;
 }
 
+.stream-status {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  color: var(--color-text-muted);
+  background: #fbfcfc;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
 .assistant-thread {
   min-height: 420px;
 }
@@ -1167,6 +1248,14 @@ td small {
   gap: var(--space-4);
 }
 
+.profile-layout {
+  max-width: 760px;
+}
+
+.profile-panel {
+  overflow: hidden;
+}
+
 .admin-row {
   min-height: 54px;
   display: flex;
@@ -1186,6 +1275,90 @@ td small {
 .admin-row span {
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.user-create-form,
+.user-editor-row {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.user-create-form {
+  padding: var(--space-3);
+  border: 1px solid #b7ded7;
+  border-radius: var(--radius-md);
+  background: #f5fbfa;
+}
+
+.admin-form-heading,
+.user-editor-actions,
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-form-heading {
+  color: var(--color-action);
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.user-editor-row {
+  align-items: stretch;
+  padding: var(--space-3);
+}
+
+.user-editor-main {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.user-editor-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.form-note {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.switch-row {
+  min-height: 32px;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.group-checkboxes {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.group-checkboxes legend {
+  padding: 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.group-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: 13px;
 }
 
 .empty-state {
@@ -1236,23 +1409,14 @@ td small {
 }
 
 @media (max-width: 1240px) {
-  .app-shell {
-    grid-template-columns: 86px minmax(0, 1fr);
-  }
-
-  .brand div:not(.brand-mark),
-  .nav-item span,
-  .user-block div {
-    display: none;
-  }
-
   .sidebar {
     padding: var(--space-4);
   }
 
   .content-grid,
   .intake-layout,
-  .detail-grid {
+  .detail-grid,
+  .admin-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1266,24 +1430,37 @@ td small {
     grid-template-columns: 1fr;
   }
 
+  .app-shell:has(.sidebar.collapsed) {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
-    min-height: auto;
-    position: static;
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
+    width: min(292px, 86vw);
+    min-height: 100vh;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    box-shadow: 16px 0 32px rgb(15 23 42 / 18%);
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-104%);
   }
 
   .sidebar nav {
-    display: flex;
-    min-width: max-content;
+    display: grid;
+    min-width: 0;
   }
 
   .sidebar-footer {
-    margin-left: auto;
-    margin-top: 0;
-    padding-top: 0;
-    border-top: 0;
+    margin-left: 0;
+    margin-top: auto;
+    padding-top: var(--space-4);
+    border-top: 1px solid rgb(255 255 255 / 14%);
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
   }
 
   .workspace {
@@ -1293,7 +1470,12 @@ td small {
   .topbar,
   .detail-header {
     align-items: stretch;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .topbar > div {
+    min-width: 0;
   }
 
   .topbar-actions,
@@ -1305,6 +1487,7 @@ td small {
 
   .metric-strip,
   .form-grid,
+  .admin-form-grid,
   .evidence-row,
   .admin-grid,
   .task-composer,

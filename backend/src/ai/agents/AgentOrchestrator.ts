@@ -23,6 +23,29 @@ export type TriagePreview = {
   sources: RagSource[];
 };
 
+export type TicketChatStreamEvent =
+  | {
+      type: "status";
+      phase: "thinking" | "model" | "fallback" | "done";
+      message: string;
+      model?: string;
+    }
+  | {
+      type: "delta";
+      text: string;
+      model: string;
+    }
+  | {
+      type: "error";
+      message: string;
+      model?: string;
+    }
+  | {
+      type: "ticket";
+      ticket: Ticket;
+      messages: TicketAgentMemoryEntry[];
+    };
+
 type RoutingDecision = {
   groupId: string;
   groupName: string;
@@ -589,6 +612,110 @@ export class AgentOrchestrator {
         return updated ?? ticket;
       }
     );
+  }
+
+  async *streamChatWithTicket(id: string, actor: AppUser, message: string): AsyncGenerator<TicketChatStreamEvent> {
+    const ticket = await this.findTicketForUser(id, actor);
+    if (!ticket) {
+      yield { type: "error", message: "Chamado nao encontrado ou chat nao permitido." };
+      return;
+    }
+
+    const traceId = randomUUID();
+    const spanId = randomUUID();
+    const startedAt = new Date().toISOString();
+    const startedAtMs = performance.now();
+
+    try {
+      yield {
+        type: "status",
+        phase: "thinking",
+        message: "Buscando chamados autorizados, memoria do agente e fontes RAG."
+      };
+
+      const accessibleTickets = await this.listTicketsForUser(actor);
+      const memory = ticket.ai.agentMemory ?? [];
+      const sources = await this.traces.runSpan(
+        {
+          traceId,
+          parentSpanId: spanId,
+          name: "rag.search",
+          kind: "rag",
+          inputSummary: message,
+          summarizeOutput: (items) => `${items.length} sources`
+        },
+        () => this.knowledge.search(`${ticket.title}\n${ticket.description}\n${message}`)
+      );
+      let answer = "";
+
+      for await (const event of this.specialistAgent.stream({
+        activeTicket: ticket,
+        accessibleTickets,
+        actor,
+        message,
+        memory,
+        sources
+      })) {
+        if (event.type === "delta") answer += event.text;
+        yield event;
+      }
+
+      const now = new Date().toISOString();
+      const nextMemory: TicketAgentMemoryEntry[] = [
+        ...memory,
+        buildMemoryEntry(ticket.id, "ticket-specialist", "user", actor.name, actor.id, message, now, traceId, accessibleTickets),
+        buildMemoryEntry(ticket.id, "ticket-specialist", "assistant", "Agente especialista", "ticket-specialist", answer.trim(), now, traceId, accessibleTickets)
+      ];
+
+      const updated = await this.tickets.update(id, {
+        ai: {
+          ...ticket.ai,
+          retrievedSources: mergeSources(ticket.ai.retrievedSources, sources),
+          agentMemory: nextMemory
+        },
+        audit: [...ticket.audit, buildAudit(actor, "agent.chat.stream", "Conversa com agente especialista registrada em streaming.", now)]
+      });
+      const result = updated ?? ticket;
+
+      this.traces.recordSpan({
+        id: spanId,
+        traceId,
+        name: "agent.ticket-specialist-chat-stream",
+        kind: "agent",
+        status: "ok",
+        startedAt,
+        endedAt: new Date().toISOString(),
+        durationMs: Math.round(performance.now() - startedAtMs),
+        inputSummary: `${ticket.number}: ${message.slice(0, 80)}`,
+        outputSummary: `${result.number} memory=${result.ai.agentMemory?.length ?? 0}`,
+        metadata: { ticketId: ticket.id, actorId: actor.id, agent: "ticket-specialist", streaming: true }
+      });
+
+      yield {
+        type: "ticket",
+        ticket: result,
+        messages: result.ai.agentMemory ?? []
+      };
+    } catch (cause) {
+      const messageText = cause instanceof Error ? cause.message : "Erro desconhecido no chat.";
+      this.traces.recordSpan({
+        id: spanId,
+        traceId,
+        name: "agent.ticket-specialist-chat-stream",
+        kind: "agent",
+        status: "error",
+        startedAt,
+        endedAt: new Date().toISOString(),
+        durationMs: Math.round(performance.now() - startedAtMs),
+        inputSummary: `${ticket.number}: ${message.slice(0, 80)}`,
+        error: messageText.slice(0, 420),
+        metadata: { ticketId: ticket.id, actorId: actor.id, agent: "ticket-specialist", streaming: true }
+      });
+      yield {
+        type: "error",
+        message: "Nao foi possivel concluir a resposta do agente. Tente novamente ou registre um acompanhamento manual."
+      };
+    }
   }
 
   async deleteTicket(id: string, actor: AppUser): Promise<boolean> {

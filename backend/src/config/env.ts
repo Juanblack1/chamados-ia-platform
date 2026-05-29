@@ -15,6 +15,7 @@ const EnvSchema = z.object({
   AI_PROVIDER: z.enum(["google", "mock"]).default("google"),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().default(""),
   GOOGLE_GENERATIVE_AI_MODEL: z.string().default("gemini-2.5-flash"),
+  GOOGLE_GENERATIVE_AI_FALLBACK_MODELS: z.string().default("gemini-2.5-flash-lite,gemini-2.0-flash"),
   GOOGLE_EMBEDDING_MODEL: z.string().default("gemini-embedding-001"),
   EMBEDDING_DIMENSION: z.coerce.number().int().positive().default(64),
   AUTH_COOKIE_NAME: z.string().min(1).default("asid"),

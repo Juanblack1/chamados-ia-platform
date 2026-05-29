@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   BookOpen,
   Bot,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   ClipboardList,
   Clock3,
@@ -27,8 +29,11 @@ import {
   Loader2,
   LockKeyhole,
   LogOut,
+  Menu,
+  Pencil,
   Plus,
   RefreshCw,
+  Save,
   Search,
   Send,
   Settings,
@@ -36,6 +41,7 @@ import {
   TicketCheck,
   Trash2,
   UserRound,
+  UserPlus,
   UsersRound,
   X
 } from "lucide-react";
@@ -44,7 +50,7 @@ import {
   addTask,
   assignTicket,
   assessTicketIntake,
-  chatWithTicket,
+  createUser,
   completeTask,
   createTicket,
   deleteTicket,
@@ -55,19 +61,24 @@ import {
   login,
   logout,
   resolveTicket,
+  streamTicketChat,
+  updateProfile,
   updateTicketStatus,
+  updateUser,
   type AppUser,
+  type CreateUserPayload,
   type CreateTicketPayload,
   type IntakeAssessment,
   type ServiceDeskCatalog,
   type Ticket,
   type TicketAgentMemoryEntry,
+  type TicketChatStreamEvent,
   type TicketPriority,
   type TicketStatus,
   type TraceSpan
 } from "./lib/api";
 
-type View = "queue" | "new" | "detail" | "admin";
+type View = "queue" | "new" | "detail" | "admin" | "profile";
 
 const MAX_ATTACHMENTS = 4;
 const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
@@ -103,6 +114,7 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
   const [form, setForm] = useState<CreateTicketPayload>(initialForm);
   const [intakeAssessment, setIntakeAssessment] = useState<IntakeAssessment | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth < 920);
 
   useEffect(() => {
     void boot();
@@ -169,7 +181,11 @@ export default function App() {
   }
 
   async function handleLogout() {
-    await logout();
+    try {
+      await logout();
+    } catch {
+      // Mesmo se a sessao ja expirou, o estado local precisa voltar para a tela de login.
+    }
     setUser(null);
     setTickets([]);
     setSelectedId(null);
@@ -263,11 +279,28 @@ export default function App() {
     }
   }
 
-  async function handleTicketChat(ticket: Ticket, message: string) {
-    await mutateTicket(async () => {
-      const response = await chatWithTicket(ticket.id, message);
-      return response.ticket;
+  function handleTicketUpdated(ticket: Ticket) {
+    setTickets((current) => current.map((item) => (item.id === ticket.id ? ticket : item)));
+    setSelectedId(ticket.id);
+  }
+
+  async function handleTicketChatStream(
+    ticket: Ticket,
+    message: string,
+    onEvent: (event: TicketChatStreamEvent) => void
+  ) {
+    await streamTicketChat(ticket.id, message, (event) => {
+      onEvent(event);
+      if (event.type === "ticket") {
+        handleTicketUpdated(event.ticket);
+        void refreshWorkspace();
+      }
     });
+  }
+
+  async function handleCurrentUserUpdated(updated: AppUser) {
+    setUser(updated);
+    await refreshWorkspace();
   }
 
   if (isBooting) return <BootScreen />;
@@ -285,7 +318,17 @@ export default function App() {
   return (
     <CopilotKit key={user.id} runtimeUrl={copilotRuntimeUrl} credentials="include" showDevConsole={false}>
       <div className="app-shell">
-        <Sidebar user={user} active={view} onNavigate={setView} onLogout={() => void handleLogout()} />
+        <Sidebar
+          user={user}
+          active={view}
+          collapsed={isSidebarCollapsed}
+          onToggle={() => setIsSidebarCollapsed((current) => !current)}
+          onNavigate={(nextView) => {
+            setView(nextView);
+            if (window.innerWidth < 920) setIsSidebarCollapsed(true);
+          }}
+          onLogout={() => void handleLogout()}
+        />
         <main className="workspace">
           <Topbar
             view={view}
@@ -297,6 +340,8 @@ export default function App() {
             onCreate={() => setView("new")}
             onRefresh={() => void refreshWorkspace()}
             isLoading={isLoading}
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
           />
           {error ? (
             <div className="inline-alert" role="alert">
@@ -309,7 +354,6 @@ export default function App() {
             <QueueView
               tickets={visibleTickets}
               allTickets={tickets}
-              traces={traces}
               isLoading={isLoading}
               selectedId={selectedTicket?.id}
               onSelect={(ticket) => {
@@ -336,7 +380,6 @@ export default function App() {
             <DetailView
               user={user}
               ticket={selectedTicket}
-              traces={traces}
               isSubmitting={isSubmitting}
               onAssign={() => mutateTicket(() => assignTicket(selectedTicket.id))}
               onStatus={(status) => mutateTicket(() => updateTicketStatus(selectedTicket.id, status))}
@@ -345,11 +388,23 @@ export default function App() {
               onCompleteTask={(taskId) => mutateTicket(() => completeTask(selectedTicket.id, taskId))}
               onResolve={(message) => mutateTicket(() => resolveTicket(selectedTicket.id, message))}
               onDelete={() => void handleDeleteTicket(selectedTicket)}
-              onChat={(message) => handleTicketChat(selectedTicket, message)}
+              onTicketUpdated={handleTicketUpdated}
+              onChat={(message, onEvent) => handleTicketChatStream(selectedTicket, message, onEvent)}
             />
           ) : null}
 
-          {view === "admin" ? <AdminView user={user} catalog={catalog} /> : null}
+          {view === "profile" ? <ProfileView user={user} onUpdated={(updated) => void handleCurrentUserUpdated(updated)} /> : null}
+
+          {view === "admin" ? (
+            <AdminView
+              user={user}
+              catalog={catalog}
+              onUserSaved={(updated) => {
+                if (updated.id === user.id) setUser(updated);
+                void refreshWorkspace();
+              }}
+            />
+          ) : null}
         </main>
       </div>
       <CopilotPopup
@@ -459,11 +514,15 @@ function LoginScreen({
 function Sidebar({
   user,
   active,
+  collapsed,
+  onToggle,
   onNavigate,
   onLogout
 }: {
   user: AppUser;
   active: View;
+  collapsed: boolean;
+  onToggle: () => void;
   onNavigate: (view: View) => void;
   onLogout: () => void;
 }) {
@@ -472,11 +531,12 @@ function Sidebar({
     { id: "queue" as const, label: requester ? "Meus chamados" : "Minha fila", icon: ClipboardList },
     { id: "new" as const, label: "Abrir chamado", icon: Plus },
     ...(requester ? [] : [{ id: "detail" as const, label: "Workspace", icon: TicketCheck }]),
-    ...(user.role === "admin" ? [{ id: "admin" as const, label: "Administracao", icon: Settings }] : [])
+    ...(user.role === "admin" ? [{ id: "admin" as const, label: "Administracao", icon: Settings }] : []),
+    { id: "profile" as const, label: "Perfil", icon: UserRound }
   ];
 
   return (
-    <aside className="sidebar">
+    <aside className={collapsed ? "sidebar collapsed" : "sidebar"}>
       <div className="brand">
         <div className="brand-mark">
           <Bot size={20} />
@@ -485,6 +545,9 @@ function Sidebar({
           <strong>Service Desk IA</strong>
           <span>{user.entityName}</span>
         </div>
+        <button type="button" className="sidebar-toggle" onClick={onToggle} aria-label={collapsed ? "Expandir menu" : "Recolher menu"}>
+          {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
+        </button>
       </div>
       <nav aria-label="Principal">
         {items.map((item) => {
@@ -503,13 +566,13 @@ function Sidebar({
         })}
       </nav>
       <div className="sidebar-footer">
-        <div className="user-block">
+        <button type="button" className="user-block user-block-button" onClick={() => onNavigate("profile")}>
           <UserRound size={18} />
           <div>
             <strong>{user.name}</strong>
             <span>{roleLabel(user.role)}</span>
           </div>
-        </div>
+        </button>
         <button type="button" className="nav-item logout" onClick={onLogout}>
           <LogOut size={18} />
           <span>Sair</span>
@@ -528,7 +591,9 @@ function Topbar({
   setStatusFilter,
   onCreate,
   onRefresh,
-  isLoading
+  isLoading,
+  isSidebarCollapsed,
+  onToggleSidebar
 }: {
   view: View;
   user: AppUser;
@@ -539,11 +604,27 @@ function Topbar({
   onCreate: () => void;
   onRefresh: () => void;
   isLoading: boolean;
+  isSidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
 }) {
-  const title = view === "new" ? "Abrir chamado" : view === "detail" ? "Workspace do chamado" : view === "admin" ? "Administracao" : user.role === "requester" ? "Meus chamados" : "Minha fila";
+  const title =
+    view === "new"
+      ? "Abrir chamado"
+      : view === "detail"
+        ? "Workspace do chamado"
+        : view === "admin"
+          ? "Administracao"
+          : view === "profile"
+            ? "Perfil"
+            : user.role === "requester"
+              ? "Meus chamados"
+              : "Minha fila";
 
   return (
     <header className="topbar">
+      <button type="button" className="icon-button mobile-menu-button" onClick={onToggleSidebar} aria-label={isSidebarCollapsed ? "Abrir menu" : "Recolher menu"}>
+        <Menu size={18} />
+      </button>
       <div>
         <p className="eyebrow">{roleLabel(user.role)} · {user.entityName}</p>
         <h1>{title}</h1>
@@ -584,14 +665,12 @@ function Topbar({
 function QueueView({
   tickets,
   allTickets,
-  traces,
   isLoading,
   selectedId,
   onSelect
 }: {
   tickets: Ticket[];
   allTickets: Ticket[];
-  traces: TraceSpan[];
   isLoading: boolean;
   selectedId?: string;
   onSelect: (ticket: Ticket) => void;
@@ -627,7 +706,6 @@ function QueueView({
           </div>
           {isLoading ? <SkeletonRows /> : <TicketTable tickets={tickets} selectedId={selectedId} onSelect={onSelect} />}
         </section>
-        <AgentRail ticket={tickets.find((ticket) => ticket.id === selectedId) ?? tickets[0]} traces={traces} />
       </div>
     </section>
   );
@@ -995,7 +1073,6 @@ function IntakeIntelligencePanel({
 function DetailView({
   user,
   ticket,
-  traces,
   isSubmitting,
   onAssign,
   onStatus,
@@ -1004,11 +1081,11 @@ function DetailView({
   onCompleteTask,
   onResolve,
   onDelete,
+  onTicketUpdated,
   onChat
 }: {
   user: AppUser;
   ticket: Ticket;
-  traces: TraceSpan[];
   isSubmitting: boolean;
   onAssign: () => void;
   onStatus: (status: TicketStatus) => void;
@@ -1017,7 +1094,8 @@ function DetailView({
   onCompleteTask: (taskId: string) => void;
   onResolve: (message: string) => void;
   onDelete: () => void;
-  onChat: (message: string) => Promise<void>;
+  onTicketUpdated: (ticket: Ticket) => void;
+  onChat: (message: string, onEvent: (event: TicketChatStreamEvent) => void) => Promise<void>;
 }) {
   const [followup, setFollowup] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
@@ -1130,9 +1208,8 @@ function DetailView({
             </div>
           ) : null}
         </section>
-        <AgentRail ticket={ticket} traces={traces} />
       </div>
-      <TicketAssistantChat ticket={ticket} isSubmitting={isSubmitting} onChat={onChat} />
+      <TicketAssistantChat ticket={ticket} onTicketUpdated={onTicketUpdated} onChat={onChat} />
       <section className="panel evidence-panel" aria-labelledby="evidence-title">
         <div className="panel-heading">
           <div>
@@ -1160,27 +1237,85 @@ function DetailView({
 
 function TicketAssistantChat({
   ticket,
-  isSubmitting,
+  onTicketUpdated,
   onChat
 }: {
   ticket: Ticket;
-  isSubmitting: boolean;
-  onChat: (message: string) => Promise<void>;
+  onTicketUpdated: (ticket: Ticket) => void;
+  onChat: (message: string, onEvent: (event: TicketChatStreamEvent) => void) => Promise<void>;
 }) {
   const specialistMemory = useMemo(
     () => (ticket.ai.agentMemory ?? []).filter((entry) => entry.agent === "ticket-specialist" && entry.role !== "system"),
     [ticket.ai.agentMemory]
   );
+  const [liveMessages, setLiveMessages] = useState<TicketAgentMemoryEntry[]>(specialistMemory);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamStatus, setStreamStatus] = useState("Pronto para conversar com o agente.");
+
+  useEffect(() => {
+    if (!isStreaming) setLiveMessages(specialistMemory);
+  }, [isStreaming, specialistMemory]);
 
   const runtime = useExternalStoreRuntime<TicketAgentMemoryEntry>({
-    messages: specialistMemory,
-    isRunning: isSubmitting,
-    isSendDisabled: isSubmitting,
+    messages: liveMessages,
+    isRunning: isStreaming,
+    isSendDisabled: isStreaming,
     convertMessage: convertSpecialistMemory,
     onNew: async (message: AppendMessage) => {
       const text = appendMessageToText(message);
       if (!text) return;
-      await onChat(text);
+      const now = new Date().toISOString();
+      const userMessage = buildTemporaryMemory(ticket, "user", "Voce", "current-user", text, now);
+      const assistantMessage = buildTemporaryMemory(ticket, "assistant", "Agente especialista", "ticket-specialist", "", now);
+      setLiveMessages([...specialistMemory, userMessage, assistantMessage]);
+      setIsStreaming(true);
+      setStreamStatus("Enviando mensagem e preparando contexto.");
+
+      try {
+        await onChat(text, (event) => {
+          if (event.type === "status") {
+            setStreamStatus(event.model ? `${event.message} Modelo: ${event.model}` : event.message);
+            return;
+          }
+
+          if (event.type === "delta") {
+            setStreamStatus(`Respondendo com ${event.model}.`);
+            setLiveMessages((current) =>
+              current.map((item) =>
+                item.id === assistantMessage.id ? { ...item, content: `${item.content}${event.text}` } : item
+              )
+            );
+            return;
+          }
+
+          if (event.type === "error") {
+            setStreamStatus(event.message);
+            setLiveMessages((current) =>
+              current.map((item) =>
+                item.id === assistantMessage.id && !item.content
+                  ? { ...item, content: `Nao consegui concluir a resposta agora. ${event.message}` }
+                  : item
+              )
+            );
+            return;
+          }
+
+          const persistedMessages = event.messages.filter((entry) => entry.agent === "ticket-specialist" && entry.role !== "system");
+          setLiveMessages(persistedMessages);
+          onTicketUpdated(event.ticket);
+          setStreamStatus("Resposta salva na memoria do chamado.");
+        });
+      } catch (cause) {
+        const messageText = cause instanceof Error ? cause.message : "Falha ao conversar com o agente.";
+        setStreamStatus(messageText);
+        setLiveMessages((current) =>
+          current.map((item) =>
+            item.id === assistantMessage.id ? { ...item, content: `Erro no chat: ${messageText}` } : item
+          )
+        );
+      } finally {
+        setIsStreaming(false);
+      }
     }
   });
 
@@ -1192,6 +1327,10 @@ function TicketAssistantChat({
           <p>Agente especialista Mastra com memoria do chamado, RAG e contexto da fila autorizada.</p>
         </div>
         <Badge tone="info">assistant-ui</Badge>
+      </div>
+      <div className="stream-status" aria-live="polite">
+        {isStreaming ? <Loader2 className="spin" size={15} /> : <Bot size={15} />}
+        <span>{streamStatus}</span>
       </div>
       <AssistantRuntimeProvider runtime={runtime}>
         <ThreadPrimitive.Root className="assistant-thread">
@@ -1213,7 +1352,7 @@ function TicketAssistantChat({
                   rows={2}
                 />
                 <ComposerPrimitive.Send className="primary-button small assistant-send">
-                  {isSubmitting ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
+                  {isStreaming ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
                   <span>Enviar</span>
                 </ComposerPrimitive.Send>
               </ComposerPrimitive.Root>
@@ -1259,6 +1398,27 @@ function appendMessageToText(message: AppendMessage): string {
     .map((part) => ("text" in part ? part.text : ""))
     .join("\n")
     .trim();
+}
+
+function buildTemporaryMemory(
+  ticket: Ticket,
+  role: "user" | "assistant",
+  actorName: string,
+  actorId: string,
+  content: string,
+  createdAt: string
+): TicketAgentMemoryEntry {
+  return {
+    id: `tmp-${role}-${createdAt}-${Math.random().toString(36).slice(2)}`,
+    ticketId: ticket.id,
+    agent: "ticket-specialist",
+    role,
+    actorId,
+    actorName,
+    content,
+    createdAt,
+    contextTicketIds: [ticket.id]
+  };
 }
 
 function AgentRail({ ticket, traces }: { ticket?: Ticket; traces: TraceSpan[] }) {
@@ -1315,7 +1475,85 @@ function AgentRail({ ticket, traces }: { ticket?: Ticket; traces: TraceSpan[] })
   );
 }
 
-function AdminView({ user, catalog }: { user: AppUser; catalog: ServiceDeskCatalog | null }) {
+function ProfileView({ user, onUpdated }: { user: AppUser; onUpdated: (user: AppUser) => void }) {
+  const [name, setName] = useState(user.name);
+  const [entityName, setEntityName] = useState(user.entityName);
+  const [password, setPassword] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const response = await updateProfile({
+        name,
+        entityName,
+        password: password.trim() ? password : undefined
+      });
+      setPassword("");
+      onUpdated(response.user);
+      setMessage("Perfil atualizado.");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Nao foi possivel atualizar o perfil.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <form className="profile-layout" onSubmit={submit}>
+      <section className="panel profile-panel" aria-labelledby="profile-title">
+        <div className="panel-heading">
+          <div>
+            <h2 id="profile-title">Meu perfil</h2>
+            <p>Edite dados exibidos no portal e altere a senha de acesso.</p>
+          </div>
+          <Badge tone="info">{roleLabel(user.role)}</Badge>
+        </div>
+        {message ? <div className="inline-alert compact" role="status">{message}</div> : null}
+        <div className="form-grid">
+          <Field label="Nome" wide>
+            <input required minLength={2} value={name} onChange={(event) => setName(event.target.value)} />
+          </Field>
+          <Field label="E-mail" wide>
+            <input disabled value={user.email} />
+          </Field>
+          <Field label="Entidade" wide>
+            <input required minLength={2} value={entityName} onChange={(event) => setEntityName(event.target.value)} />
+          </Field>
+          <Field label="Nova senha" wide>
+            <input
+              type="password"
+              minLength={8}
+              autoComplete="new-password"
+              placeholder="Deixe em branco para manter a senha atual"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </Field>
+        </div>
+        <div className="sticky-actions">
+          <button type="submit" className="primary-button" disabled={isSaving}>
+            {isSaving ? <Loader2 className="spin" size={18} /> : <Save size={18} />}
+            <span>Salvar perfil</span>
+          </button>
+        </div>
+      </section>
+    </form>
+  );
+}
+
+function AdminView({
+  user,
+  catalog,
+  onUserSaved
+}: {
+  user: AppUser;
+  catalog: ServiceDeskCatalog | null;
+  onUserSaved: (user: AppUser) => void;
+}) {
   if (user.role !== "admin") {
     return (
       <div className="panel empty-state">
@@ -1329,14 +1567,9 @@ function AdminView({ user, catalog }: { user: AppUser; catalog: ServiceDeskCatal
   return (
     <section className="admin-grid">
       <AdminPanel title="Usuarios" icon={<UsersRound size={18} />}>
+        <CreateUserForm catalog={catalog} onUserSaved={onUserSaved} />
         {(catalog?.users ?? []).map((item) => (
-          <div className="admin-row" key={item.id}>
-            <div>
-              <strong>{item.name}</strong>
-              <span>{item.email}</span>
-            </div>
-            <Badge tone="info">{roleLabel(item.role)}</Badge>
-          </div>
+          <UserEditorRow key={item.id} item={item} catalog={catalog} onUserSaved={onUserSaved} />
         ))}
       </AdminPanel>
       <AdminPanel title="Grupos" icon={<LifeBuoy size={18} />}>
@@ -1373,6 +1606,206 @@ function AdminView({ user, catalog }: { user: AppUser; catalog: ServiceDeskCatal
       </AdminPanel>
     </section>
   );
+}
+
+function CreateUserForm({
+  catalog,
+  onUserSaved
+}: {
+  catalog: ServiceDeskCatalog | null;
+  onUserSaved: (user: AppUser) => void;
+}) {
+  const [form, setForm] = useState<CreateUserPayload>({
+    email: "",
+    name: "",
+    role: "requester",
+    entityId: "corp",
+    entityName: "Corporativo",
+    groupIds: [],
+    active: true,
+    password: ""
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const response = await createUser(form);
+      onUserSaved(response.user);
+      setForm({ ...form, email: "", name: "", password: "", groupIds: [] });
+      setMessage("Usuario criado.");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Nao foi possivel criar o usuario.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <form className="user-create-form" onSubmit={submit}>
+      <div className="admin-form-heading">
+        <UserPlus size={17} />
+        <strong>Criar usuario</strong>
+      </div>
+      {message ? <span className="form-note">{message}</span> : null}
+      <div className="admin-form-grid">
+        <Field label="Nome">
+          <input required minLength={2} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+        </Field>
+        <Field label="E-mail">
+          <input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+        </Field>
+        <Field label="Perfil">
+          <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value as AppUser["role"], groupIds: event.target.value === "requester" ? [] : form.groupIds })}>
+            {roleOptions().map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+          </select>
+        </Field>
+        <Field label="Senha">
+          <input required type="password" minLength={8} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+        </Field>
+      </div>
+      <GroupCheckboxes
+        groups={catalog?.groups ?? []}
+        selected={form.groupIds ?? []}
+        disabled={form.role === "requester"}
+        onChange={(groupIds) => setForm({ ...form, groupIds })}
+      />
+      <button type="submit" className="primary-button small" disabled={isSaving}>
+        {isSaving ? <Loader2 className="spin" size={16} /> : <UserPlus size={16} />}
+        <span>Criar usuario</span>
+      </button>
+    </form>
+  );
+}
+
+function UserEditorRow({
+  item,
+  catalog,
+  onUserSaved
+}: {
+  item: AppUser;
+  catalog: ServiceDeskCatalog | null;
+  onUserSaved: (user: AppUser) => void;
+}) {
+  const [name, setName] = useState(item.name);
+  const [email, setEmail] = useState(item.email);
+  const [role, setRole] = useState(item.role);
+  const [active, setActive] = useState(item.active);
+  const [groupIds, setGroupIds] = useState(item.groupIds);
+  const [password, setPassword] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function save() {
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const response = await updateUser(item.id, {
+        name,
+        email,
+        role,
+        active,
+        groupIds,
+        password: password.trim() ? password : undefined
+      });
+      setPassword("");
+      onUserSaved(response.user);
+      setMessage("Salvo.");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Nao foi possivel salvar.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="admin-row user-editor-row">
+      <div className="user-editor-main">
+        <div className="admin-form-grid">
+          <Field label="Nome">
+            <input required minLength={2} value={name} onChange={(event) => setName(event.target.value)} />
+          </Field>
+          <Field label="E-mail">
+            <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </Field>
+          <Field label="Perfil">
+            <select value={role} onChange={(event) => {
+              const nextRole = event.target.value as AppUser["role"];
+              setRole(nextRole);
+              if (nextRole === "requester") setGroupIds([]);
+            }}>
+              {roleOptions().map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Nova senha">
+            <input type="password" minLength={8} placeholder="Manter atual" value={password} onChange={(event) => setPassword(event.target.value)} />
+          </Field>
+        </div>
+        <GroupCheckboxes
+          groups={catalog?.groups ?? []}
+          selected={groupIds}
+          disabled={role === "requester"}
+          onChange={setGroupIds}
+        />
+      </div>
+      <div className="user-editor-actions">
+        <label className="switch-row">
+          <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
+          <span>Ativo</span>
+        </label>
+        {message ? <span className="form-note">{message}</span> : null}
+        <button type="button" className="secondary-button small" disabled={isSaving} onClick={() => void save()}>
+          {isSaving ? <Loader2 className="spin" size={16} /> : <Pencil size={16} />}
+          <span>Salvar</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GroupCheckboxes({
+  groups,
+  selected,
+  disabled,
+  onChange
+}: {
+  groups: ServiceDeskCatalog["groups"];
+  selected: string[];
+  disabled: boolean;
+  onChange: (groupIds: string[]) => void;
+}) {
+  return (
+    <fieldset className="group-checkboxes" disabled={disabled}>
+      <legend>Grupos de atendimento</legend>
+      {groups.map((group) => (
+        <label key={group.id}>
+          <input
+            type="checkbox"
+            checked={selected.includes(group.id)}
+            onChange={(event) => {
+              const next = event.target.checked
+                ? [...selected, group.id]
+                : selected.filter((groupId) => groupId !== group.id);
+              onChange(next);
+            }}
+          />
+          <span>{group.name}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+function roleOptions(): Array<{ value: AppUser["role"]; label: string }> {
+  return [
+    { value: "requester", label: "Solicitante" },
+    { value: "technician", label: "Tecnico" },
+    { value: "supervisor", label: "Supervisor" },
+    { value: "admin", label: "Administrador" }
+  ];
 }
 
 function AdminPanel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {

@@ -236,6 +236,50 @@ export type ServiceDeskCatalog = {
   knowledgeArticles: Array<{ id: string; title: string; source: string; category: string; updatedAt: string }>;
 };
 
+export type CreateUserPayload = {
+  email: string;
+  name: string;
+  role: UserRole;
+  entityId?: string;
+  entityName?: string;
+  groupIds?: string[];
+  active?: boolean;
+  password: string;
+};
+
+export type UpdateUserPayload = Partial<Omit<CreateUserPayload, "password">> & {
+  password?: string;
+};
+
+export type UpdateProfilePayload = {
+  name: string;
+  entityName?: string;
+  password?: string;
+};
+
+export type TicketChatStreamEvent =
+  | {
+      type: "status";
+      phase: "thinking" | "model" | "fallback" | "done";
+      message: string;
+      model?: string;
+    }
+  | {
+      type: "delta";
+      text: string;
+      model: string;
+    }
+  | {
+      type: "error";
+      message: string;
+      model?: string;
+    }
+  | {
+      type: "ticket";
+      ticket: Ticket;
+      messages: TicketAgentMemoryEntry[];
+    };
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 export async function login(email: string, password: string): Promise<{ user: AppUser; expiresAt: string }> {
@@ -315,6 +359,48 @@ export async function chatWithTicket(ticketId: string, message: string): Promise
   });
 }
 
+export async function streamTicketChat(
+  ticketId: string,
+  message: string,
+  onEvent: (event: TicketChatStreamEvent) => void
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/chat/stream`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ message })
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message ?? "Nao foi possivel conversar com o agente.");
+  }
+
+  if (!response.body) throw new Error("Streaming indisponivel neste navegador.");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+
+    for (const frame of frames) {
+      const dataLine = frame.split("\n").find((line) => line.startsWith("data: "));
+      if (!dataLine) continue;
+      onEvent(JSON.parse(dataLine.slice(6)) as TicketChatStreamEvent);
+    }
+
+    if (done) break;
+  }
+}
+
 export async function listAgentTraces(): Promise<TraceSpan[]> {
   return request("/agents/traces");
 }
@@ -323,14 +409,37 @@ export async function getCatalog(): Promise<ServiceDeskCatalog> {
   return request("/catalog/service-desk");
 }
 
+export async function updateProfile(payload: UpdateProfilePayload): Promise<{ user: AppUser }> {
+  return request("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function createUser(payload: CreateUserPayload): Promise<{ user: AppUser }> {
+  return request("/users", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateUser(userId: string, payload: UpdateUserPayload): Promise<{ user: AppUser }> {
+  return request(`/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (init.body !== undefined && !headers.has("content-type")) {
+    headers.set("content-type", "application/json");
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "content-type": "application/json",
-      ...(init.headers ?? {})
-    }
+    headers
   });
 
   if (!response.ok) {
