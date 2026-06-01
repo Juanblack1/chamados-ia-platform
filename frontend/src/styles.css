@@ -33,6 +33,30 @@
   --shadow-1: 0 1px 2px rgb(15 23 42 / 8%);
 }
 
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0c141c;
+  --color-surface: #182029;
+  --color-surface-muted: #232b33;
+  --color-sidebar: #07110f;
+  --color-sidebar-muted: #9fb4b0;
+  --color-text: #e7eff0;
+  --color-text-muted: #a9b9b6;
+  --color-border: #33413f;
+  --color-action: #5dd7c8;
+  --color-action-hover: #80e4d7;
+  --color-focus: #80e4d7;
+  --color-danger: #ffb4ab;
+  --color-danger-bg: #3a1716;
+  --color-warning: #f6c873;
+  --color-warning-bg: #362811;
+  --color-info: #9fc8ff;
+  --color-info-bg: #14263e;
+  --color-success: #7ad8a0;
+  --color-success-bg: #143321;
+  --shadow-1: 0 1px 0 rgb(255 255 255 / 5%);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -386,6 +410,40 @@ p {
 .topbar-actions {
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.theme-segmented {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.theme-segmented button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.theme-segmented button.active {
+  background: var(--color-action);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .theme-segmented button.active {
+  color: #061211;
 }
 
 .mobile-menu-button {
@@ -2321,6 +2379,26 @@ td small {
   box-shadow: 0 8px 18px rgb(15 23 42 / 9%);
 }
 
+.status-card.critical-risk {
+  border-color: var(--color-danger);
+  box-shadow: inset 4px 0 0 var(--color-danger), var(--shadow-1);
+}
+
+.risk-strip {
+  width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .status-card-top,
 .status-card-action,
 .insight-row,
@@ -2450,6 +2528,40 @@ td small {
   background: var(--color-text-muted);
 }
 
+.prediction-panel {
+  align-content: start;
+}
+
+.volume-bars {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.volume-bar-row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.volume-bar-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.volume-bar-row strong {
+  color: var(--color-text);
+  font-family: var(--font-heading);
+}
+
+.volume-bar-row .distribution-track span {
+  display: block;
+  min-width: 4px;
+  height: 100%;
+  background: var(--color-action);
+  border-radius: inherit;
+}
+
 .priority-risk-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   padding: 0 var(--space-4) var(--space-4);
@@ -2553,6 +2665,21 @@ td small {
 
 .spin {
   animation: spin 800ms linear infinite;
+}
+
+[data-theme="dark"] .sidebar {
+  border-right: 1px solid rgb(255 255 255 / 8%);
+}
+
+[data-theme="dark"] tbody tr:hover,
+[data-theme="dark"] .selected-row,
+[data-theme="dark"] .ticket-table-row:hover,
+[data-theme="dark"] .ticket-table-row.selected-row {
+  background: #17302d;
+}
+
+[data-theme="dark"] .skeleton-rows span {
+  background: linear-gradient(90deg, #182029, #253039, #182029);
 }
 
 @keyframes shimmer {
@@ -2688,8 +2815,14 @@ td small {
   .topbar-actions,
   .search-box,
   .select-filter,
+  .theme-segmented,
   .primary-button {
     width: 100%;
+  }
+
+  .theme-segmented button {
+    flex: 1;
+    justify-content: center;
   }
 
   .metric-strip,

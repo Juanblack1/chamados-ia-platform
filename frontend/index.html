@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Service Desk</title>
+    <script>
+      (() => {
+        const stored = localStorage.getItem("asid-theme") || "system";
+        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const resolved = stored === "dark" || (stored === "system" && systemDark) ? "dark" : "light";
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.dataset.themePreference = stored;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

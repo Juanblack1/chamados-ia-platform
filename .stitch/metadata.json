@@ -11,11 +11,11 @@
   },
   "screens": [
     {
-      "id": "ebb7a9470489438099d35cf02d6bd710",
-      "name": "Operational Dashboard - Status Overview",
+      "id": "86ed20e04d624a7aa7d2bb4c8e85c9c9",
+      "name": "Operational Dashboard - Dark Mode & AI Forecast",
       "deviceType": "DESKTOP",
-      "html": ".stitch/designs/dashboard-status-overview.html",
-      "screenshot": ".stitch/designs/dashboard-status-overview.png"
+      "html": ".stitch/designs/dashboard-dark-forecast.html",
+      "screenshot": ".stitch/designs/dashboard-dark-forecast.png"
     },
     {
       "id": "b2eb779c4cb14cd78bab959f6ee34fae",

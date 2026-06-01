@@ -56,11 +56,17 @@ export function DashboardView({
         {model.statusCards.map((card) => (
           <button
             type="button"
-            className={`status-card ${card.status}`}
+            className={`status-card ${card.status}${card.hasCriticalRisk ? " critical-risk" : ""}`}
             key={card.status}
             onClick={() => onStatusSelect(card.status)}
-            aria-label={`Filtrar chamados com status ${card.label}: ${card.count}`}
+            aria-label={`Filtrar chamados com status ${card.label}: ${card.count}${card.hasCriticalRisk ? ", acao imediata" : ""}`}
           >
+            {card.hasCriticalRisk ? (
+              <span className="risk-strip">
+                <AlertTriangle size={15} />
+                Acao imediata
+              </span>
+            ) : null}
             <div className="status-card-top">
               <span>{card.label}</span>
               <Badge tone={statusTone(card.status)}>{card.label}</Badge>
@@ -162,6 +168,30 @@ export function DashboardView({
             <p className="insight-empty">Media calculada pelos chamados com triagem registrada.</p>
           </section>
 
+          <section className="panel compact-panel prediction-panel">
+            <div className="insight-row">
+              <BarChart3 size={18} />
+              <div>
+                <span>Predicao de volume</span>
+                <strong>{model.volumePrediction.next24h}</strong>
+              </div>
+            </div>
+            <div className="volume-bars" aria-label="Predicao de volume de chamados">
+              {model.volumePrediction.bars.map((bar) => (
+                <div className="volume-bar-row" key={bar.label}>
+                  <div>
+                    <span>{bar.label}</span>
+                    <strong>{bar.value}</strong>
+                  </div>
+                  <div className="distribution-track" aria-hidden="true">
+                    <span style={{ width: `${bar.percent}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="insight-empty">{model.volumePrediction.forecast}</p>
+          </section>
+
           <section className="panel compact-panel">
             <div className="insight-row">
               <AlertTriangle size={18} />
@@ -235,6 +265,7 @@ function buildDashboardModel(tickets: Ticket[]) {
   const maxStatusCount = Math.max(1, ...statusOrder.map((status) => tickets.filter((ticket) => ticket.status === status).length));
   const maxPriorityCount = Math.max(1, ...priorityOrder.map((priority) => tickets.filter((ticket) => ticket.priority === priority).length));
   const confidenceItems = tickets.map((ticket) => ticket.ai.triage?.confidence ?? 0).filter(Boolean);
+  const volumePrediction = predictTicketVolume(tickets, activeTickets);
 
   return {
     totalTickets,
@@ -251,7 +282,9 @@ function buildDashboardModel(tickets: Ticket[]) {
         label: statusLabel(status),
         count: statusTickets.length,
         percent: Math.max(4, Math.round((statusTickets.length / maxStatusCount) * 100)),
-        hint: statusHint(status, statusTickets)
+        hint: statusHint(status, statusTickets),
+        hasCriticalRisk:
+          statusTickets.some((ticket) => ticket.priority === "critical" || slaRisk(ticket) === "breached") || status === "escalated"
       };
     }),
     priorityBars: priorityOrder.map((priority) => {
@@ -269,9 +302,40 @@ function buildDashboardModel(tickets: Ticket[]) {
     criticalOpen: tickets
       .filter((ticket) => ticket.priority === "critical" && !["resolved", "closed"].includes(ticket.status))
       .slice(0, 3),
+    volumePrediction,
     latestTickets: [...tickets]
       .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
       .slice(0, 6)
+  };
+}
+
+function predictTicketVolume(tickets: Ticket[], activeTickets: number) {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const createdLast24h = tickets.filter((ticket) => Date.parse(ticket.createdAt) >= now - dayMs).length;
+  const createdLast7d = tickets.filter((ticket) => Date.parse(ticket.createdAt) >= now - 7 * dayMs).length;
+  const highRiskActive = tickets.filter(
+    (ticket) => !["resolved", "closed"].includes(ticket.status) && ["critical", "high"].includes(ticket.priority)
+  ).length;
+  const today = Math.max(createdLast24h, Math.ceil(activeTickets * 0.25));
+  const next24h = Math.max(today, Math.ceil(today * 1.15 + highRiskActive * 0.35));
+  const sevenDays = Math.max(next24h, Math.ceil((createdLast7d || today * 3) * 1.2 + highRiskActive));
+  const max = Math.max(1, today, next24h, sevenDays);
+  const trend = today > 0 ? Math.max(0, Math.round(((next24h - today) / today) * 100)) : 0;
+
+  return {
+    today,
+    next24h,
+    sevenDays,
+    forecast:
+      trend > 0
+        ? `Aumento de ${trend}% previsto nas proximas 24h pela fila ativa e risco atual.`
+        : "Volume previsto estavel para as proximas 24h.",
+    bars: [
+      { label: "Hoje", value: today, percent: Math.max(4, Math.round((today / max) * 100)) },
+      { label: "Prox. 24h", value: next24h, percent: Math.max(4, Math.round((next24h / max) * 100)) },
+      { label: "7 dias", value: sevenDays, percent: Math.max(4, Math.round((sevenDays / max) * 100)) }
+    ]
   };
 }
 

@@ -30,6 +30,8 @@ import {
   LockKeyhole,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   Pencil,
   Plus,
   RefreshCw,
@@ -37,6 +39,7 @@ import {
   Search,
   Send,
   ShieldCheck,
+  Sun,
   TicketCheck,
   Trash2,
   UserRound,
@@ -115,6 +118,16 @@ const copilotRuntimeUrl = import.meta.env.VITE_COPILOT_RUNTIME_URL ?? "/api/copi
 const CopilotKit = lazy(() => import("@copilotkit/react-core/v2").then((module) => ({ default: module.CopilotKit })));
 const CopilotPopup = lazy(() => import("@copilotkit/react-core/v2").then((module) => ({ default: module.CopilotPopup })));
 
+type ThemePreference = "system" | "light" | "dark";
+
+const THEME_STORAGE_KEY = "asid-theme";
+
+function getInitialThemePreference(): ThemePreference {
+  if (typeof window === "undefined") return "system";
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === "system" || stored === "light" || stored === "dark" ? stored : "system";
+}
+
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [view, setView] = useState<View>("dashboard");
@@ -133,6 +146,7 @@ export default function App() {
   const [form, setForm] = useState<CreateTicketPayload>(initialForm);
   const [intakeAssessment, setIntakeAssessment] = useState<IntakeAssessment | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth < 920);
+  const [themeMode, setThemeMode] = useState<ThemePreference>(getInitialThemePreference);
 
   useEffect(() => {
     void boot();
@@ -146,6 +160,22 @@ export default function App() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function applyTheme() {
+      const resolved = themeMode === "dark" || (themeMode === "system" && media.matches) ? "dark" : "light";
+      document.documentElement.dataset.theme = resolved;
+      document.documentElement.dataset.themePreference = themeMode;
+      document.documentElement.style.colorScheme = resolved;
+    }
+
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+    applyTheme();
+    media.addEventListener("change", applyTheme);
+    return () => media.removeEventListener("change", applyTheme);
+  }, [themeMode]);
 
   const selectedTicket = useMemo(
     () => tickets.find((ticket) => ticket.id === selectedId) ?? tickets[0],
@@ -378,6 +408,8 @@ export default function App() {
             isLoading={isLoading}
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
+            themeMode={themeMode}
+            setThemeMode={setThemeMode}
           />
           {error ? (
             <div className="inline-alert" role="alert">
@@ -702,7 +734,9 @@ function Topbar({
   onRefresh,
   isLoading,
   isSidebarCollapsed,
-  onToggleSidebar
+  onToggleSidebar,
+  themeMode,
+  setThemeMode
 }: {
   view: View;
   user: AppUser;
@@ -716,6 +750,8 @@ function Topbar({
   isLoading: boolean;
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
+  themeMode: ThemePreference;
+  setThemeMode: (value: ThemePreference) => void;
 }) {
   const title =
     view === "new"
@@ -749,6 +785,27 @@ function Topbar({
         <h1>{title}</h1>
       </div>
       <div className="topbar-actions">
+        <div className="theme-segmented" role="group" aria-label="Tema">
+          {[
+            { value: "system" as const, label: "Sistema", icon: Monitor },
+            { value: "light" as const, label: "Claro", icon: Sun },
+            { value: "dark" as const, label: "Escuro", icon: Moon }
+          ].map((option) => {
+            const Icon = option.icon;
+            return (
+              <button
+                type="button"
+                key={option.value}
+                className={themeMode === option.value ? "active" : ""}
+                onClick={() => setThemeMode(option.value)}
+                aria-pressed={themeMode === option.value}
+              >
+                <Icon size={15} />
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
         {view === "queue" ? (
           <>
             <label className="search-box">
