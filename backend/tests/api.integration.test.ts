@@ -14,6 +14,22 @@ afterEach(async () => {
 });
 
 describe("service desk API", () => {
+  it("bootstraps only the admin account in production", async () => {
+    app = await buildServer({ ...makeEnv(), NODE_ENV: "production" });
+
+    const adminCookie = await loginAs("admin@empresa.local", "admin123");
+    const response = await app.inject({ method: "GET", url: "/api/users", headers: { cookie: adminCookie } });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().users).toEqual([
+      expect.objectContaining({
+        email: "admin@empresa.local",
+        role: "admin",
+        permissions: expect.arrayContaining(["tickets.open", "tickets.read", "tickets.work", "tickets.delete", "users.manage"])
+      })
+    ]);
+  });
+
   it("requires auth, blocks vague intake, opens a ticket and serves stored attachments only to the requester", async () => {
     app = await buildServer(makeEnv());
 

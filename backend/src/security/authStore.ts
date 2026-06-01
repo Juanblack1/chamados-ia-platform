@@ -329,22 +329,27 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
   const adminPassword = env.AUTH_BOOTSTRAP_ADMIN_PASSWORD || (env.NODE_ENV === "production" ? "" : "admin123");
   const devPassword = env.NODE_ENV === "production" ? "" : "dev123";
   const testRequesterPassword = env.AUTH_TEST_REQUESTER_PASSWORD || (env.NODE_ENV === "production" ? "" : devPassword);
+  const adminUser = withPassword(
+    {
+      id: "usr-admin",
+      email: env.AUTH_BOOTSTRAP_ADMIN_EMAIL,
+      name: "Administrador Service Desk",
+      role: "admin",
+      entityId: "corp",
+      entityName: "Corporativo",
+      groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform", "grp-workplace", "grp-approvals"],
+      permissions: [...permissionKeys],
+      active: true
+    },
+    adminPassword
+  );
+
+  if (env.NODE_ENV === "production") {
+    return [await adminUser];
+  }
 
   return Promise.all([
-    withPassword(
-      {
-        id: "usr-admin",
-        email: env.AUTH_BOOTSTRAP_ADMIN_EMAIL,
-        name: "Administrador Service Desk",
-        role: "admin",
-        entityId: "corp",
-        entityName: "Corporativo",
-        groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform", "grp-workplace", "grp-approvals"],
-        permissions: [...permissionKeys],
-        active: true
-      },
-      adminPassword
-    ),
+    adminUser,
     withPassword(
       {
         id: "usr-supervisor",
