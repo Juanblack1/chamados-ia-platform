@@ -23,6 +23,7 @@ import {
   FileSearch,
   ImagePlus,
   KeyRound,
+  LayoutDashboard,
   LifeBuoy,
   ListFilter,
   Loader2,
@@ -103,6 +104,7 @@ import {
 import { AdminPanel, AnalysisItem, Badge, Field } from "./components/common";
 import { QueueView as TicketQueueView } from "./views/tickets/QueueView";
 import { IntakeView as TicketIntakeView } from "./views/tickets/IntakeView";
+import { DashboardView } from "./views/tickets/DashboardView";
 import { GroupCheckboxes as AdminGroupCheckboxes, PermissionCheckboxes as AdminPermissionCheckboxes } from "./views/admin/AccessControls";
 
 const TEST_REQUESTER_EMAIL = import.meta.env.VITE_TEST_REQUESTER_EMAIL ?? (import.meta.env.DEV ? "solicitante.teste@empresa.local" : "");
@@ -115,7 +117,7 @@ const CopilotPopup = lazy(() => import("@copilotkit/react-core/v2").then((module
 
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [view, setView] = useState<View>("queue");
+  const [view, setView] = useState<View>("dashboard");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -215,7 +217,7 @@ export default function App() {
     setTickets([]);
     setSelectedId(null);
     setSelectedUserId(null);
-    setView("queue");
+    setView("dashboard");
   }
 
   async function handleCreateTicket(event: FormEvent<HTMLFormElement>) {
@@ -391,6 +393,27 @@ export default function App() {
               isLoading={isLoading}
               selectedId={selectedTicket?.id}
               onSelect={(ticket) => {
+                setSelectedId(ticket.id);
+                setView("detail");
+              }}
+            />
+          ) : null}
+
+          {view === "dashboard" ? (
+            <DashboardView
+              tickets={tickets}
+              isLoading={isLoading}
+              onStatusSelect={(status) => {
+                setSearch("");
+                setStatusFilter(status);
+                setView("queue");
+              }}
+              onOpenQueue={() => {
+                setSearch("");
+                setStatusFilter("all");
+                setView("queue");
+              }}
+              onOpenTicket={(ticket) => {
                 setSelectedId(ticket.id);
                 setView("detail");
               }}
@@ -612,6 +635,7 @@ function Sidebar({
 }) {
   const requester = user.role === "requester";
   const items = [
+    { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
     { id: "queue" as const, label: requester ? "Meus chamados" : "Minha fila", icon: ClipboardList },
     { id: "new" as const, label: "Abrir chamado", icon: Plus },
     ...(requester ? [] : [{ id: "detail" as const, label: "Workspace", icon: TicketCheck }]),
@@ -698,6 +722,8 @@ function Topbar({
       ? "Abrir chamado"
       : view === "detail"
         ? "Workspace do chamado"
+        : view === "dashboard"
+          ? "Dashboard"
         : view === "users"
           ? "Usuarios"
           : view === "userCreate"
@@ -734,11 +760,15 @@ function Topbar({
               <ListFilter size={16} />
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as TicketStatus | "all")}>
                 <option value="all">Todos os status</option>
+                <option value="new">Novo</option>
                 <option value="open">Aberto</option>
+                <option value="triaging">Triagem</option>
                 <option value="in_progress">Em atendimento</option>
                 <option value="waiting_customer">Aguardando solicitante</option>
+                <option value="pending_approval">Aguardando aprovacao</option>
                 <option value="escalated">Escalado</option>
                 <option value="resolved">Resolvido</option>
+                <option value="closed">Fechado</option>
               </select>
             </label>
           </>

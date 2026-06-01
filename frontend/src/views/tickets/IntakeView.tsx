@@ -162,7 +162,7 @@ function IntakeIntelligencePanel({
       <div className="panel-heading">
         <div>
           <h2 id="intake-ai-title">Intake inteligente</h2>
-          <p>Analise antes da abertura com RAG, similares, campos sugeridos e bloqueio de chamados vagos.</p>
+          <p>Analise antes da abertura com RAG, similares, campos sugeridos e bloqueio apenas para relatos vagos.</p>
         </div>
         {assessment ? <Badge tone={assessmentTone(assessment)}>{readinessLabel(assessment.readiness)}</Badge> : null}
       </div>
@@ -198,7 +198,7 @@ function IntakeIntelligencePanel({
 
           {assessment.missingInformation.length ? (
             <div className="intake-list">
-              <h3>Faltando para abrir</h3>
+              <h3>{assessment.shouldCreate ? "Complementar depois" : "Faltando para abrir"}</h3>
               <ul>
                 {assessment.missingInformation.map((item) => (
                   <li key={item}>{item}</li>
@@ -275,7 +275,7 @@ function IntakeIntelligencePanel({
           <AnalysisItem label="Prioridade local" value={priorityLabel(localPriority)} />
           <AnalysisItem label="SLA local" value={localPriority === "critical" ? "P1 - resposta em 15 min" : localPriority === "high" ? "P2 - resposta em 1 h" : "P3/P4 - fila padrao"} />
           <AnalysisItem label="Grupo local" value={estimatedGroup(form)} />
-          <AnalysisItem label="Controle" value="A analise IA roda antes de criar o chamado" />
+          <AnalysisItem label="Controle" value="A analise IA orienta antes de criar o chamado" />
         </div>
       )}
     </section>

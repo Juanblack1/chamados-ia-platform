@@ -244,6 +244,24 @@ describe("AgentOrchestrator", () => {
       expect.arrayContaining(["Informe o sistema, aplicacao ou servico afetado."])
     );
     expect(genericButLongAssessment.workflow).toEqual(expect.arrayContaining(["ticket.blocked-before-open"]));
+
+    const actionableButIncomplete = await orchestrator.assessIntake(
+      normalizeCreateTicketInput({
+        requesterEmail: "ana@acme.local",
+        department: "Operacoes",
+        title: "Login bloqueado",
+        description: "Carlos Roberto nao consegue acessar o ERP Central hoje as 10:20 para faturamento.",
+        affectedService: "Geral",
+        urgency: "medium",
+        impact: "medium",
+        businessImpact: "Faturamento do cliente esta parado ate validar o acesso.",
+        attachments: []
+      })
+    );
+
+    expect(actionableButIncomplete.shouldCreate).toBe(true);
+    expect(actionableButIncomplete.readiness).not.toBe("needs_info");
+    expect(actionableButIncomplete.workflow).toEqual(expect.arrayContaining(["ticket.ready-to-open"]));
     await expect(orchestrator.listTickets()).resolves.toHaveLength(2);
   });
 });

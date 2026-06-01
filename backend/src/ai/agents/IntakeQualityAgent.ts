@@ -97,8 +97,11 @@ export function assessTicketIntakeQuality(params: {
   const group = selectGroup(effectiveInput);
   const similarTickets = findSimilarTickets(effectiveInput, existingTickets);
   const selfService = buildSelfServiceSuggestion(effectiveInput, relevantSources, suggestedPriority, text);
-  const hardBlock = nonsense || genericVague || score < 55 || missingInformation.length >= 5;
-  const shouldCreate = !hardBlock && !selfService.canDeflect;
+  const hasOperationalCore = details.hasDetailedDescription && (details.hasService || details.hasObservedError || details.hasAffectedUsers);
+  const extremelyThin = score < 35 && !hasOperationalCore;
+  const overloadedMissingContext = missingInformation.length >= 6 && !hasOperationalCore;
+  const hardBlock = nonsense || (genericVague && !hasOperationalCore) || extremelyThin || overloadedMissingContext;
+  const shouldCreate = !hardBlock;
   const readiness: IntakeReadiness = hardBlock ? "needs_info" : selfService.canDeflect ? "self_service" : "ready";
   const titleSuggestion = suggestTitle(effectiveInput, triage.category);
 
@@ -137,7 +140,7 @@ export function assessTicketIntakeQuality(params: {
       "rag.search",
       "agent.ticket-triage",
       "agent.routing",
-      readiness === "ready" ? "ticket.ready-to-open" : "ticket.blocked-before-open"
+      readiness === "needs_info" ? "ticket.blocked-before-open" : "ticket.ready-to-open"
     ]
   };
 }
@@ -408,8 +411,8 @@ function buildSummary(
   groupName: string,
   canDeflect: boolean
 ): string {
-  if (readiness === "needs_info") return `Intake incompleto (${score}/100). Colete mais contexto antes de abrir o chamado.`;
-  if (canDeflect) return `Possivel autoatendimento com base de conhecimento antes de abrir chamado.`;
+  if (readiness === "needs_info") return `Intake incompleto (${score}/100). Colete contexto minimo antes de abrir o chamado.`;
+  if (canDeflect) return `Autoatendimento sugerido, mas o chamado pode ser aberto se o solicitante precisar de suporte.`;
   return `Intake pronto (${score}/100). Previsao: ${triage.category}, prioridade ${priorityLabel(triage.priority)}, grupo ${groupName}.`;
 }
 

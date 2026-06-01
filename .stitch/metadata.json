@@ -11,11 +11,11 @@
   },
   "screens": [
     {
-      "id": "6901e9248f2446709f3c9f0bc2af24fa",
-      "name": "Operational Dashboard - Fila de chamados",
+      "id": "ebb7a9470489438099d35cf02d6bd710",
+      "name": "Operational Dashboard - Status Overview",
       "deviceType": "DESKTOP",
-      "html": ".stitch/designs/dashboard.html",
-      "screenshot": ".stitch/designs/dashboard.png"
+      "html": ".stitch/designs/dashboard-status-overview.html",
+      "screenshot": ".stitch/designs/dashboard-status-overview.png"
     },
     {
       "id": "b2eb779c4cb14cd78bab959f6ee34fae",

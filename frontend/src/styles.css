@@ -2287,6 +2287,256 @@ td small {
   max-width: 460px;
 }
 
+.dashboard-layout {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.dashboard-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.status-card {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: left;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.status-card:hover {
+  border-color: var(--color-action);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgb(15 23 42 / 9%);
+}
+
+.status-card-top,
+.status-card-action,
+.insight-row,
+.priority-risk-item > div,
+.distribution-row > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.status-card-top > span,
+.status-card small,
+.status-card-action,
+.insight-row span,
+.insight-empty,
+.latest-ticket-row small {
+  color: var(--color-text-muted);
+}
+
+.status-card strong {
+  font-family: var(--font-heading);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1;
+}
+
+.status-card-action {
+  justify-content: flex-start;
+  font-weight: 700;
+  color: var(--color-action);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: var(--space-4);
+  align-items: start;
+  min-width: 0;
+}
+
+.situation-panel,
+.latest-tickets-panel,
+.dashboard-insights {
+  min-width: 0;
+}
+
+.overview-chart {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.overview-summary {
+  display: grid;
+  align-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.overview-summary span,
+.overview-summary small {
+  color: var(--color-text-muted);
+}
+
+.overview-summary strong {
+  font-family: var(--font-heading);
+  font-size: 2.8rem;
+  line-height: 1;
+}
+
+.status-distribution,
+.priority-risk-grid,
+.dashboard-insights,
+.insight-list,
+.latest-ticket-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.distribution-row {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.distribution-row strong {
+  font-family: var(--font-heading);
+}
+
+.distribution-track {
+  height: 10px;
+  overflow: hidden;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm);
+}
+
+.distribution-fill,
+.confidence-meter span {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+}
+
+.distribution-fill.danger {
+  background: var(--color-danger);
+}
+
+.distribution-fill.warning {
+  background: var(--color-warning);
+}
+
+.distribution-fill.info {
+  background: var(--color-info);
+}
+
+.distribution-fill.success,
+.confidence-meter span {
+  background: var(--color-success);
+}
+
+.distribution-fill.neutral {
+  background: var(--color-text-muted);
+}
+
+.priority-risk-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.priority-risk-item {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.compact-panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.insight-row {
+  justify-content: flex-start;
+}
+
+.insight-row svg {
+  color: var(--color-action);
+}
+
+.insight-row strong {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+}
+
+.insight-list button,
+.latest-ticket-row {
+  width: 100%;
+  min-width: 0;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.insight-list button {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  text-align: left;
+}
+
+.insight-list button:hover,
+.latest-ticket-row:hover {
+  border-color: var(--color-action);
+  background: var(--color-surface-muted);
+}
+
+.confidence-meter {
+  height: 10px;
+  overflow: hidden;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm);
+}
+
+.latest-ticket-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) auto auto minmax(120px, 0.8fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+}
+
+.latest-ticket-row > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.latest-ticket-row strong,
+.insight-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .skeleton-rows {
   padding: var(--space-4);
   display: grid;
@@ -2335,7 +2585,8 @@ td small {
   .users-admin-hero,
   .users-admin-grid,
   .users-directory-grid,
-  .user-form-layout {
+  .user-form-layout,
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2353,6 +2604,10 @@ td small {
 
   .user-security-panel {
     position: static;
+  }
+
+  .dashboard-insights {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .ticket-table th:nth-child(6),
@@ -2455,6 +2710,21 @@ td small {
   .suggestion-card,
   .assistant-composer {
     grid-template-columns: 1fr;
+  }
+
+  .overview-chart,
+  .priority-risk-grid,
+  .dashboard-insights,
+  .latest-ticket-row {
+    grid-template-columns: 1fr;
+  }
+
+  .latest-ticket-row {
+    align-items: start;
+  }
+
+  .status-card:hover {
+    transform: none;
   }
 
   .ticket-workspace-header,
