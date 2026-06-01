@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Editar Usuário | ServiceDesk AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-variant": "#e0e3e5",
+                      "on-secondary-container": "#57657b",
+                      "on-surface": "#191c1e",
+                      "on-secondary-fixed-variant": "#3a485c",
+                      "on-primary-container": "#a3faef",
+                      "surface-container-low": "#f2f4f6",
+                      "surface-container-high": "#e6e8ea",
+                      "tertiary-fixed": "#ffdbd0",
+                      "inverse-primary": "#80d5cb",
+                      "tertiary": "#952c00",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed-dim": "#ffb59d",
+                      "secondary": "#515f74",
+                      "on-secondary": "#ffffff",
+                      "surface-container-highest": "#e0e3e5",
+                      "on-primary-fixed-variant": "#00504a",
+                      "surface": "#f7f9fb",
+                      "secondary-container": "#d5e3fd",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed": "#00201d",
+                      "inverse-on-surface": "#eff1f3",
+                      "secondary-fixed": "#d5e3fd",
+                      "outline-variant": "#bdc9c6",
+                      "primary": "#005c55",
+                      "secondary-fixed-dim": "#b9c7e0",
+                      "on-background": "#191c1e",
+                      "background": "#f7f9fb",
+                      "surface-container": "#eceef0",
+                      "on-secondary-fixed": "#0d1c2f",
+                      "primary-fixed": "#9cf2e8",
+                      "on-tertiary-fixed": "#390c00",
+                      "outline": "#6e7977",
+                      "error-container": "#ffdad6",
+                      "surface-dim": "#d8dadc",
+                      "on-primary": "#ffffff",
+                      "tertiary-container": "#bd3d07",
+                      "surface-bright": "#f7f9fb",
+                      "on-surface-variant": "#3e4947",
+                      "primary-container": "#0f766e",
+                      "on-tertiary-container": "#ffe4dd",
+                      "error": "#ba1a1a",
+                      "on-tertiary-fixed-variant": "#832600",
+                      "primary-fixed-dim": "#80d5cb",
+                      "on-error-container": "#93000a",
+                      "surface-tint": "#006a63",
+                      "inverse-surface": "#2d3133"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Plus Jakarta Sans"],
+                      "display": ["Plus Jakarta Sans"],
+                      "body": ["Be Vietnam Pro"],
+                      "label": ["Be Vietnam Pro"]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #bdc9c6; border-radius: 10px; }
+        .strength-bar { height: 4px; border-radius: 2px; transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex h-screen overflow-hidden">
+<!-- Sidebar (SideNavBar from JSON) -->
+<aside class="flex flex-col h-full py-4 border-r border-outline-variant bg-surface-container-low w-64 shrink-0">
+<div class="px-6 mb-8">
+<h1 class="text-lg font-headline font-black text-on-surface">Admin Console</h1>
+<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Enterprise Tier</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-4 py-2 text-on-surface-variant mx-2 hover:bg-surface-container-highest transition-all duration-150 ease-in-out font-body text-label-lg" href="#">
+<span class="material-symbols-outlined mr-3">assignment</span> Queue
+            </a>
+<a class="flex items-center px-4 py-2 bg-secondary-container text-on-secondary-container rounded-lg mx-2 font-body text-label-lg font-semibold" href="#">
+<span class="material-symbols-outlined mr-3">group</span> User Management
+            </a>
+<a class="flex items-center px-4 py-2 text-on-surface-variant mx-2 hover:bg-surface-container-highest transition-all duration-150 ease-in-out font-body text-label-lg" href="#">
+<span class="material-symbols-outlined mr-3">inventory_2</span> IT Assets
+            </a>
+<a class="flex items-center px-4 py-2 text-on-surface-variant mx-2 hover:bg-surface-container-highest transition-all duration-150 ease-in-out font-body text-label-lg" href="#">
+<span class="material-symbols-outlined mr-3">menu_book</span> Knowledge Base
+            </a>
+<a class="flex items-center px-4 py-2 text-on-surface-variant mx-2 hover:bg-surface-container-highest transition-all duration-150 ease-in-out font-body text-label-lg" href="#">
+<span class="material-symbols-outlined mr-3">history_edu</span> Audit Logs
+            </a>
+<a class="flex items-center px-4 py-2 text-on-surface-variant mx-2 hover:bg-surface-container-highest transition-all duration-150 ease-in-out font-body text-label-lg" href="#">
+<span class="material-symbols-outlined mr-3">psychology</span> AI Policies
+            </a>
+</nav>
+<div class="mt-auto px-2 space-y-1">
+<button class="w-full flex items-center px-4 py-2 text-on-surface-variant hover:bg-surface-container-highest rounded-lg transition-all">
+<span class="material-symbols-outlined mr-3">support_agent</span> Support
+            </button>
+<button class="w-full flex items-center px-4 py-2 text-on-surface-variant hover:bg-surface-container-highest rounded-lg transition-all">
+<span class="material-symbols-outlined mr-3">logout</span> Sign Out
+            </button>
+<div class="mt-4 px-4 py-3 flex items-center gap-3 border-t border-outline-variant pt-4">
+<img class="w-8 h-8 rounded-full bg-surface-variant object-cover" data-alt="A professional headshot of a corporate IT administrator with a clean, high-key lighting background. The subject is a woman with a confident and friendly expression, wearing modern business-casual attire. The image has a crisp, minimalist aesthetic that fits into a high-end enterprise software user profile section." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxQTMnkEXVSR_kIe9x0pWMgoGjdW9esobtofrTFy7KoHb0kFALnRDWakgBIyA8aJpChnBhArD6cl-mx7Oj9XX2t_B97GiMNo_VYxjCwonMMEfCXg7KVaBGwtaNX2y16QSmKrxk4ygcDU-A0s7GeGwaSIo-Oya-6DDjMyB1A2XhIS9Nzh_C9zeIKvYkHQ6R3BA4nX5RdJjFDvFYYyysYWBVAr83aqfMzBJ-iOZhZZZ3pmMKpLSe2nd8g8uuIZDXsTyY4oAAypr0Xc0"/>
+<div class="overflow-hidden">
+<p class="text-xs font-bold truncate">System Operator</p>
+<p class="text-[10px] text-on-surface-variant truncate">Admin Access</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-full overflow-hidden bg-background">
+<!-- Header -->
+<header class="h-16 px-6 flex justify-between items-center bg-surface border-b border-outline-variant shrink-0">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div>
+<div class="flex items-center gap-2">
+<h2 class="text-xl font-headline font-bold text-primary">Ana Paula Silva</h2>
+<span class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-tight">Enterprise User</span>
+</div>
+<p class="text-xs text-on-surface-variant font-medium">ana.paula@empresa.com.br • Matriz SP</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 border border-outline text-primary font-bold text-sm rounded-lg hover:bg-surface-container-low transition-colors">
+                    Cancelar alterações
+                </button>
+<button class="px-5 py-2 bg-primary text-on-primary font-bold text-sm rounded-lg shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center gap-2" onclick="handleSave(this)">
+<span class="save-text">Salvar usuário</span>
+</button>
+</div>
+</header>
+<!-- Summary Bar -->
+<section class="bg-surface-container-lowest border-b border-outline-variant px-6 py-4 grid grid-cols-5 gap-6 shrink-0">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Status</span>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-sm font-semibold text-on-surface">Ativo</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Cargo</span>
+<span class="text-sm font-semibold text-on-surface">Analista L2</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Entidade</span>
+<span class="text-sm font-semibold text-on-surface">Matriz SP</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Permissões</span>
+<span class="text-sm font-semibold text-on-surface">12 ativas</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Grupos</span>
+<div class="flex gap-1">
+<span class="text-xs bg-surface-container text-on-surface-variant px-2 py-0.5 rounded font-medium">Cloud Infra</span>
+<span class="text-xs bg-surface-container text-on-surface-variant px-2 py-0.5 rounded font-medium">N2</span>
+</div>
+</div>
+</section>
+<!-- Content Area: Form & Side Panel -->
+<div class="flex-1 overflow-y-auto flex">
+<!-- Form Grid -->
+<div class="flex-1 p-8">
+<div class="max-w-4xl space-y-10 pb-24">
+<!-- Dados da Conta -->
+<section>
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-6 border-b border-outline-variant pb-2">Dados da conta</h3>
+<div class="grid grid-cols-2 gap-6">
+<div class="flex flex-col gap-1.5">
+<label class="text-xs font-bold text-on-surface-variant">Nome completo</label>
+<input class="bg-surface-container-low border-outline-variant rounded-lg text-sm px-4 py-2.5 focus:ring-primary focus:border-primary" type="text" value="Ana Paula Silva"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-xs font-bold text-on-surface-variant">E-mail corporativo</label>
+<input class="bg-surface-container-low border-outline-variant rounded-lg text-sm px-4 py-2.5 focus:ring-primary focus:border-primary" type="email" value="ana.paula@empresa.com.br"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-xs font-bold text-on-surface-variant">Entidade</label>
+<select class="bg-surface-container-low border-outline-variant rounded-lg text-sm px-4 py-2.5 focus:ring-primary focus:border-primary">
+<option selected="">Matriz SP</option>
+<option>Filial RJ</option>
+<option>Unidade Curitiba</option>
+</select>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface-container border border-dashed border-outline-variant rounded-lg mt-4">
+<span class="text-sm font-semibold text-on-surface">Usuário Ativo</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Perfil e Escopo -->
+<section>
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-6 border-b border-outline-variant pb-2">Perfil e escopo</h3>
+<div class="grid grid-cols-2 gap-6">
+<div class="flex flex-col gap-1.5">
+<label class="text-xs font-bold text-on-surface-variant">Cargo/Função</label>
+<select class="bg-surface-container-low border-outline-variant rounded-lg text-sm px-4 py-2.5 focus:ring-primary focus:border-primary">
+<option>Analista L1</option>
+<option selected="">Analista L2</option>
+<option>Analista L3</option>
+<option>Coordenador de TI</option>
+</select>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-xs font-bold text-on-surface-variant">Grupos de Serviço</label>
+<div class="relative">
+<div class="flex flex-wrap gap-1 p-2 bg-surface-container-low border border-outline-variant rounded-lg min-h-[42px] items-center">
+<span class="flex items-center gap-1 bg-secondary-container text-on-secondary-container text-xs font-bold px-2 py-1 rounded">Cloud Infra <span class="material-symbols-outlined text-xs cursor-pointer">close</span></span>
+<span class="flex items-center gap-1 bg-secondary-container text-on-secondary-container text-xs font-bold px-2 py-1 rounded">N2 <span class="material-symbols-outlined text-xs cursor-pointer">close</span></span>
+<span class="text-on-surface-variant/40 text-xs px-2">Selecionar mais...</span>
+</div>
+<p class="text-[10px] mt-1 text-on-surface-variant italic">Nota: Solicitantes não podem participar de grupos técnicos.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Permissões -->
+<section>
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-6 border-b border-outline-variant pb-2">Permissões do Sistema</h3>
+<div class="grid grid-cols-3 gap-4">
+<label class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-surface-container-high rounded-xl border border-outline-variant transition-colors cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary h-5 w-5" type="checkbox"/>
+<span class="text-sm font-semibold">Abrir chamados</span>
+</label>
+<label class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-surface-container-high rounded-xl border border-outline-variant transition-colors cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary h-5 w-5" type="checkbox"/>
+<span class="text-sm font-semibold">Ler chamados</span>
+</label>
+<label class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-surface-container-high rounded-xl border border-outline-variant transition-colors cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary h-5 w-5" type="checkbox"/>
+<span class="text-sm font-semibold">Tratar chamados</span>
+</label>
+<label class="flex items-center justify-between p-4 bg-error-container/20 hover:bg-error-container/40 rounded-xl border border-error/20 transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<input class="rounded border-error text-error focus:ring-error h-5 w-5" type="checkbox"/>
+<span class="text-sm font-semibold text-error">Excluir chamados</span>
+</div>
+<span class="material-symbols-outlined text-error text-lg" title="Permissão Crítica">warning</span>
+</label>
+<label class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-surface-container-high rounded-xl border border-outline-variant transition-colors cursor-pointer">
+<input class="rounded border-outline-variant text-primary focus:ring-primary h-5 w-5" type="checkbox"/>
+<span class="text-sm font-semibold">Gerenciar usuários</span>
+</label>
+</div>
+</section>
+<!-- Credenciais -->
+<section>
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-6 border-b border-outline-variant pb-2">Segurança e Credenciais</h3>
+<div class="max-w-md space-y-4">
+<div class="flex flex-col gap-1.5">
+<label class="text-xs font-bold text-on-surface-variant">Redefinir senha</label>
+<div class="relative">
+<input class="w-full bg-surface-container-low border-outline-variant rounded-lg text-sm px-4 py-2.5 focus:ring-primary focus:border-primary" id="pass" placeholder="••••••••••••" type="password"/>
+<button class="absolute right-3 top-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">visibility_off</span>
+</button>
+</div>
+<div class="flex gap-1 mt-2">
+<div class="strength-bar flex-1 bg-surface-container"></div>
+<div class="strength-bar flex-1 bg-surface-container"></div>
+<div class="strength-bar flex-1 bg-surface-container"></div>
+<div class="strength-bar flex-1 bg-surface-container"></div>
+</div>
+<p class="text-[11px] text-on-surface-variant font-medium mt-1">Deixe em branco para manter a atual</p>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Side Panel (Resumo de Segurança) -->
+<aside class="w-80 bg-surface-container-low border-l border-outline-variant p-6 flex flex-col gap-8 shrink-0">
+<div>
+<h4 class="text-xs font-black text-on-surface-variant uppercase tracking-wider mb-4">Regras Efetivas</h4>
+<div class="space-y-3">
+<div class="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm border border-outline-variant">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<div>
+<p class="text-sm font-bold">Acesso L2 Padrão</p>
+<p class="text-[11px] text-on-surface-variant">Herança via cargo</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm border border-outline-variant">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">security</span>
+<div>
+<p class="text-sm font-bold">Escopo Cloud Infra</p>
+<p class="text-[11px] text-on-surface-variant">Restrição de tickets</p>
+</div>
+</div>
+</div>
+</div>
+<div>
+<h4 class="text-xs font-black text-on-surface-variant uppercase tracking-wider mb-3">Scope by Role</h4>
+<div class="p-4 bg-surface-container rounded-lg border-l-4 border-primary">
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                            Como <strong class="text-on-surface">Analista L2</strong>, este usuário recebe permissões automáticas para interagir com workflows avançados e editar propriedades técnicas de chamados escalados.
+                        </p>
+</div>
+</div>
+<div class="mt-auto">
+<div class="p-4 bg-error-container/10 border border-error/20 rounded-xl flex gap-3">
+<span class="material-symbols-outlined text-error">report</span>
+<div>
+<p class="text-xs font-bold text-on-error-container mb-1">Alerta de Segurança</p>
+<p class="text-[11px] text-on-error-container/80 leading-snug">
+                                'Excluir chamados' é uma permissão crítica. A ativação será registrada no log de auditoria global.
+                            </p>
+</div>
+</div>
+</div>
+</aside>
+</div>
+<!-- Footer -->
+<footer class="h-14 bg-surface-container-lowest border-t border-outline-variant px-6 flex items-center justify-end shrink-0 gap-4">
+<div class="hidden text-sm font-medium animate-pulse" id="status-feedback"></div>
+<button class="px-8 py-2 bg-primary text-on-primary font-bold text-sm rounded-lg shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center gap-2" onclick="handleSave(this)">
+<span class="save-text">Salvar usuário</span>
+</button>
+</footer>
+</main>
+<script>
+        function handleSave(btn) {
+            const btns = document.querySelectorAll('.save-text');
+            const feedback = document.getElementById('status-feedback');
+            
+            btns.forEach(t => t.innerHTML = '<span class="flex items-center gap-2"><span class="animate-spin material-symbols-outlined text-sm">progress_activity</span> Salvando...</span>');
+            
+            setTimeout(() => {
+                feedback.innerHTML = '<span class="flex items-center gap-1 text-primary"><span class="material-symbols-outlined text-sm">check_circle</span> Alterações salvas com sucesso</span>';
+                feedback.classList.remove('hidden');
+                btns.forEach(t => t.innerHTML = 'Salvar usuário');
+                
+                setTimeout(() => {
+                    feedback.classList.add('hidden');
+                }, 3000);
+            }, 1800);
+        }
+
+        // Simple Password Strength Simulation
+        const pass = document.getElementById('pass');
+        const bars = document.querySelectorAll('.strength-bar');
+        pass.addEventListener('input', (e) => {
+            const val = e.target.value;
+            bars.forEach(b => b.classList.remove('bg-primary', 'bg-error', 'bg-tertiary-container'));
+            if(val.length > 0) {
+                if(val.length < 4) {
+                    bars[0].classList.add('bg-error');
+                } else if (val.length < 8) {
+                    bars[0].classList.add('bg-tertiary-container');
+                    bars[1].classList.add('bg-tertiary-container');
+                } else {
+                    bars.forEach(b => b.classList.add('bg-primary'));
+                }
+            }
+        });
+    </script>
+</body></html>

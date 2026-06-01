@@ -118,6 +118,7 @@ export default function App() {
   const [view, setView] = useState<View>("queue");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [traces, setTraces] = useState<TraceSpan[]>([]);
   const [catalog, setCatalog] = useState<ServiceDeskCatalog | null>(null);
   const [isBooting, setIsBooting] = useState(true);
@@ -133,6 +134,15 @@ export default function App() {
 
   useEffect(() => {
     void boot();
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth < 920) setIsSidebarCollapsed(true);
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const selectedTicket = useMemo(
@@ -204,6 +214,7 @@ export default function App() {
     setUser(null);
     setTickets([]);
     setSelectedId(null);
+    setSelectedUserId(null);
     setView("queue");
   }
 
@@ -318,6 +329,12 @@ export default function App() {
     await refreshWorkspace();
   }
 
+  async function handleManagedUserSaved(updated: AppUser) {
+    if (updated.id === user?.id) setUser(updated);
+    setSelectedUserId(updated.id);
+    await refreshWorkspace();
+  }
+
   if (isBooting) return <BootScreen />;
 
   if (!user) {
@@ -354,6 +371,7 @@ export default function App() {
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
             onCreate={() => setView("new")}
+            onCreateUser={() => setView("userCreate")}
             onRefresh={() => void refreshWorkspace()}
             isLoading={isLoading}
             isSidebarCollapsed={isSidebarCollapsed}
@@ -414,12 +432,37 @@ export default function App() {
           {view === "profile" ? <ProfileView user={user} onUpdated={(updated) => void handleCurrentUserUpdated(updated)} /> : null}
 
           {view === "users" ? (
-            <UserAdminView
+            <UserDirectoryView
               user={user}
               catalog={catalog}
-              onUserSaved={(updated) => {
-                if (updated.id === user.id) setUser(updated);
-                void refreshWorkspace();
+              onCreateUser={() => setView("userCreate")}
+              onOpenUser={(item) => {
+                setSelectedUserId(item.id);
+                setView("userDetail");
+              }}
+            />
+          ) : null}
+
+          {view === "userCreate" ? (
+            <UserCreatePage
+              user={user}
+              catalog={catalog}
+              onCancel={() => setView("users")}
+              onUserSaved={async (created) => {
+                await handleManagedUserSaved(created);
+                setView("userDetail");
+              }}
+            />
+          ) : null}
+
+          {view === "userDetail" ? (
+            <UserDetailPage
+              user={user}
+              catalog={catalog}
+              selectedUserId={selectedUserId}
+              onBack={() => setView("users")}
+              onUserSaved={async (updated) => {
+                await handleManagedUserSaved(updated);
               }}
             />
           ) : null}
@@ -592,11 +635,12 @@ function Sidebar({
       <nav aria-label="Principal">
         {items.map((item) => {
           const Icon = item.icon;
+          const isActive = item.id === "users" ? ["users", "userCreate", "userDetail"].includes(active) : active === item.id;
           return (
             <button
               key={item.id}
               type="button"
-              className={active === item.id ? "nav-item active" : "nav-item"}
+              className={isActive ? "nav-item active" : "nav-item"}
               onClick={() => onNavigate(item.id)}
             >
               <Icon size={18} />
@@ -630,6 +674,7 @@ function Topbar({
   statusFilter,
   setStatusFilter,
   onCreate,
+  onCreateUser,
   onRefresh,
   isLoading,
   isSidebarCollapsed,
@@ -642,6 +687,7 @@ function Topbar({
   statusFilter: TicketStatus | "all";
   setStatusFilter: (value: TicketStatus | "all") => void;
   onCreate: () => void;
+  onCreateUser: () => void;
   onRefresh: () => void;
   isLoading: boolean;
   isSidebarCollapsed: boolean;
@@ -654,11 +700,16 @@ function Topbar({
         ? "Workspace do chamado"
         : view === "users"
           ? "Usuarios"
-          : view === "profile"
-            ? "Perfil"
-            : user.role === "requester"
-              ? "Meus chamados"
-              : "Minha fila";
+          : view === "userCreate"
+            ? "Cadastrar usuario"
+            : view === "userDetail"
+              ? "Editar usuario"
+              : view === "profile"
+                ? "Perfil"
+                : user.role === "requester"
+                  ? "Meus chamados"
+                  : "Minha fila";
+  const isUserArea = view === "users" || view === "userCreate" || view === "userDetail";
 
   return (
     <header className="topbar">
@@ -695,10 +746,18 @@ function Topbar({
         <button type="button" className="icon-button" onClick={onRefresh} aria-label="Atualizar dados">
           {isLoading ? <Loader2 className="spin" size={18} /> : <RefreshCw size={18} />}
         </button>
-        <button type="button" className="primary-button" onClick={onCreate}>
-          <Plus size={18} />
-          <span>Abrir chamado</span>
-        </button>
+        {isUserArea && canManageUsers(user) ? (
+          <button type="button" className="primary-button" onClick={onCreateUser}>
+            <UserPlus size={18} />
+            <span>Novo usuario</span>
+          </button>
+        ) : null}
+        {!isUserArea && view !== "profile" && hasPermission(user, "tickets.open") ? (
+          <button type="button" className="primary-button" onClick={onCreate}>
+            <Plus size={18} />
+            <span>Abrir chamado</span>
+          </button>
+        ) : null}
       </div>
     </header>
   );
@@ -2076,22 +2135,22 @@ function ProfileView({ user, onUpdated }: { user: AppUser; onUpdated: (user: App
   );
 }
 
-function UserAdminView({
+function UserDirectoryView({
   user,
   catalog,
-  onUserSaved
+  onCreateUser,
+  onOpenUser
 }: {
   user: AppUser;
   catalog: ServiceDeskCatalog | null;
-  onUserSaved: (user: AppUser) => void;
+  onCreateUser: () => void;
+  onOpenUser: (user: AppUser) => void;
 }) {
   const users = catalog?.users ?? [];
   const groups = catalog?.groups ?? [];
-  const [selectedId, setSelectedId] = useState<string>("__new");
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<AppUser["role"] | "all">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-  const selectedUser = users.find((item) => item.id === selectedId);
   const visibleUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return users.filter((item) => {
@@ -2121,12 +2180,6 @@ function UserAdminView({
     ];
   }, [users]);
 
-  useEffect(() => {
-    if (selectedId !== "__new" && users.length > 0 && !users.some((item) => item.id === selectedId)) {
-      setSelectedId(users[0].id);
-    }
-  }, [selectedId, users]);
-
   if (!canManageUsers(user)) {
     return (
       <div className="panel empty-state">
@@ -2143,7 +2196,7 @@ function UserAdminView({
         <div>
           <p className="eyebrow">Acesso, perfis e credenciais</p>
           <h2>Usuarios</h2>
-          <p>Crie contas com autenticacao por e-mail e senha, ajuste grupos de atendimento e controle permissoes por perfil.</p>
+          <p>Consulte contas, cargos, grupos e permissoes. Cadastro e edicao ficam em telas separadas.</p>
         </div>
         <div className="users-admin-metrics" aria-label="Metricas de usuarios">
           {userMetrics.map((metric) => {
@@ -2159,14 +2212,14 @@ function UserAdminView({
         </div>
       </section>
 
-      <div className="users-admin-grid">
+      <div className="users-directory-grid">
         <section className="panel users-directory-panel" aria-labelledby="users-directory-title">
           <div className="panel-heading">
             <div>
               <h2 id="users-directory-title">Diretorio</h2>
-              <p>Listagem de usuarios, status e escopo operacional.</p>
+              <p>Clique em qualquer linha para abrir o detalhe do usuario.</p>
             </div>
-            <button type="button" className="primary-button small" onClick={() => setSelectedId("__new")}>
+            <button type="button" className="primary-button small" onClick={onCreateUser}>
               <UserPlus size={16} />
               <span>Novo usuario</span>
             </button>
@@ -2208,9 +2261,8 @@ function UserAdminView({
                 <button
                   key={item.id}
                   type="button"
-                  className={selectedId === item.id ? "users-table-row active" : "users-table-row"}
-                  onClick={() => setSelectedId(item.id)}
-                  aria-current={selectedId === item.id ? "true" : undefined}
+                  className="users-table-row"
+                  onClick={() => onOpenUser(item)}
                 >
                   <span className="users-identity" data-label="Usuario">
                     <strong>{item.name}</strong>
@@ -2228,30 +2280,20 @@ function UserAdminView({
               <div className="users-empty-row">
                 <UsersRound size={22} />
                 <span>Nenhum usuario encontrado com os filtros atuais.</span>
+                <button type="button" className="secondary-button small" onClick={() => {
+                  setQuery("");
+                  setRoleFilter("all");
+                  setStatusFilter("all");
+                }}>
+                  <X size={16} />
+                  <span>Limpar filtros</span>
+                </button>
               </div>
             ) : null}
           </div>
         </section>
 
         <aside className="users-admin-editor">
-          {selectedId === "__new" ? (
-            <CreateUserForm
-              catalog={catalog}
-              onUserSaved={(created) => {
-                onUserSaved(created);
-                setSelectedId(created.id);
-              }}
-            />
-          ) : selectedUser ? (
-            <UserDetailPanel item={selectedUser} catalog={catalog} onUserSaved={onUserSaved} />
-          ) : (
-            <div className="panel empty-state">
-              <UsersRound size={28} />
-              <h3>Selecione um usuario</h3>
-              <p>Abra o detalhe para alterar cargo, grupos, permissoes e credenciais.</p>
-            </div>
-          )}
-
           <section className="panel users-governance-panel" aria-labelledby="governance-title">
             <div className="panel-heading">
               <div>
@@ -2278,6 +2320,188 @@ function UserAdminView({
         </aside>
       </div>
     </section>
+  );
+}
+
+function UserCreatePage({
+  user,
+  catalog,
+  onCancel,
+  onUserSaved
+}: {
+  user: AppUser;
+  catalog: ServiceDeskCatalog | null;
+  onCancel: () => void;
+  onUserSaved: (user: AppUser) => void | Promise<void>;
+}) {
+  if (!canManageUsers(user)) {
+    return (
+      <div className="panel empty-state">
+        <ShieldCheck size={28} />
+        <h3>Acesso restrito</h3>
+        <p>Somente usuarios com permissao de administracao podem criar contas.</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="user-form-page" aria-label="Cadastrar usuario">
+      <section className="panel user-page-header">
+        <button type="button" className="secondary-button small" onClick={onCancel}>
+          <ChevronLeft size={16} />
+          <span>Voltar para usuarios</span>
+        </button>
+        <div>
+          <p className="eyebrow">Nova conta</p>
+          <h2>Cadastrar usuario</h2>
+          <p>Crie uma conta com e-mail, senha, cargo, grupos e permissoes.</p>
+        </div>
+      </section>
+      <div className="user-form-layout">
+        <CreateUserForm catalog={catalog} onUserSaved={onUserSaved} onCancel={onCancel} variant="page" />
+        <UserSecurityPanel mode="create" />
+      </div>
+    </section>
+  );
+}
+
+function UserDetailPage({
+  user,
+  catalog,
+  selectedUserId,
+  onBack,
+  onUserSaved
+}: {
+  user: AppUser;
+  catalog: ServiceDeskCatalog | null;
+  selectedUserId: string | null;
+  onBack: () => void;
+  onUserSaved: (user: AppUser) => void | Promise<void>;
+}) {
+  const selectedUser = (catalog?.users ?? []).find((item) => item.id === selectedUserId);
+
+  if (!canManageUsers(user)) {
+    return (
+      <div className="panel empty-state">
+        <ShieldCheck size={28} />
+        <h3>Acesso restrito</h3>
+        <p>Somente usuarios com permissao de administracao podem editar contas.</p>
+      </div>
+    );
+  }
+
+  if (!selectedUser) {
+    return (
+      <div className="panel empty-state">
+        <UsersRound size={28} />
+        <h3>Usuario nao encontrado</h3>
+        <p>Volte para o diretorio e selecione uma conta ativa.</p>
+        <button type="button" className="secondary-button" onClick={onBack}>
+          <ChevronLeft size={18} />
+          <span>Voltar para usuarios</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <section className="user-form-page" aria-label="Editar usuario">
+      <section className="panel user-page-header">
+        <button type="button" className="secondary-button small" onClick={onBack}>
+          <ChevronLeft size={16} />
+          <span>Voltar para usuarios</span>
+        </button>
+        <div>
+          <p className="eyebrow">{selectedUser.email}</p>
+          <h2>{selectedUser.name}</h2>
+          <p>{selectedUser.entityName} - {roleLabel(selectedUser.role)}</p>
+        </div>
+      </section>
+      <UserSummaryStrip item={selectedUser} groups={catalog?.groups ?? []} />
+      <div className="user-form-layout">
+        <UserDetailPanel item={selectedUser} catalog={catalog} onUserSaved={onUserSaved} onCancel={onBack} />
+        <UserSecurityPanel item={selectedUser} mode="detail" />
+      </div>
+    </section>
+  );
+}
+
+function UserSummaryStrip({
+  item,
+  groups
+}: {
+  item: AppUser;
+  groups: ServiceDeskCatalog["groups"];
+}) {
+  const groupNames = groups.filter((group) => item.groupIds.includes(group.id)).map((group) => group.name);
+  const permissions = item.permissions ?? defaultPermissionsForRole(item.role);
+
+  return (
+    <section className="user-summary-strip" aria-label="Resumo do usuario">
+      <article>
+        <span>Status</span>
+        <strong>{item.active ? "Ativo" : "Inativo"}</strong>
+      </article>
+      <article>
+        <span>Cargo</span>
+        <strong>{roleLabel(item.role)}</strong>
+      </article>
+      <article>
+        <span>Entidade</span>
+        <strong>{item.entityName}</strong>
+      </article>
+      <article>
+        <span>Grupos</span>
+        <strong>{groupNames.length ? groupNames.join(", ") : item.role === "requester" ? "Portal" : "Sem grupo"}</strong>
+      </article>
+      <article>
+        <span>Permissoes</span>
+        <strong>{permissions.length}</strong>
+      </article>
+    </section>
+  );
+}
+
+function UserSecurityPanel({ item, mode }: { item?: AppUser; mode: "create" | "detail" }) {
+  const permissions = item?.permissions ?? (item ? defaultPermissionsForRole(item.role) : []);
+  const criticalPermissions = permissions.filter((permission) => permission === "tickets.delete" || permission === "users.manage");
+
+  return (
+    <aside className="panel user-security-panel" aria-labelledby="user-security-title">
+      <div className="panel-heading">
+        <div>
+          <h2 id="user-security-title">Resumo de seguranca</h2>
+          <p>{mode === "create" ? "Regras aplicadas quando a conta for criada." : "Regras efetivas para este usuario."}</p>
+        </div>
+        <Badge tone="info">RBAC</Badge>
+      </div>
+      <div className="security-scope-list">
+        <div>
+          <KeyRound size={16} />
+          <span>Login por e-mail e senha com sessao HttpOnly.</span>
+        </div>
+        <div>
+          <ShieldCheck size={16} />
+          <span>Cargo define o escopo base de leitura e tratamento de chamados.</span>
+        </div>
+        <div>
+          <LifeBuoy size={16} />
+          <span>Grupos limitam quais filas tecnicas o usuario pode operar.</span>
+        </div>
+      </div>
+      {item ? (
+        <div className="security-effective-list">
+          <strong>Regras atuais</strong>
+          <span>{roleLabel(item.role)} em {item.entityName}</span>
+          <span>{item.groupIds.length} grupos vinculados</span>
+          <span>{permissions.length} permissoes ativas</span>
+        </div>
+      ) : null}
+      <div className={criticalPermissions.length ? "security-warning active" : "security-warning"}>
+        <AlertTriangle size={16} />
+        <span>Excluir chamados e gerenciar usuarios devem ficar restritos a administradores.</span>
+      </div>
+    </aside>
   );
 }
 
@@ -2455,10 +2679,14 @@ function passwordStrength(password: string): { score: number; label: string; hin
 
 function CreateUserForm({
   catalog,
-  onUserSaved
+  onUserSaved,
+  onCancel,
+  variant = "embedded"
 }: {
   catalog: ServiceDeskCatalog | null;
-  onUserSaved: (user: AppUser) => void;
+  onUserSaved: (user: AppUser) => void | Promise<void>;
+  onCancel?: () => void;
+  variant?: "embedded" | "page";
 }) {
   const [form, setForm] = useState<CreateUserPayload>({
     email: "",
@@ -2471,6 +2699,7 @@ function CreateUserForm({
     active: true,
     password: ""
   });
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -2479,9 +2708,14 @@ function CreateUserForm({
     setIsSaving(true);
     setMessage(null);
     try {
+      if (form.password !== confirmPassword) {
+        setMessage("As senhas precisam ser iguais.");
+        return;
+      }
       const response = await createUser(form);
-      onUserSaved(response.user);
+      await onUserSaved(response.user);
       setForm({ ...form, email: "", name: "", password: "", groupIds: [], permissions: defaultPermissionsForRole(form.role) });
+      setConfirmPassword("");
       setMessage("Usuario criado.");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Nao foi possivel criar o usuario.");
@@ -2491,12 +2725,12 @@ function CreateUserForm({
   }
 
   return (
-    <form className="user-create-form" onSubmit={submit}>
+    <form className={variant === "page" ? "panel user-create-form user-page-form" : "user-create-form"} onSubmit={submit}>
       <div className="admin-form-heading">
         <UserPlus size={17} />
         <strong>Criar usuario com e-mail e senha</strong>
       </div>
-      {message ? <span className="form-note">{message}</span> : null}
+      {message ? <span className="form-note" role="status">{message}</span> : null}
       <div className="admin-form-grid">
         <Field label="Nome">
           <input required minLength={2} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
@@ -2534,6 +2768,16 @@ function CreateUserForm({
           />
           <PasswordStrength password={form.password} />
         </Field>
+        <Field label="Confirmar senha">
+          <input
+            required
+            type="password"
+            minLength={8}
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+          />
+        </Field>
       </div>
       <AdminPermissionCheckboxes
         role={form.role}
@@ -2546,10 +2790,18 @@ function CreateUserForm({
         disabled={form.role === "requester"}
         onChange={(groupIds) => setForm({ ...form, groupIds })}
       />
-      <button type="submit" className="primary-button small" disabled={isSaving}>
-        {isSaving ? <Loader2 className="spin" size={16} /> : <UserPlus size={16} />}
-        <span>Criar usuario</span>
-      </button>
+      <div className="sticky-actions user-form-actions">
+        {onCancel ? (
+          <button type="button" className="secondary-button" onClick={onCancel} disabled={isSaving}>
+            <X size={18} />
+            <span>Cancelar</span>
+          </button>
+        ) : null}
+        <button type="submit" className={variant === "page" ? "primary-button" : "primary-button small"} disabled={isSaving}>
+          {isSaving ? <Loader2 className="spin" size={18} /> : <UserPlus size={18} />}
+          <span>{isSaving ? "Criando usuario" : "Criar usuario"}</span>
+        </button>
+      </div>
     </form>
   );
 }
@@ -2557,11 +2809,13 @@ function CreateUserForm({
 function UserDetailPanel({
   item,
   catalog,
-  onUserSaved
+  onUserSaved,
+  onCancel
 }: {
   item: AppUser;
   catalog: ServiceDeskCatalog | null;
-  onUserSaved: (user: AppUser) => void;
+  onUserSaved: (user: AppUser) => void | Promise<void>;
+  onCancel?: () => void;
 }) {
   const [name, setName] = useState(item.name);
   const [email, setEmail] = useState(item.email);
@@ -2602,7 +2856,7 @@ function UserDetailPanel({
         password: password.trim() ? password : undefined
       });
       setPassword("");
-      onUserSaved(response.user);
+      await onUserSaved(response.user);
       setMessage("Usuario salvo.");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Nao foi possivel salvar o usuario.");
@@ -2669,9 +2923,15 @@ function UserDetailPanel({
         onChange={setGroupIds}
       />
       <div className="sticky-actions">
+        {onCancel ? (
+          <button type="button" className="secondary-button" onClick={onCancel} disabled={isSaving}>
+            <X size={18} />
+            <span>Cancelar alteracoes</span>
+          </button>
+        ) : null}
         <button type="submit" className="primary-button" disabled={isSaving}>
           {isSaving ? <Loader2 className="spin" size={18} /> : <Save size={18} />}
-          <span>Salvar usuario</span>
+          <span>{isSaving ? "Salvando usuario" : "Salvar usuario"}</span>
         </button>
       </div>
     </form>

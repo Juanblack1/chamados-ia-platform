@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cadastrar Usuário | AI Service Desk</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#bdc9c6",
+                        "secondary": "#515f74",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#80d5cb",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdbd0",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#d8dadc",
+                        "primary-fixed": "#9cf2e8",
+                        "surface-container-low": "#f2f4f6",
+                        "on-primary-fixed": "#00201d",
+                        "background": "#f7f9fb",
+                        "tertiary-container": "#bd3d07",
+                        "tertiary": "#952c00",
+                        "surface-bright": "#f7f9fb",
+                        "inverse-on-surface": "#eff1f3",
+                        "primary-container": "#0f766e",
+                        "on-tertiary-container": "#ffe4dd",
+                        "on-background": "#191c1e",
+                        "surface-container": "#eceef0",
+                        "on-primary-container": "#a3faef",
+                        "inverse-surface": "#2d3133",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary-fixed": "#d5e3fd",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-tint": "#006a63",
+                        "secondary-container": "#d5e3fd",
+                        "inverse-primary": "#80d5cb",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "outline": "#6e7977",
+                        "on-tertiary-fixed": "#390c00",
+                        "surface": "#f7f9fb",
+                        "on-surface-variant": "#3e4947",
+                        "on-secondary-container": "#57657b",
+                        "on-primary-fixed-variant": "#00504a",
+                        "tertiary-fixed-dim": "#ffb59d",
+                        "on-tertiary-fixed-variant": "#832600",
+                        "on-error-container": "#93000a",
+                        "primary": "#005c55"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "display": ["Plus Jakarta Sans"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Be Vietnam Pro"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .form-section-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .form-section-card:hover {
+            transform: translateY(-2px);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #bdc9c6;
+            border-radius: 10px;
+        }
+        .password-meter-bar {
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-fixed-dim selection:text-on-primary-fixed">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<span class="text-xl font-headline font-bold text-primary">AI Service Desk</span>
+<div class="hidden md:flex items-center bg-surface-container-high rounded-full px-3 py-1.5 ml-4">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-on-surface-variant" placeholder="Pesquisar..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 hover:bg-surface-container-high transition-colors rounded-full" title="Notificações">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high transition-colors rounded-full" title="Ajuda">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="help">help</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high transition-colors rounded-full" title="Configurações">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-xs">
+                AD
+            </div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 flex flex-col py-4 z-40 bg-surface-container-low border-r border-outline-variant">
+<div class="px-4 mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="support_agent" style="font-variation-settings: 'FILL' 1;">support_agent</span>
+</div>
+<div>
+<h2 class="text-on-surface font-headline font-extrabold text-sm leading-tight">Agent Console</h2>
+<p class="text-[10px] text-secondary font-medium tracking-wider uppercase">IT Support</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1 px-2">
+<div class="flex items-center gap-3 px-4 py-3 cursor-pointer text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-lg group">
+<span class="material-symbols-outlined" data-icon="view_list">view_list</span>
+<span class="font-body text-label-large">Queue</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 cursor-pointer text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-lg group">
+<span class="material-symbols-outlined" data-icon="confirmation_number">confirmation_number</span>
+<span class="font-body text-label-large">Tickets</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 cursor-pointer text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-lg group">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-body text-label-large">Knowledge Base</span>
+</div>
+<!-- Active Tab: Users -->
+<div class="flex items-center gap-3 px-4 py-3 cursor-pointer bg-secondary-container text-on-secondary-container rounded-lg font-bold">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-body text-label-large">Usuários</span>
+</div>
+</nav>
+<div class="px-2 pt-4 mt-4 border-t border-outline-variant space-y-1">
+<div class="flex items-center gap-3 px-4 py-3 cursor-pointer text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-lg">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+<span class="font-body text-label-large">Audit Trail</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 cursor-pointer text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-lg">
+<span class="material-symbols-outlined" data-icon="policy">policy</span>
+<span class="font-body text-label-large">Policy</span>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-64 pt-16 pb-24 min-h-screen">
+<!-- Header -->
+<section class="px-8 py-6 bg-surface border-b border-outline-variant flex justify-between items-end sticky top-16 z-30">
+<div>
+<button class="flex items-center gap-2 text-secondary hover:text-primary transition-colors mb-2 text-sm font-medium">
+<span class="material-symbols-outlined text-lg" data-icon="arrow_back">arrow_back</span>
+                    Voltar para usuários
+                </button>
+<h1 class="text-3xl font-headline font-bold text-on-surface">Cadastrar usuário</h1>
+<p class="text-on-surface-variant mt-1">Crie uma conta com e-mail, senha, cargo, grupos e permissões</p>
+</div>
+<button class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold hover:bg-primary-container transition-all flex items-center gap-2 shadow-sm shadow-primary/20" onclick="simulateLoading(this)">
+<span class="material-symbols-outlined text-xl" data-icon="person_add">person_add</span>
+<span class="btn-text">Criar usuário</span>
+</button>
+</section>
+<!-- Form Layout -->
+<div class="grid grid-cols-12 gap-8 px-8 py-8">
+<div class="col-span-8 space-y-6">
+<!-- Section 1: Dados da Conta -->
+<article class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant form-section-card shadow-sm">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface">Dados da Conta</h3>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="col-span-2 sm:col-span-1">
+<label class="block text-sm font-semibold text-on-surface-variant mb-1.5">Nome Completo</label>
+<input class="w-full bg-surface-container border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-2.5 transition-all text-on-surface" placeholder="Ex: João Silva" type="text"/>
+</div>
+<div class="col-span-2 sm:col-span-1">
+<label class="block text-sm font-semibold text-on-surface-variant mb-1.5">E-mail Corporativo</label>
+<input class="w-full bg-surface-container border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-2.5 transition-all text-on-surface" placeholder="nome@empresa.com" type="email"/>
+</div>
+<div class="col-span-1">
+<label class="block text-sm font-semibold text-on-surface-variant mb-1.5">Entidade</label>
+<select class="w-full bg-surface-container border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-2.5 transition-all text-on-surface appearance-none">
+<option>Matriz - São Paulo</option>
+<option>Filial - Rio de Janeiro</option>
+<option>Remoto - Global</option>
+</select>
+</div>
+<div class="col-span-1 flex items-end pb-3">
+<div class="flex items-center justify-between w-full p-2.5 bg-surface rounded-lg border border-dashed border-outline">
+<span class="text-sm font-medium text-on-surface-variant">Status da Conta</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+<span class="ml-2 text-xs font-bold text-primary uppercase">Ativo</span>
+</label>
+</div>
+</div>
+</div>
+</article>
+<!-- Section 2: Perfil e Escopo -->
+<article class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant form-section-card shadow-sm">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="badge">badge</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface">Perfil e Escopo</h3>
+</div>
+<div class="space-y-6">
+<div class="w-1/2">
+<label class="block text-sm font-semibold text-on-surface-variant mb-1.5">Cargo/Função</label>
+<select class="w-full bg-surface-container border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-2.5 transition-all text-on-surface" id="role-select" onchange="toggleRequesterNote(this.value)">
+<option value="agent">Agente de N1</option>
+<option value="manager">Gerente de Operações</option>
+<option value="requester">Solicitante (End User)</option>
+<option value="admin">Administrador</option>
+</select>
+</div>
+<div>
+<label class="block text-sm font-semibold text-on-surface-variant mb-1.5">Grupos de Serviço</label>
+<div class="flex flex-wrap gap-2 p-3 bg-surface-container rounded-lg border border-outline-variant min-h-[80px]">
+<span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                                    Suporte de TI <span class="material-symbols-outlined text-[14px] cursor-pointer" data-icon="close">close</span>
+</span>
+<span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                                    Redes &amp; Infra <span class="material-symbols-outlined text-[14px] cursor-pointer" data-icon="close">close</span>
+</span>
+<button class="border border-dashed border-primary text-primary px-3 py-1 rounded-full text-xs font-bold hover:bg-primary-fixed-dim/20 transition-colors">+ Adicionar Grupo</button>
+</div>
+<p class="hidden mt-3 text-sm text-secondary italic flex items-center gap-2 bg-surface-container-high p-3 rounded-lg border-l-4 border-secondary" id="requester-note">
+<span class="material-symbols-outlined text-lg" data-icon="info">info</span>
+                                Solicitantes não possuem grupos técnicos associados
+                            </p>
+</div>
+</div>
+</article>
+<!-- Section 3: Permissões -->
+<article class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant form-section-card shadow-sm">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="vpn_key">vpn_key</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface">Permissões</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<label class="flex items-start gap-4 p-4 rounded-lg hover:bg-surface-container transition-colors cursor-pointer border border-transparent hover:border-outline-variant">
+<input checked="" class="mt-1 rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+<div>
+<span class="block font-bold text-on-surface">Abrir chamados</span>
+<span class="text-xs text-on-surface-variant">Permitir a criação de novos tickets no sistema.</span>
+</div>
+</label>
+<label class="flex items-start gap-4 p-4 rounded-lg hover:bg-surface-container transition-colors cursor-pointer border border-transparent hover:border-outline-variant">
+<input checked="" class="mt-1 rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+<div>
+<span class="block font-bold text-on-surface">Ler chamados</span>
+<span class="text-xs text-on-surface-variant">Visualização de tickets dentro dos grupos atribuídos.</span>
+</div>
+</label>
+<label class="flex items-start gap-4 p-4 rounded-lg hover:bg-surface-container transition-colors cursor-pointer border border-transparent hover:border-outline-variant">
+<input class="mt-1 rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+<div>
+<span class="block font-bold text-on-surface">Tratar chamados</span>
+<span class="text-xs text-on-surface-variant">Atuar na resolução de incidentes e requisições pendentes.</span>
+</div>
+</label>
+<label class="flex items-start gap-4 p-4 rounded-lg hover:bg-surface-container transition-colors cursor-pointer border border-transparent hover:border-outline-variant">
+<input class="mt-1 rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="block font-bold text-on-surface">Excluir chamados</span>
+<span class="material-symbols-outlined text-error text-[18px]" data-icon="warning">warning</span>
+</div>
+<span class="text-xs text-on-surface-variant">Remoção permanente de registros (Ação crítica).</span>
+</div>
+</label>
+<label class="flex items-start gap-4 p-4 rounded-lg hover:bg-surface-container transition-colors cursor-pointer border border-transparent hover:border-outline-variant">
+<input class="mt-1 rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+<div>
+<span class="block font-bold text-on-surface">Gerenciar usuários</span>
+<span class="text-xs text-on-surface-variant">Criar, editar e desativar contas de colaboradores.</span>
+</div>
+</label>
+</div>
+</article>
+<!-- Section 4: Credenciais -->
+<article class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant form-section-card shadow-sm">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="lock">lock</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface">Credenciais</h3>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div>
+<label class="block text-sm font-semibold text-on-surface-variant mb-1.5">Senha Inicial</label>
+<input class="w-full bg-surface-container border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-2.5 transition-all text-on-surface" id="password-input" oninput="updateStrength(this.value)" placeholder="••••••••" type="password"/>
+<!-- Password Strength Meter -->
+<div class="mt-3">
+<div class="flex justify-between items-center mb-1">
+<span class="text-[10px] uppercase font-bold text-on-surface-variant tracking-wider">Força da Senha</span>
+<span class="text-[10px] uppercase font-bold text-on-surface-variant" id="strength-label">Aguardando...</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="password-meter-bar h-full w-0 bg-outline" id="strength-bar"></div>
+</div>
+</div>
+</div>
+<div>
+<label class="block text-sm font-semibold text-on-surface-variant mb-1.5">Confirmar Senha</label>
+<input class="w-full bg-surface-container border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-2.5 transition-all text-on-surface" placeholder="••••••••" type="password"/>
+<p class="mt-2 text-[11px] text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="verified">verified</span>
+                                As senhas devem ser idênticas.
+                            </p>
+</div>
+</div>
+</article>
+</div>
+<!-- Help Side Panel -->
+<aside class="col-span-4 sticky top-44 h-fit">
+<div class="bg-surface-container-high p-6 rounded-xl border border-outline-variant">
+<div class="flex items-center gap-2 mb-4 text-primary">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<h3 class="font-bold font-headline">Resumo de Segurança</h3>
+</div>
+<div class="space-y-4">
+<div class="text-sm text-on-surface-variant leading-relaxed">
+<p>As permissões são pré-configuradas baseadas no <strong>Cargo</strong> selecionado, mas podem ser customizadas individualmente para necessidades específicas.</p>
+</div>
+<!-- Alert Box -->
+<div class="bg-error-container p-4 rounded-lg border border-error/20 flex gap-3">
+<span class="material-symbols-outlined text-error shrink-0" data-icon="gpp_maybe">gpp_maybe</span>
+<div>
+<h4 class="text-on-error-container font-bold text-xs uppercase mb-1">Policy Warning</h4>
+<p class="text-xs text-on-error-container/80 leading-snug">As ações "Excluir chamados" e "Gerenciar usuários" são restritas a perfis de administração e auditoria. Verifique a conformidade antes de habilitar.</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden mt-6">
+<img alt="Segurança da Infraestrutura" class="w-full h-32 object-cover opacity-80" data-alt="A sophisticated close-up photograph of a modern server room blinking with teal and white LED indicators. The lighting is clean and professional, creating an atmosphere of high-tech security and data integrity. The scene represents the infrastructure and trust behind a corporate service desk environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsi8P1iJrfhn5T5uoYq668XaIP67w1gt2tpEl3Kq3v5KmsOrhFmSlCcD93u31uinTmxUtlqt18e5UWsvACEa9kFd9a6LLGFvcAL1Li3Jzybbq8ai32iyyf54ehQWYa-nkTriaVmRxvwCWQEUKoBxtqlDgCIR_dNMyKnbhAt3necec2by-TwnbEaEu9esXjMnDa-oImdTzzU4hg6VaCxxDXvmlnNLzggwlwbTRri8PFFxa8gSWEcoZvC7X6unnN3pOrWZRpwKIcrKc"/>
+<div class="p-3">
+<p class="text-[10px] text-secondary text-center italic">Todas as criações de conta são registradas no Audit Trail para conformidade com a LGPD e políticas internas.</p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+<!-- Footer Action Bar -->
+<footer class="fixed bottom-0 left-64 right-0 h-20 bg-surface border-t border-outline-variant px-8 flex items-center justify-end gap-4 z-50">
+<button class="px-6 py-2.5 rounded-lg font-bold text-on-surface-variant hover:bg-surface-container-high transition-all">
+            Cancelar
+        </button>
+<button class="bg-primary text-white px-8 py-2.5 rounded-lg font-bold hover:bg-primary-container transition-all shadow-md shadow-primary/20 flex items-center gap-2" onclick="simulateLoading(this)">
+<span class="btn-text">Criar usuário</span>
+</button>
+</footer>
+<script>
+        function updateStrength(password) {
+            const bar = document.getElementById('strength-bar');
+            const label = document.getElementById('strength-label');
+            
+            if (password.length === 0) {
+                bar.style.width = '0%';
+                bar.className = 'password-meter-bar h-full bg-outline';
+                label.innerText = 'Aguardando...';
+                label.className = 'text-[10px] uppercase font-bold text-on-surface-variant';
+            } else if (password.length < 6) {
+                bar.style.width = '30%';
+                bar.className = 'password-meter-bar h-full bg-error';
+                label.innerText = 'Fraca';
+                label.className = 'text-[10px] uppercase font-bold text-error';
+            } else if (password.length < 10) {
+                bar.style.width = '65%';
+                bar.className = 'password-meter-bar h-full bg-tertiary-container';
+                label.innerText = 'Média';
+                label.className = 'text-[10px] uppercase font-bold text-tertiary-container';
+            } else {
+                bar.style.width = '100%';
+                bar.className = 'password-meter-bar h-full bg-primary';
+                label.innerText = 'Forte';
+                label.className = 'text-[10px] uppercase font-bold text-primary';
+            }
+        }
+
+        function toggleRequesterNote(role) {
+            const note = document.getElementById('requester-note');
+            if (role === 'requester') {
+                note.classList.remove('hidden');
+            } else {
+                note.classList.add('hidden');
+            }
+        }
+
+        function simulateLoading(btn) {
+            const originalText = btn.innerHTML;
+            const textSpan = btn.querySelector('.btn-text');
+            const icon = btn.querySelector('.material-symbols-outlined');
+            
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            btn.style.cursor = 'not-allowed';
+            
+            if (textSpan) textSpan.innerText = 'Processando...';
+            if (icon) icon.innerText = 'sync';
+            if (icon) icon.classList.add('animate-spin');
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.innerHTML = originalText;
+                
+                // Show success visual feedback
+                const successMsg = document.createElement('div');
+                successMsg.className = 'fixed top-20 right-8 bg-primary text-white px-6 py-4 rounded-xl shadow-2xl z-[60] flex items-center gap-3 animate-bounce';
+                successMsg.innerHTML = '<span class="material-symbols-outlined">check_circle</span> <div><h4 class="font-bold">Usuário cadastrado</h4><p class="text-xs opacity-90">O convite foi enviado para o e-mail.</p></div>';
+                document.body.appendChild(successMsg);
+                
+                setTimeout(() => successMsg.remove(), 3000);
+            }, 1800);
+        }
+    </script>
+</body></html>

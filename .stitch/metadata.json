@@ -74,6 +74,27 @@
       "deviceType": "DESKTOP",
       "html": ".stitch/designs/users-admin-redesign.html",
       "screenshot": ".stitch/designs/users-admin-redesign.png"
+    },
+    {
+      "id": "39124330e72d4f20bfdaac3938f48ff4",
+      "name": "Diretorio de Usuarios - AI Service Desk",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/users-directory.html",
+      "screenshot": ".stitch/designs/users-directory.png"
+    },
+    {
+      "id": "c8e1c4bb58a742118c881c8b884866eb",
+      "name": "Cadastrar Usuario - AI Service Desk",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/user-create.html",
+      "screenshot": ".stitch/designs/user-create.png"
+    },
+    {
+      "id": "aa143e91979840cbaa288b397aa1ccf6",
+      "name": "Editar Usuario - AI Service Desk",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/user-detail-edit.html",
+      "screenshot": ".stitch/designs/user-detail-edit.png"
     }
   ]
 }
