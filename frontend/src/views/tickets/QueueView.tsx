@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type KeyboardEvent } from "react";
 import { Activity, AlertTriangle, Bot, Clock3, FileSearch, TicketCheck } from "lucide-react";
 import type { Ticket } from "../../lib/api";
 import { priorityLabel, priorityTone, slaRisk, statusLabel, statusTone, typeLabel } from "../../lib/presentation";
@@ -82,8 +82,8 @@ function TicketTable({ tickets, selectedId, onSelect }: { tickets: Ticket[]; sel
   }
 
   return (
-    <div className="table-wrap">
-      <table>
+    <div className="table-wrap ticket-table-wrap">
+      <table className="ticket-table">
         <thead>
           <tr>
             <th>Chamado</th>
@@ -99,25 +99,43 @@ function TicketTable({ tickets, selectedId, onSelect }: { tickets: Ticket[]; sel
           </tr>
         </thead>
         <tbody>
-          {tickets.map((ticket) => (
-            <tr key={ticket.id} className={ticket.id === selectedId ? "selected-row" : undefined}>
-              <td>
-                <button type="button" className="row-link" onClick={() => onSelect(ticket)}>
-                  {ticket.number}
-                </button>
-                <small>{ticket.title}</small>
-              </td>
-              <td>{typeLabel(ticket.type)}</td>
-              <td><Badge tone={priorityTone(ticket.priority)}>{priorityLabel(ticket.priority)}</Badge></td>
-              <td><Badge tone={statusTone(ticket.status)}>{statusLabel(ticket.status)}</Badge></td>
-              <td><SlaBadge ticket={ticket} /></td>
-              <td>{ticket.assignedGroupName ?? "Sem grupo"}</td>
-              <td>{ticket.assigneeName ?? "Nao atribuido"}</td>
-              <td>{ticket.requesterEmail}</td>
-              <td>{ticket.affectedService}</td>
-              <td>{Math.round((ticket.ai.triage?.confidence ?? 0) * 100)}%</td>
-            </tr>
-          ))}
+          {tickets.map((ticket) => {
+            const openTicket = () => onSelect(ticket);
+            const handleKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openTicket();
+              }
+            };
+
+            return (
+              <tr
+                key={ticket.id}
+                className={ticket.id === selectedId ? "ticket-table-row selected-row" : "ticket-table-row"}
+                role="button"
+                tabIndex={0}
+                aria-label={`Abrir chamado ${ticket.number}: ${ticket.title}`}
+                onClick={openTicket}
+                onKeyDown={handleKeyDown}
+              >
+                <td data-label="Chamado">
+                  <span className="row-link">
+                    {ticket.number}
+                  </span>
+                  <small className="ticket-title">{ticket.title}</small>
+                </td>
+                <td data-label="Tipo">{typeLabel(ticket.type)}</td>
+                <td data-label="Prioridade"><Badge tone={priorityTone(ticket.priority)}>{priorityLabel(ticket.priority)}</Badge></td>
+                <td data-label="Status"><Badge tone={statusTone(ticket.status)}>{statusLabel(ticket.status)}</Badge></td>
+                <td data-label="SLA"><SlaBadge ticket={ticket} /></td>
+                <td data-label="Grupo">{ticket.assignedGroupName ?? "Sem grupo"}</td>
+                <td data-label="Tecnico">{ticket.assigneeName ?? "Nao atribuido"}</td>
+                <td data-label="Solicitante">{ticket.requesterEmail}</td>
+                <td data-label="Servico">{ticket.affectedService}</td>
+                <td data-label="IA">{Math.round((ticket.ai.triage?.confidence ?? 0) * 100)}%</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

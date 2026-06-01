@@ -60,6 +60,20 @@
       "name": "Administração - Painel de Controle",
       "deviceType": "DESKTOP",
       "html": ".stitch/designs/production-admin.html"
+    },
+    {
+      "id": "32040132919147f4bdbbfe211bcd9939",
+      "name": "Ticket Workspace - INC-4022 Redesign",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/ticket-workspace-redesign.html",
+      "screenshot": ".stitch/designs/ticket-workspace-redesign.png"
+    },
+    {
+      "id": "fad70e3d3dab458a9804602ab711de90",
+      "name": "Administracao de Usuarios - AI Service Desk",
+      "deviceType": "DESKTOP",
+      "html": ".stitch/designs/users-admin-redesign.html",
+      "screenshot": ".stitch/designs/users-admin-redesign.png"
     }
   ]
 }

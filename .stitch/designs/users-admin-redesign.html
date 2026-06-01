@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Administração de Usuários | AI Service Desk</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f2f4f6",
+                        "tertiary-container": "#bd3d07",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#191c1e",
+                        "secondary-container": "#d5e3fd",
+                        "on-secondary-container": "#57657b",
+                        "on-surface-variant": "#3e4947",
+                        "surface-container": "#eceef0",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f7f9fb",
+                        "on-primary-fixed": "#00201d",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#d5e3fd",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#00504a",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "background": "#f7f9fb",
+                        "inverse-primary": "#80d5cb",
+                        "on-tertiary-fixed": "#390c00",
+                        "surface-tint": "#006a63",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "primary": "#005c55",
+                        "on-primary-container": "#a3faef",
+                        "tertiary-fixed": "#ffdbd0",
+                        "primary-fixed": "#9cf2e8",
+                        "outline-variant": "#bdc9c6",
+                        "outline": "#6e7977",
+                        "surface-variant": "#e0e3e5",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary": "#515f74",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#ffb59d",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-fixed-dim": "#80d5cb",
+                        "on-primary-container": "#a3faef",
+                        "tertiary": "#952c00",
+                        "on-tertiary-fixed-variant": "#832600"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "display": ["Plus Jakarta Sans"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Be Vietnam Pro"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        h1, h2, h3, .font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #bdc9c6; border-radius: 10px; }
+
+        #create-user-overlay {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s linear;
+        }
+        #create-user-overlay.hidden {
+            transform: translateX(100%);
+            opacity: 0;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background overflow-hidden">
+<!-- Persistent SideNavBar -->
+<aside class="bg-surface-container-low dark:bg-inverse-surface border-r border-outline-variant dark:border-outline h-screen w-64 fixed left-0 top-0 flex flex-col py-6 px-4 z-50">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div>
+<h2 class="text-xl font-headline font-black text-primary dark:text-primary-fixed">Service Desk</h2>
+<p class="text-[10px] font-medium tracking-wider text-on-surface-variant/70 uppercase">Enterprise Admin</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-secondary-fixed-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors duration-150 rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-secondary-fixed-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors duration-150 rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="confirmation_number">confirmation_number</span>
+                Tickets
+            </a>
+<!-- ACTIVE TAB: User Management (Usuários) -->
+<a class="flex items-center gap-3 px-3 py-2 text-on-primary-container bg-primary-container dark:bg-primary-fixed-dim dark:text-on-primary-fixed-variant rounded-lg font-bold text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+                User Management
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-secondary-fixed-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors duration-150 rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+                Access Governance
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-secondary-fixed-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors duration-150 rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="book">book</span>
+                Knowledge Base
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-secondary-fixed-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors duration-150 rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+</nav>
+<button class="mt-4 w-full py-2.5 bg-primary text-on-primary rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:brightness-110 active:scale-95 transition-all" onclick="toggleCreateUser()">
+<span class="material-symbols-outlined text-lg">add</span>
+            New Ticket
+        </button>
+<div class="mt-auto pt-4 border-t border-outline-variant space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-secondary-fixed-variant hover:bg-surface-container-high transition-colors rounded-lg text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Help
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-error hover:bg-error-container/20 transition-colors rounded-lg text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Logout
+            </a>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="flex justify-between items-center ml-64 px-6 py-3 w-[calc(100%-16rem)] bg-surface-bright dark:bg-surface-dim border-b border-outline-variant sticky top-0 z-40">
+<div class="flex items-center gap-8">
+<h1 class="text-lg font-bold text-on-surface dark:text-inverse-on-surface">User Administration</h1>
+<div class="flex gap-4">
+<a class="text-primary border-b-2 border-primary font-bold text-sm py-1" href="#">Directory</a>
+<a class="text-on-surface-variant dark:text-outline hover:text-primary transition-all text-sm py-1" href="#">Roles</a>
+<a class="text-on-surface-variant dark:text-outline hover:text-primary transition-all text-sm py-1" href="#">Policies</a>
+</div>
+</div>
+<div class="flex items-center gap-4 flex-1 max-w-xl mx-8">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container rounded-lg border-none focus:ring-2 focus:ring-primary text-sm placeholder:text-outline" placeholder="Buscar usuários ou permissões..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface-bright"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">history</span>
+</button>
+</div>
+<div class="h-8 w-px bg-outline-variant mx-1"></div>
+<button class="px-4 py-2 border border-outline text-primary font-bold text-sm rounded-lg hover:bg-surface-container-low transition-colors">
+                Export
+            </button>
+<button class="px-4 py-2 bg-primary text-on-primary font-bold text-sm rounded-lg shadow-sm hover:brightness-110 active:scale-95 transition-all" onclick="toggleCreateUser()">
+                Create User
+            </button>
+<img alt="Admin Avatar" class="w-8 h-8 rounded-full border border-outline-variant bg-surface-container-high" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGwgT6ru8bGAlrphodZm_giJjkiqS1KjZhK2n4qWnFg6rB_tqzBlOk-o9jg7oc9Xn-xfYSPhKFfUiJOMXNAaMBub3hSFe1Kk0IclhX-6mvcAQAxb1nEq8Lp8zm1tVU_-LY0kmkGnNTQeS7BhyRuLh-fNVdkcsvDiPaAOeAJ92JiRa6OHy3zV--Fs7B6S9EuMfv7WOU0PDELPDtm85zNzPbRoSksQ-4Te7IlUtDMFnj-ksKmWjl3mpILlwdU6vwX6F1Eqn7fcC7nI4"/>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-64 flex w-[calc(100%-16rem)] h-[calc(100vh-64px)] overflow-hidden bg-background">
+<!-- Table Section -->
+<section class="flex-1 flex flex-col p-6 overflow-hidden">
+<!-- Table Controls -->
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-3">
+<div class="flex items-center bg-surface-container rounded-lg p-1 border border-outline-variant">
+<button class="px-3 py-1.5 text-xs font-bold bg-surface-container-lowest shadow-sm rounded-md text-on-surface">Todos (1.240)</button>
+<button class="px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors">Ativos (1.198)</button>
+<button class="px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors">Inativos (42)</button>
+</div>
+<select class="bg-surface-container text-xs font-medium border-outline-variant rounded-lg focus:ring-primary py-1.5 px-3">
+<option>Papel: Todos</option>
+<option>Admin</option>
+<option>Analista</option>
+</select>
+<select class="bg-surface-container text-xs font-medium border-outline-variant rounded-lg focus:ring-primary py-1.5 px-3">
+<option>Status: Todos</option>
+<option>Ativo</option>
+<option>Inativo</option>
+</select>
+</div>
+<div class="text-xs text-on-surface-variant font-medium">
+                    Exibindo 1-10 de 1.240 resultados
+                </div>
+</div>
+<!-- Main Table Card -->
+<div class="flex-1 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<div class="overflow-x-auto overflow-y-auto custom-scrollbar flex-1">
+<table class="w-full text-left border-collapse min-w-[1000px]">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-outline">Usuário</th>
+<th class="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-outline">Email Corporativo</th>
+<th class="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-outline">Papel</th>
+<th class="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-outline">Entidade</th>
+<th class="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-outline">Grupos</th>
+<th class="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-outline text-center">Status</th>
+<th class="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-outline">Último Acesso</th>
+<th class="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-outline text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-4 py-3">
+<div class="flex items-center gap-3">
+<img alt="User" class="w-8 h-8 rounded-full bg-surface-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTUOvzG6rV8dCfShd9HGZajjbPrl07mVM-6sGDLO67Kbz8Ba6Z6cXOuV6Ej8BLdW18hZrhlORuYVkzlIsxQYUKr11Br2xYRhhCti90jd4F6GLXxns8eT6gtZ0iH2scHH_gccnUwN6Pc5Y86-8qYumm7Y8nPf9z2h-INBblkNuQt3S68l-X3stJ9p6qSZKOP6iOwldr2vKrhPV6jkA3okssqKHN7kMhO0qlIV1SaJ6mNINKYXYQwSyNQAqzfKsJuUO6rMPsPn6sxXQ"/>
+<div>
+<div class="text-sm font-bold text-on-surface">Ana Paula Silva</div>
+<div class="text-[10px] text-outline">ID: SD-4920</div>
+</div>
+</div>
+</td>
+<td class="px-4 py-3 text-sm text-on-surface-variant">ana.silva@empresa.com.br</td>
+<td class="px-4 py-3">
+<span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container rounded text-[10px] font-bold">Analista L2</span>
+</td>
+<td class="px-4 py-3 text-sm text-on-surface-variant">Matriz SP</td>
+<td class="px-4 py-3">
+<div class="flex flex-wrap gap-1">
+<span class="px-1.5 py-0.5 bg-surface-variant rounded text-[9px] font-medium text-on-surface-variant">Infra</span>
+<span class="px-1.5 py-0.5 bg-surface-variant rounded text-[9px] font-medium text-on-surface-variant">Redes</span>
+</div>
+</td>
+<td class="px-4 py-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase tracking-tight">
+<span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Ativo
+                                    </span>
+</td>
+<td class="px-4 py-3 text-sm text-outline">Há 15 min</td>
+<td class="px-4 py-3 text-right">
+<button class="p-1.5 hover:bg-primary-container/20 rounded-md text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-4 py-3">
+<div class="flex items-center gap-3">
+<img alt="User" class="w-8 h-8 rounded-full bg-surface-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSaUt9iQk6EgC7bGcXM43OfbQ7fdKTXBVELmKhNeUZdMD4OH3s96iGAj-zlWWxKuPIwv2s69qvMkiphJQ2chtZ4yxH4YgjRDvb01P5WvCryoucp2r72lOQQkWB05hm1-Z8OrK4TNX69DlwBudBZCvISg3cp-g-tFgWhLNCzcVIsmURz4utjNavsWDPHpOJ6Qrsm5OhqsUELMMc52T68t5k6Bktqdc_xH-rl0weYtBC7OEJSrD8ANZ5-YfclqHjoQFStBcGOS6lmLg"/>
+<div>
+<div class="text-sm font-bold text-on-surface">Roberto Mendes</div>
+<div class="text-[10px] text-outline">ID: SD-3312</div>
+</div>
+</div>
+</td>
+<td class="px-4 py-3 text-sm text-on-surface-variant">roberto.m@empresa.com.br</td>
+<td class="px-4 py-3">
+<span class="px-2 py-0.5 bg-primary-container/20 text-primary rounded text-[10px] font-bold">Administrador</span>
+</td>
+<td class="px-4 py-3 text-sm text-on-surface-variant">Regional Sul</td>
+<td class="px-4 py-3">
+<div class="flex flex-wrap gap-1">
+<span class="px-1.5 py-0.5 bg-surface-variant rounded text-[9px] font-medium text-on-surface-variant">Governance</span>
+</div>
+</td>
+<td class="px-4 py-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase tracking-tight">
+<span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Ativo
+                                    </span>
+</td>
+<td class="px-4 py-3 text-sm text-outline">Há 2 dias</td>
+<td class="px-4 py-3 text-right">
+<button class="p-1.5 hover:bg-primary-container/20 rounded-md text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-4 py-3">
+<div class="flex items-center gap-3">
+<img alt="User" class="w-8 h-8 rounded-full bg-surface-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAblSn0PkSM_u9bDNa1LtBvH0sm7Sq_vdcCAPbop0E8bQALKkRP59YjAOLUaIbb6z6UO0f-Ry7UDlF9sAXAOKKlxvpgL9jWUtt8f53kwmzbL4OAVaqX3RPn0V6LlmrbhZrxCzevBTFIy7NFAi91CyFB9wSqtkorwPESgnGH4IB3pQ_UZqGIJxnUQimhsvp2_E_556ZqP7SmARF908s3jDX0KKRwpDheWIU8seeNlWtUaLnPfit4N8Dnee6UVocR4yTQoQvSISBgdk"/>
+<div>
+<div class="text-sm font-bold text-on-surface">Juliana Castros</div>
+<div class="text-[10px] text-outline">ID: SD-1209</div>
+</div>
+</div>
+</td>
+<td class="px-4 py-3 text-sm text-on-surface-variant">juliana.c@empresa.com.br</td>
+<td class="px-4 py-3">
+<span class="px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded text-[10px] font-bold">Solicitante</span>
+</td>
+<td class="px-4 py-3 text-sm text-on-surface-variant">Financeiro</td>
+<td class="px-4 py-3">
+<span class="text-[10px] italic text-outline italic">Sem grupo</span>
+</td>
+<td class="px-4 py-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-variant/50 text-outline rounded-full text-[10px] font-bold uppercase tracking-tight">
+<span class="w-1.5 h-1.5 bg-outline rounded-full"></span> Inativo
+                                    </span>
+</td>
+<td class="px-4 py-3 text-sm text-outline">Jan 22, 2024</td>
+<td class="px-4 py-3 text-right">
+<button class="p-1.5 hover:bg-primary-container/20 rounded-md text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</td>
+</tr>
+<!-- Multiple Mock Rows -->
+<script>
+                                for(let i=0; i<12; i++){
+                                    document.write(`
+                                    <tr class="hover:bg-surface-container-low transition-colors group">
+                                        <td class="px-4 py-3">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-xs text-primary">U</div>
+                                                <div>
+                                                    <div class="text-sm font-bold text-on-surface text-opacity-80">Usuário Genérico ${i+4}</div>
+                                                    <div class="text-[10px] text-outline">ID: SD-${3000+i}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-on-surface-variant">user.${i+4}@corporativo.com</td>
+                                        <td class="px-4 py-3"><span class="px-2 py-0.5 bg-surface-variant rounded text-[10px] font-medium">Analista L1</span></td>
+                                        <td class="px-4 py-3 text-sm text-on-surface-variant text-opacity-80">Logística</td>
+                                        <td class="px-4 py-3"><span class="px-1.5 py-0.5 bg-surface-variant rounded text-[9px] font-medium text-on-surface-variant">Suporte</span></td>
+                                        <td class="px-4 py-3 text-center">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100/60 text-green-700/80 rounded-full text-[10px] font-bold uppercase">Ativo</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-outline">Há ${i+1}h</td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button class="p-1.5 hover:bg-primary-container/20 rounded-md text-on-surface-variant hover:text-primary transition-all">
+                                                <span class="material-symbols-outlined text-lg">edit</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    `);
+                                }
+                            </script>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 bg-surface-container-low border-t border-outline-variant flex items-center justify-between">
+<div class="flex gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant cursor-not-allowed">
+<span class="material-symbols-outlined text-lg">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-on-primary font-bold text-xs">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface font-bold text-xs transition-colors">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface font-bold text-xs transition-colors">3</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-lg">chevron_right</span>
+</button>
+</div>
+<div class="text-xs font-medium text-on-surface-variant flex items-center gap-2">
+                        Linhas por página:
+                        <select class="bg-transparent border-none focus:ring-0 text-xs font-bold p-0 pr-6">
+<option>10</option>
+<option>25</option>
+<option>50</option>
+</select>
+</div>
+</div>
+</div>
+</section>
+<!-- Access Governance Sidebar (Right) -->
+<aside class="w-80 bg-surface-container-low border-l border-outline-variant p-6 flex flex-col gap-8">
+<div>
+<h3 class="text-sm font-bold text-on-surface mb-4 uppercase tracking-wider">Métricas de Acesso</h3>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/50">
+<div class="text-[10px] font-bold text-outline uppercase mb-1">Papéis Atrib.</div>
+<div class="text-xl font-headline font-black text-primary">12</div>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/50">
+<div class="text-[10px] font-bold text-outline uppercase mb-1">Usuários Ativos</div>
+<div class="text-xl font-headline font-black text-green-600">1.198</div>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/50">
+<div class="text-[10px] font-bold text-outline uppercase mb-1">Sem Grupo</div>
+<div class="text-xl font-headline font-black text-tertiary">42</div>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/50">
+<div class="text-[10px] font-bold text-outline uppercase mb-1">Admins</div>
+<div class="text-xl font-headline font-black text-on-surface">15</div>
+</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col min-h-0">
+<h3 class="text-sm font-bold text-on-surface mb-4 uppercase tracking-wider flex items-center justify-between">
+                    Alterações Recentes
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">refresh</span>
+</h3>
+<div class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
+<!-- Audit Item -->
+<div class="relative pl-6 pb-6 border-l-2 border-outline-variant last:border-l-0">
+<div class="absolute -left-[9px] top-0 w-4 h-4 bg-primary rounded-full border-4 border-surface-container-low"></div>
+<div class="text-xs font-bold text-on-surface">Perfil Alterado</div>
+<div class="text-[10px] text-on-surface-variant leading-relaxed mt-1">
+<strong>Admin</strong> alterou o papel de <strong>Pedro Costa</strong> para <em>Analista L3</em>.
+                        </div>
+<div class="text-[10px] text-outline mt-1 italic">Hoje, às 14:30</div>
+</div>
+<!-- Audit Item -->
+<div class="relative pl-6 pb-6 border-l-2 border-outline-variant last:border-l-0">
+<div class="absolute -left-[9px] top-0 w-4 h-4 bg-tertiary rounded-full border-4 border-surface-container-low"></div>
+<div class="text-xs font-bold text-on-surface">Usuário Inativado</div>
+<div class="text-[10px] text-on-surface-variant leading-relaxed mt-1">
+                            Sistema inativou <strong>Carla Bruni</strong> por inatividade de 90 dias.
+                        </div>
+<div class="text-[10px] text-outline mt-1 italic">Hoje, às 09:12</div>
+</div>
+<!-- Audit Item -->
+<div class="relative pl-6 pb-6 border-l-2 border-outline-variant last:border-l-0">
+<div class="absolute -left-[9px] top-0 w-4 h-4 bg-green-500 rounded-full border-4 border-surface-container-low"></div>
+<div class="text-xs font-bold text-on-surface">Novo Usuário</div>
+<div class="text-[10px] text-on-surface-variant leading-relaxed mt-1">
+<strong>RH Portal</strong> sincronizou 12 novos colaboradores via API.
+                        </div>
+<div class="text-[10px] text-outline mt-1 italic">Ontem, às 18:45</div>
+</div>
+<!-- Audit Item -->
+<div class="relative pl-6 pb-6 border-l-2 border-outline-variant last:border-l-0">
+<div class="absolute -left-[9px] top-0 w-4 h-4 bg-primary rounded-full border-4 border-surface-container-low"></div>
+<div class="text-xs font-bold text-on-surface">Redefinição de Senha</div>
+<div class="text-[10px] text-on-surface-variant leading-relaxed mt-1">
+                            Solicitada redefinição para <strong>Marcos Jr.</strong> via Admin Panel.
+                        </div>
+<div class="text-[10px] text-outline mt-1 italic">Ontem, às 16:20</div>
+</div>
+</div>
+<button class="mt-4 w-full py-2 text-xs font-bold text-primary border border-primary/20 rounded-lg hover:bg-primary-container/10 transition-colors">
+                    Ver Auditoria Completa
+                </button>
+</div>
+<!-- Promotion Card -->
+<div class="bg-primary-container p-4 rounded-xl relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="text-on-primary-container font-bold text-xs mb-1">Segurança IA</h4>
+<p class="text-[10px] text-on-primary-container/80 leading-snug">O sistema detectou 3 padrões de acesso atípicos esta semana.</p>
+<button class="mt-2 text-[10px] font-black text-on-primary-container bg-white/20 py-1 px-3 rounded uppercase">Analisar</button>
+</div>
+<span class="material-symbols-outlined absolute -right-4 -bottom-4 text-8xl text-white/10 select-none">shield_with_heart</span>
+</div>
+</aside>
+</main>
+<!-- Overlay: Criar Usuário (Drawer style) -->
+<div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] hidden transition-opacity duration-300" id="overlay-backdrop" onclick="toggleCreateUser()"></div>
+<div class="fixed top-0 right-0 h-screen w-[480px] bg-surface-container-lowest shadow-2xl z-[101] hidden flex flex-col" id="create-user-overlay">
+<div class="p-6 border-b border-outline-variant flex items-center justify-between bg-surface-bright">
+<div>
+<h2 class="text-xl font-headline font-black text-on-surface">Criar Novo Usuário</h2>
+<p class="text-xs text-on-surface-variant">Configure os acessos e permissões iniciais.</p>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors" onclick="toggleCreateUser()">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+<!-- Form Section: Dados Básicos -->
+<div class="space-y-4">
+<h3 class="text-[11px] font-bold text-outline uppercase tracking-widest border-b border-outline-variant pb-1">Identidade Corporativa</h3>
+<div class="grid grid-cols-1 gap-4">
+<div class="space-y-1">
+<label class="text-xs font-bold text-on-surface-variant">Nome Completo</label>
+<input class="w-full px-4 py-2.5 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary text-sm" placeholder="Ex: João Roberto Costa" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="text-xs font-bold text-on-surface-variant">Email Corporativo</label>
+<input class="w-full px-4 py-2.5 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary text-sm" placeholder="nome@empresa.com.br" type="email"/>
+</div>
+</div>
+</div>
+<!-- Form Section: Segurança -->
+<div class="space-y-4">
+<h3 class="text-[11px] font-bold text-outline uppercase tracking-widest border-b border-outline-variant pb-1">Segurança</h3>
+<div class="space-y-1">
+<label class="text-xs font-bold text-on-surface-variant">Senha Temporária</label>
+<div class="relative">
+<input class="w-full px-4 py-2.5 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary text-sm" id="temp-pass" type="password" value="Empresa@2024"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-primary">
+<span class="material-symbols-outlined text-lg">visibility</span>
+</button>
+</div>
+<div class="mt-2 space-y-1.5">
+<div class="flex justify-between items-center text-[10px]">
+<span class="text-on-surface-variant">Força da Senha</span>
+<span class="font-bold text-green-600 uppercase">Forte</span>
+</div>
+<div class="flex gap-1 h-1">
+<div class="flex-1 bg-green-500 rounded-full"></div>
+<div class="flex-1 bg-green-500 rounded-full"></div>
+<div class="flex-1 bg-green-500 rounded-full"></div>
+<div class="flex-1 bg-outline-variant rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="p-3 bg-secondary-container/30 rounded-lg flex gap-3 border border-secondary-container">
+<span class="material-symbols-outlined text-secondary text-lg">info</span>
+<p class="text-[10px] text-on-secondary-container leading-relaxed">
+                        O usuário receberá um convite por e-mail e deverá obrigatoriamente alterar esta senha no primeiro acesso via SSO ou login direto.
+                    </p>
+</div>
+</div>
+<!-- Form Section: Permissões -->
+<div class="space-y-4">
+<h3 class="text-[11px] font-bold text-outline uppercase tracking-widest border-b border-outline-variant pb-1">Perfil e Acesso</h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1">
+<label class="text-xs font-bold text-on-surface-variant">Papel (Role)</label>
+<select class="w-full px-4 py-2.5 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary text-sm">
+<option>Solicitante</option>
+<option>Analista L1</option>
+<option>Analista L2</option>
+<option>Administrador</option>
+</select>
+</div>
+<div class="space-y-1">
+<label class="text-xs font-bold text-on-surface-variant">Entidade</label>
+<select class="w-full px-4 py-2.5 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary text-sm">
+<option>Matriz SP</option>
+<option>Regional Sul</option>
+<option>Internacional</option>
+</select>
+</div>
+</div>
+<div class="space-y-1">
+<label class="text-xs font-bold text-on-surface-variant">Grupos de Atendimento</label>
+<div class="p-3 border border-outline-variant rounded-lg space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+<label class="flex items-center gap-3 text-xs text-on-surface group cursor-pointer">
+<input checked="" class="rounded text-primary focus:ring-primary border-outline-variant" type="checkbox"/>
+                            Suporte Geral
+                        </label>
+<label class="flex items-center gap-3 text-xs text-on-surface group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant" type="checkbox"/>
+                            Segurança da Informação
+                        </label>
+<label class="flex items-center gap-3 text-xs text-on-surface group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant" type="checkbox"/>
+                            Infraestrutura
+                        </label>
+<label class="flex items-center gap-3 text-xs text-on-surface group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant" type="checkbox"/>
+                            Redes e Conectividade
+                        </label>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 border border-outline-variant rounded-lg">
+<div class="text-xs font-bold text-on-surface-variant">Status Inicial</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Ativo</span>
+<button class="w-10 h-5 bg-primary rounded-full relative transition-colors shadow-inner" id="status-toggle" onclick="this.classList.toggle('bg-primary'); this.classList.toggle('bg-outline-variant'); document.getElementById('toggle-knob').classList.toggle('translate-x-5')">
+<div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform translate-x-5 shadow-md" id="toggle-knob"></div>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="p-6 border-t border-outline-variant bg-surface-container-low flex gap-3">
+<button class="flex-1 py-2.5 px-4 border border-outline-variant text-on-surface-variant font-bold text-sm rounded-lg hover:bg-surface-container transition-colors" onclick="toggleCreateUser()">
+                Cancelar
+            </button>
+<button class="flex-[2] py-2.5 px-4 bg-primary text-on-primary font-bold text-sm rounded-lg shadow-md hover:brightness-110 active:scale-95 transition-all">
+                Salvar Usuário
+            </button>
+</div>
+</div>
+<!-- UI Logic Scripts -->
+<script>
+        function toggleCreateUser() {
+            const overlay = document.getElementById('create-user-overlay');
+            const backdrop = document.getElementById('overlay-backdrop');
+            
+            if (overlay.classList.contains('hidden')) {
+                overlay.classList.remove('hidden');
+                backdrop.classList.remove('hidden');
+                setTimeout(() => {
+                    overlay.classList.remove('opacity-0');
+                    overlay.style.transform = 'translateX(0)';
+                    backdrop.classList.add('opacity-100');
+                }, 10);
+            } else {
+                overlay.style.transform = 'translateX(100%)';
+                overlay.classList.add('opacity-0');
+                backdrop.classList.remove('opacity-100');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    backdrop.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        // Simulating loading state for aesthetic
+        window.onload = () => {
+            console.log("Enterprise Admin Panel Ready.");
+        }
+    </script>
+</body></html>

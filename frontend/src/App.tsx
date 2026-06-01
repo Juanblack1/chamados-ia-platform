@@ -395,7 +395,7 @@ export default function App() {
           ) : null}
 
           {view === "detail" && selectedTicket ? (
-            <DetailView
+            <TicketWorkspaceView
               user={user}
               ticket={selectedTicket}
               isSubmitting={isSubmitting}
@@ -414,7 +414,7 @@ export default function App() {
           {view === "profile" ? <ProfileView user={user} onUpdated={(updated) => void handleCurrentUserUpdated(updated)} /> : null}
 
           {view === "users" ? (
-            <UsersView
+            <UserAdminView
               user={user}
               catalog={catalog}
               onUserSaved={(updated) => {
@@ -1170,6 +1170,290 @@ function IntakeIntelligencePanel({
   );
 }
 
+function TicketWorkspaceView({
+  user,
+  ticket,
+  isSubmitting,
+  onAssign,
+  onStatus,
+  onFollowup,
+  onTask,
+  onCompleteTask,
+  onResolve,
+  onDelete,
+  onTicketUpdated,
+  onChat
+}: {
+  user: AppUser;
+  ticket: Ticket;
+  isSubmitting: boolean;
+  onAssign: () => void;
+  onStatus: (status: TicketStatus) => void;
+  onFollowup: (message: string, visibility: "public" | "internal") => void;
+  onTask: (title: string, description?: string) => void;
+  onCompleteTask: (taskId: string) => void;
+  onResolve: (message: string) => void;
+  onDelete: () => void;
+  onTicketUpdated: (ticket: Ticket) => void;
+  onChat: (message: string, onEvent: (event: TicketChatStreamEvent) => void) => Promise<void>;
+}) {
+  const [followup, setFollowup] = useState("");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [resolution, setResolution] = useState(ticket.ai.resolutionDraft?.summary ?? "");
+  const canWork = hasPermission(user, "tickets.work");
+  const canDelete = hasPermission(user, "tickets.delete");
+  const timelineEvents = useMemo(() => buildTimelineEvents(ticket), [ticket]);
+  const aiDecision = ticket.ai.triage ?? ticket.ai.resolutionDraft;
+  const aiConfidence = aiDecision ? Math.round(aiDecision.confidence * 100) : 0;
+  const openTasks = ticket.tasks.filter((task) => task.status !== "done").length;
+  const doneTasks = ticket.tasks.length - openTasks;
+  const memoryCount = ticket.ai.agentMemory?.filter((entry) => entry.role !== "system").length ?? 0;
+  const statusOptions: Array<{ value: TicketStatus; label: string }> = [
+    { value: "new", label: "Novo" },
+    { value: "open", label: "Aberto" },
+    { value: "triaging", label: "Em triagem" },
+    { value: "in_progress", label: "Em atendimento" },
+    { value: "waiting_customer", label: "Aguardando solicitante" },
+    { value: "pending_approval", label: "Aguardando aprovacao" },
+    { value: "escalated", label: "Escalado" },
+    { value: "resolved", label: "Resolvido" },
+    { value: "closed", label: "Fechado" }
+  ];
+
+  useEffect(() => {
+    setFollowup("");
+    setTaskTitle("");
+    setResolution(ticket.ai.resolutionDraft?.summary ?? "");
+  }, [ticket.id, ticket.ai.resolutionDraft?.summary]);
+
+  return (
+    <section className="detail-layout ticket-workspace" aria-label="Detalhe e tratamento do chamado">
+      <div className="ticket-workspace-header panel">
+        <div className="ticket-title-block">
+          <p className="eyebrow">{ticket.number} - {typeLabel(ticket.type)}</p>
+          <h2>{ticket.title}</h2>
+          <p>{ticket.description}</p>
+          <div className="ticket-header-meta">
+            <Badge tone={statusTone(ticket.status)}>{statusLabel(ticket.status)}</Badge>
+            <Badge tone={priorityTone(ticket.priority)}>{priorityLabel(ticket.priority)}</Badge>
+            <SlaBadge ticket={ticket} />
+          </div>
+        </div>
+        <div className="ticket-header-actions">
+          <label className="status-control">
+            <span>Status</span>
+            <select className="status-select" value={ticket.status} disabled={!canWork || isSubmitting} onChange={(event) => onStatus(event.target.value as TicketStatus)}>
+              {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <div className="inline-actions end">
+            {canWork ? (
+              <button type="button" className="secondary-button small" disabled={isSubmitting} onClick={onAssign}>
+                <UserRound size={16} />
+                <span>Atribuir para mim</span>
+              </button>
+            ) : null}
+            {canDelete ? (
+              <button type="button" className="danger-button small" disabled={isSubmitting} onClick={onDelete}>
+                <Trash2 size={16} />
+                <span>Excluir</span>
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="ticket-context-grid" aria-label="Resumo operacional">
+        <article className="ticket-context-card">
+          <span className="context-icon"><UserRound size={16} /></span>
+          <div>
+            <span>Solicitante</span>
+            <strong>{ticket.requesterEmail}</strong>
+            <small>{ticket.department || ticket.entityName}</small>
+          </div>
+        </article>
+        <article className="ticket-context-card">
+          <span className="context-icon"><Activity size={16} /></span>
+          <div>
+            <span>Servico afetado</span>
+            <strong>{ticket.affectedService}</strong>
+            <small>{ticket.category}</small>
+          </div>
+        </article>
+        <article className="ticket-context-card">
+          <span className="context-icon"><LifeBuoy size={16} /></span>
+          <div>
+            <span>Tratamento</span>
+            <strong>{ticket.assignedGroupName ?? "Sem grupo"}</strong>
+            <small>{ticket.assigneeName ?? "Nao atribuido"}</small>
+          </div>
+        </article>
+        <article className="ticket-context-card">
+          <span className="context-icon"><Bot size={16} /></span>
+          <div>
+            <span>IA</span>
+            <strong>{aiConfidence ? `${aiConfidence}% de confianca` : "Sem decisao"}</strong>
+            <small>{memoryCount} memorias no chamado</small>
+          </div>
+        </article>
+      </div>
+
+      <div className="ticket-workspace-grid">
+        <aside className="ticket-insight-column">
+          <section className="panel ai-context-panel" aria-labelledby="ai-context-title">
+            <div className="panel-heading">
+              <div>
+                <h2 id="ai-context-title">Contexto da IA</h2>
+                <p>Classificacao, impacto e evidencias usadas pelos agentes.</p>
+              </div>
+              <Badge tone={ticket.ai.triage ? "success" : "neutral"}>{ticket.ai.triage ? "Triado" : "Pendente"}</Badge>
+            </div>
+            <div className="ai-context-body">
+              <AnalysisItem label="Tipo" value={typeLabel(ticket.type)} />
+              <AnalysisItem label="Urgencia" value={priorityLabel(ticket.urgency)} />
+              <AnalysisItem label="Impacto operacional" value={priorityLabel(ticket.impact)} />
+              <AnalysisItem label="Impacto negocio" value={ticket.businessImpact || "Nao informado"} />
+              <AnalysisItem label="Tags" value={ticket.tags.join(", ") || "Sem tags"} />
+            </div>
+            {aiDecision ? (
+              <article className="ai-decision-card">
+                <div>
+                  <strong>{aiDecision.agent}</strong>
+                  <Badge tone={aiConfidence >= 80 ? "success" : "warning"}>{aiConfidence}%</Badge>
+                </div>
+                <p>{localizeAgentContent(aiDecision.summary)}</p>
+                {aiDecision.evidence.length ? (
+                  <ul>
+                    {aiDecision.evidence.slice(0, 4).map((evidence) => <li key={evidence}>{localizeAgentContent(evidence)}</li>)}
+                  </ul>
+                ) : null}
+              </article>
+            ) : null}
+          </section>
+
+          <section className="panel evidence-panel" aria-labelledby="evidence-title">
+            <div className="panel-heading">
+              <div>
+                <h2 id="evidence-title">Fontes e anexos</h2>
+                <p>Base consultada e provas enviadas pelo solicitante.</p>
+              </div>
+              <Badge tone="info">{ticket.ai.retrievedSources.length} fontes</Badge>
+            </div>
+            <div className="evidence-grid compact">
+              {ticket.ai.retrievedSources.length ? ticket.ai.retrievedSources.slice(0, 4).map((source) => (
+                <article key={source.id} className="evidence-row compact">
+                  <div>
+                    <strong>{source.title}</strong>
+                    <span>{source.source}</span>
+                  </div>
+                  <p>{source.excerpt}</p>
+                  <Badge tone="neutral">{Math.round(source.relevance * 100)}%</Badge>
+                </article>
+              )) : <p className="empty-inline">Nenhuma fonte RAG vinculada.</p>}
+            </div>
+            {ticket.attachments.length ? (
+              <div className="ticket-attachments">
+                <h3>Anexos</h3>
+                <div className="attachment-grid">
+                  {ticket.attachments.map((attachment, index) => (
+                    <a className="attachment-thumb" href={attachment} target="_blank" rel="noreferrer" key={attachment}>
+                      <img src={attachment} alt={`Evidencia ${index + 1}`} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+        </aside>
+
+        <section className="panel timeline-panel treatment-timeline" aria-labelledby="timeline-title">
+          <div className="panel-heading">
+            <div>
+              <h2 id="timeline-title">Acompanhamentos</h2>
+              <p>Historico visivel, comentarios internos e resposta dos agentes em pt-BR.</p>
+            </div>
+            <Badge tone="neutral">{timelineEvents.length} eventos</Badge>
+          </div>
+          <div className="timeline">
+            {timelineEvents.map((event) => (
+              <article key={event.id} className={`timeline-item ${event.actor}`}>
+                <div className="timeline-meta">
+                  <strong>{event.actorLabel}</strong>
+                  <time dateTime={event.createdAt}>{formatTimelineDate(event.createdAt)}</time>
+                  {event.visibility ? <Badge tone={event.visibility === "internal" ? "warning" : "info"}>{event.visibility === "internal" ? "Interno" : "Visivel"}</Badge> : null}
+                </div>
+                <p>{localizeTimelineMessage(event.message)}</p>
+              </article>
+            ))}
+          </div>
+          <div className="composer">
+            <textarea value={followup} onChange={(event) => setFollowup(event.target.value)} placeholder="Registrar acompanhamento para o solicitante ou equipe interna" />
+            <div className="inline-actions end">
+              {canWork ? (
+                <button type="button" className="secondary-button small" disabled={isSubmitting || followup.trim().length < 3} onClick={() => { onFollowup(followup, "internal"); setFollowup(""); }}>
+                  <span>Salvar interno</span>
+                </button>
+              ) : null}
+              <button type="button" className="primary-button small" disabled={isSubmitting || followup.trim().length < 3} onClick={() => { onFollowup(followup, "public"); setFollowup(""); }}>
+                <span>Publicar acompanhamento</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <aside className="ticket-treatment-column">
+          <section className="panel treatment-panel" aria-labelledby="treatment-title">
+            <div className="panel-heading">
+              <div>
+                <h2 id="treatment-title">Tratamento</h2>
+                <p>Plano tecnico, tarefas e fechamento do chamado.</p>
+              </div>
+              <Badge tone={statusTone(ticket.status)}>{statusLabel(ticket.status)}</Badge>
+            </div>
+            <div className="treatment-stats">
+              <span><strong>{openTasks}</strong>Tarefas abertas</span>
+              <span><strong>{doneTasks}</strong>Concluidas</span>
+              <span><strong>{formatTimelineDate(ticket.updatedAt)}</strong>Atualizado</span>
+            </div>
+            <div className="task-list treatment-task-list">
+              <h3>Plano de acao</h3>
+              {ticket.tasks.length ? ticket.tasks.map((task) => (
+                <label key={task.id} className="task-row">
+                  <input type="checkbox" checked={task.status === "done"} disabled={!canWork || task.status === "done"} onChange={() => onCompleteTask(task.id)} />
+                  <span>{task.title}</span>
+                  <Badge tone={task.status === "done" ? "success" : task.status === "doing" ? "info" : "neutral"}>
+                    {task.status === "done" ? "Concluida" : task.status === "doing" ? "Em execucao" : "A fazer"}
+                  </Badge>
+                </label>
+              )) : <p>Nenhuma tarefa registrada.</p>}
+              {canWork ? (
+                <div className="task-composer">
+                  <input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="Nova tarefa tecnica" />
+                  <button type="button" className="secondary-button small" disabled={isSubmitting || taskTitle.trim().length < 3} onClick={() => { onTask(taskTitle); setTaskTitle(""); }}>
+                    <Plus size={16} />
+                    <span>Criar tarefa</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            {canWork ? (
+              <div className="resolution-box">
+                <h3>Solucao</h3>
+                <textarea value={resolution} onChange={(event) => setResolution(event.target.value)} placeholder="Descreva a solucao aplicada e o resultado validado" />
+                <button type="button" className="primary-button small" disabled={isSubmitting || resolution.trim().length < 6} onClick={() => onResolve(resolution)}>
+                  <CheckCircle2 size={16} />
+                  <span>Resolver chamado</span>
+                </button>
+              </div>
+            ) : null}
+          </section>
+          <TicketAssistantChat ticket={ticket} onTicketUpdated={onTicketUpdated} onChat={onChat} />
+        </aside>
+      </div>
+    </section>
+  );
+}
+
 function DetailView({
   user,
   ticket,
@@ -1409,6 +1693,9 @@ function formatTimelineDate(value: string): string {
 }
 
 function localizeTimelineMessage(message: string): string {
+  const localized = localizeAgentContent(message);
+  if (localized !== message) return localized;
+
   if (/^Routing agent assigned/i.test(message)) {
     return message
       .replace(/^Routing agent assigned/i, "Agente de roteamento direcionou")
@@ -1439,6 +1726,44 @@ function localizeTimelineMessage(message: string): string {
     .replace(/\bhigh priority\b/gi, "prioridade alta")
     .replace(/\bmedium priority\b/gi, "prioridade media")
     .replace(/\blow priority\b/gi, "prioridade baixa");
+}
+
+function localizeAgentContent(content: string): string {
+  const knownTranslations = [
+    {
+      pattern: /^I understand you're experiencing a login issue with the ERP Central system\. To help resolve this, please provide the exact type of login problem \(e\.g\., password issue, locked account, MFA error\), the complete error message you are receiving, and confirm your identity for validation\.$/i,
+      replacement: "Entendi que ha um problema de login no ERP Central. Para resolver, informe o tipo exato da falha (senha, conta bloqueada ou MFA), a mensagem de erro completa e confirme sua identidade para validacao."
+    },
+    {
+      pattern: /^Routing agent assigned\s+(.+?)\s+to\s+(.+?)\.$/i,
+      replacement: "Agente de roteamento direcionou $1 para $2."
+    },
+    {
+      pattern: /^SLA risk agent marked risk as\s+(.+?)\s+for\s+(.+?)\s+priority\. Evidence:\s*(.+)$/i,
+      replacement: "Agente de SLA marcou risco $1 para prioridade $2. Evidencia: $3"
+    }
+  ];
+  const translated = knownTranslations.reduce((current, item) => current.replace(item.pattern, item.replacement), content);
+
+  return translated
+    .replace(/\bIntake ready\b/gi, "Intake pronto")
+    .replace(/\bPrediction\b/gi, "Previsao")
+    .replace(/\bIncident\b/gi, "Incidente")
+    .replace(/\bRequest\b/gi, "Solicitacao")
+    .replace(/\bpriority critical\b/gi, "prioridade critica")
+    .replace(/\bpriority high\b/gi, "prioridade alta")
+    .replace(/\bpriority medium\b/gi, "prioridade media")
+    .replace(/\bpriority low\b/gi, "prioridade baixa")
+    .replace(/\bcritical priority\b/gi, "prioridade critica")
+    .replace(/\bhigh priority\b/gi, "prioridade alta")
+    .replace(/\bmedium priority\b/gi, "prioridade media")
+    .replace(/\blow priority\b/gi, "prioridade baixa")
+    .replace(/\bnormal\b/gi, "normal")
+    .replace(/\bwatch\b/gi, "em observacao")
+    .replace(/\bescalate\b/gi, "escalacao")
+    .replace(/\bEvidence:\b/gi, "Evidencia:")
+    .replace(/\bassigned\b/gi, "direcionou")
+    .replace(/\bto\b/gi, "para");
 }
 
 function TicketAssistantChat({
@@ -1594,7 +1919,7 @@ function convertSpecialistMemory(message: TicketAgentMemoryEntry): ThreadMessage
   return {
     id: message.id,
     role: message.role === "assistant" ? "assistant" : "user",
-    content: [{ type: "text", text: message.content }],
+    content: [{ type: "text", text: message.role === "assistant" ? localizeAgentContent(message.content) : message.content }],
     createdAt: new Date(message.createdAt)
   };
 }
@@ -1751,6 +2076,211 @@ function ProfileView({ user, onUpdated }: { user: AppUser; onUpdated: (user: App
   );
 }
 
+function UserAdminView({
+  user,
+  catalog,
+  onUserSaved
+}: {
+  user: AppUser;
+  catalog: ServiceDeskCatalog | null;
+  onUserSaved: (user: AppUser) => void;
+}) {
+  const users = catalog?.users ?? [];
+  const groups = catalog?.groups ?? [];
+  const [selectedId, setSelectedId] = useState<string>("__new");
+  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<AppUser["role"] | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const selectedUser = users.find((item) => item.id === selectedId);
+  const visibleUsers = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return users.filter((item) => {
+      const groupNames = groups
+        .filter((group) => item.groupIds.includes(group.id))
+        .map((group) => group.name)
+        .join(" ")
+        .toLowerCase();
+      const matchesQuery = normalizedQuery
+        ? `${item.name} ${item.email} ${item.entityName} ${groupNames}`.toLowerCase().includes(normalizedQuery)
+        : true;
+      const matchesRole = roleFilter === "all" || item.role === roleFilter;
+      const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? item.active : !item.active);
+      return matchesQuery && matchesRole && matchesStatus;
+    });
+  }, [groups, query, roleFilter, statusFilter, users]);
+  const userMetrics = useMemo(() => {
+    const active = users.filter((item) => item.active).length;
+    const admins = users.filter((item) => item.role === "admin").length;
+    const technicians = users.filter((item) => item.role === "employee" || item.role === "manager").length;
+    const withoutGroups = users.filter((item) => item.role !== "requester" && item.groupIds.length === 0).length;
+    return [
+      { label: "Ativos", value: active.toString(), icon: UserRound },
+      { label: "Administradores", value: admins.toString(), icon: ShieldCheck },
+      { label: "Atendimento", value: technicians.toString(), icon: LifeBuoy },
+      { label: "Sem grupo", value: withoutGroups.toString(), icon: AlertTriangle }
+    ];
+  }, [users]);
+
+  useEffect(() => {
+    if (selectedId !== "__new" && users.length > 0 && !users.some((item) => item.id === selectedId)) {
+      setSelectedId(users[0].id);
+    }
+  }, [selectedId, users]);
+
+  if (!canManageUsers(user)) {
+    return (
+      <div className="panel empty-state">
+        <ShieldCheck size={28} />
+        <h3>Acesso restrito</h3>
+        <p>Somente usuarios com permissao de administracao podem ver e editar contas.</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="users-admin-page" aria-label="Administracao de usuarios">
+      <section className="panel users-admin-hero">
+        <div>
+          <p className="eyebrow">Acesso, perfis e credenciais</p>
+          <h2>Usuarios</h2>
+          <p>Crie contas com autenticacao por e-mail e senha, ajuste grupos de atendimento e controle permissoes por perfil.</p>
+        </div>
+        <div className="users-admin-metrics" aria-label="Metricas de usuarios">
+          {userMetrics.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <article key={metric.label}>
+                <Icon size={16} />
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="users-admin-grid">
+        <section className="panel users-directory-panel" aria-labelledby="users-directory-title">
+          <div className="panel-heading">
+            <div>
+              <h2 id="users-directory-title">Diretorio</h2>
+              <p>Listagem de usuarios, status e escopo operacional.</p>
+            </div>
+            <button type="button" className="primary-button small" onClick={() => setSelectedId("__new")}>
+              <UserPlus size={16} />
+              <span>Novo usuario</span>
+            </button>
+          </div>
+          <div className="users-toolbar">
+            <label className="search-box">
+              <Search size={17} />
+              <span className="sr-only">Buscar usuarios</span>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nome, e-mail, entidade ou grupo" />
+            </label>
+            <label className="select-filter">
+              <ListFilter size={16} />
+              <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as AppUser["role"] | "all")}>
+                <option value="all">Todos perfis</option>
+                {roleOptions().map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+              </select>
+            </label>
+            <label className="select-filter">
+              <ShieldCheck size={16} />
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "active" | "inactive")}>
+                <option value="all">Todos status</option>
+                <option value="active">Ativos</option>
+                <option value="inactive">Inativos</option>
+              </select>
+            </label>
+          </div>
+          <div className="users-table" role="table" aria-label="Usuarios cadastrados">
+            <div className="users-table-head" role="row">
+              <span role="columnheader">Usuario</span>
+              <span role="columnheader">Perfil</span>
+              <span role="columnheader">Grupos</span>
+              <span role="columnheader">Permissoes</span>
+              <span role="columnheader">Status</span>
+            </div>
+            {visibleUsers.map((item) => {
+              const groupNames = groups.filter((group) => item.groupIds.includes(group.id)).map((group) => group.name);
+              const permissions = item.permissions ?? defaultPermissionsForRole(item.role);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={selectedId === item.id ? "users-table-row active" : "users-table-row"}
+                  onClick={() => setSelectedId(item.id)}
+                  aria-current={selectedId === item.id ? "true" : undefined}
+                >
+                  <span className="users-identity" data-label="Usuario">
+                    <strong>{item.name}</strong>
+                    <small>{item.email}</small>
+                    <small>{item.entityName}</small>
+                  </span>
+                  <span data-label="Perfil"><Badge tone={item.role === "admin" ? "info" : "neutral"}>{roleLabel(item.role)}</Badge></span>
+                  <span data-label="Grupos">{groupNames.length ? groupNames.join(", ") : item.role === "requester" ? "Portal" : "Sem grupo"}</span>
+                  <span data-label="Permissoes">{permissions.length} permissoes</span>
+                  <span data-label="Status"><Badge tone={item.active ? "success" : "neutral"}>{item.active ? "Ativo" : "Inativo"}</Badge></span>
+                </button>
+              );
+            })}
+            {visibleUsers.length === 0 ? (
+              <div className="users-empty-row">
+                <UsersRound size={22} />
+                <span>Nenhum usuario encontrado com os filtros atuais.</span>
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <aside className="users-admin-editor">
+          {selectedId === "__new" ? (
+            <CreateUserForm
+              catalog={catalog}
+              onUserSaved={(created) => {
+                onUserSaved(created);
+                setSelectedId(created.id);
+              }}
+            />
+          ) : selectedUser ? (
+            <UserDetailPanel item={selectedUser} catalog={catalog} onUserSaved={onUserSaved} />
+          ) : (
+            <div className="panel empty-state">
+              <UsersRound size={28} />
+              <h3>Selecione um usuario</h3>
+              <p>Abra o detalhe para alterar cargo, grupos, permissoes e credenciais.</p>
+            </div>
+          )}
+
+          <section className="panel users-governance-panel" aria-labelledby="governance-title">
+            <div className="panel-heading">
+              <div>
+                <h2 id="governance-title">Governanca</h2>
+                <p>Regras operacionais aplicadas ao acesso.</p>
+              </div>
+              <Badge tone="info">RBAC</Badge>
+            </div>
+            <div className="governance-list">
+              <div>
+                <KeyRound size={16} />
+                <span>Login por e-mail e senha com sessao HttpOnly.</span>
+              </div>
+              <div>
+                <ShieldCheck size={16} />
+                <span>Permissoes controlam abertura, leitura, tratamento, exclusao e usuarios.</span>
+              </div>
+              <div>
+                <LifeBuoy size={16} />
+                <span>Grupos definem quais filas tecnicas o usuario pode operar.</span>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
 function UsersView({
   user,
   catalog,
@@ -1896,6 +2426,33 @@ function AdminView({
   );
 }
 
+function PasswordStrength({ password }: { password: string }) {
+  const strength = passwordStrength(password);
+
+  return (
+    <div className={`password-strength ${strength.tone}`} aria-live="polite">
+      <div><span style={{ width: `${strength.score}%` }} /></div>
+      <strong>{strength.label}</strong>
+      <small>{strength.hint}</small>
+    </div>
+  );
+}
+
+function passwordStrength(password: string): { score: number; label: string; hint: string; tone: "weak" | "medium" | "strong" } {
+  const checks = [
+    password.length >= 8,
+    /[A-Z]/.test(password),
+    /[a-z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password)
+  ];
+  const passed = checks.filter(Boolean).length;
+  if (!password) return { score: 8, label: "Senha inicial", hint: "Minimo 8 caracteres.", tone: "weak" };
+  if (passed >= 4 && password.length >= 10) return { score: 100, label: "Senha forte", hint: "Boa para criar ou redefinir acesso.", tone: "strong" };
+  if (passed >= 3) return { score: 64, label: "Senha media", hint: "Inclua maiusculas, numeros ou simbolos para fortalecer.", tone: "medium" };
+  return { score: 32, label: "Senha fraca", hint: "Use pelo menos 8 caracteres com letras e numeros.", tone: "weak" };
+}
+
 function CreateUserForm({
   catalog,
   onUserSaved
@@ -1937,7 +2494,7 @@ function CreateUserForm({
     <form className="user-create-form" onSubmit={submit}>
       <div className="admin-form-heading">
         <UserPlus size={17} />
-        <strong>Criar usuario</strong>
+        <strong>Criar usuario com e-mail e senha</strong>
       </div>
       {message ? <span className="form-note">{message}</span> : null}
       <div className="admin-form-grid">
@@ -1966,8 +2523,16 @@ function CreateUserForm({
         <Field label="Entidade">
           <input required minLength={2} value={form.entityName} onChange={(event) => setForm({ ...form, entityName: event.target.value })} />
         </Field>
-        <Field label="Senha">
-          <input required type="password" minLength={8} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+        <Field label="Senha inicial">
+          <input
+            required
+            type="password"
+            minLength={8}
+            autoComplete="new-password"
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+          />
+          <PasswordStrength password={form.password} />
         </Field>
       </div>
       <AdminPermissionCheckboxes
@@ -2081,7 +2646,15 @@ function UserDetailPanel({
           <input required minLength={2} value={entityName} onChange={(event) => setEntityName(event.target.value)} />
         </Field>
         <Field label="Nova senha">
-          <input type="password" minLength={8} placeholder="Manter senha atual" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <input
+            type="password"
+            minLength={8}
+            autoComplete="new-password"
+            placeholder="Manter senha atual"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          <PasswordStrength password={password} />
         </Field>
         <label className="switch-row user-active-switch">
           <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
