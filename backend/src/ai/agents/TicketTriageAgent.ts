@@ -18,7 +18,7 @@ export type TriageResult = z.infer<typeof TriageResultSchema>;
 
 export class TicketTriageAgent {
   private readonly prompt = ChatPromptTemplate.fromMessages([
-    ["system", "You classify enterprise service desk tickets. Return compact JSON only."],
+    ["system", "Classifique chamados corporativos de service desk. Retorne JSON compacto em pt-BR."],
     ["human", "{ticket}\n\nRetrieved evidence:\n{sources}"]
   ]);
 
@@ -31,7 +31,7 @@ export class TicketTriageAgent {
     });
 
     const result = await this.llm.completeObject({
-      system: "Classify category, priority, SLA, tags, missing information, confidence, and a one-sentence summary.",
+      system: "Classifique categoria, prioridade, SLA, tags, informacoes faltantes, confianca e resumo em uma frase. Todos os textos de resposta devem estar em pt-BR.",
       user: rendered,
       schema: TriageResultSchema,
       fallback: () => fallbackTriage(input)
@@ -49,11 +49,11 @@ function fallbackTriage(input: CreateTicketInput): TriageResult {
   return {
     category,
     priority,
-    slaClass: priority === "critical" ? "P1 - 15 min" : priority === "high" ? "P2 - 1 hour" : "P3 - business day",
+    slaClass: priority === "critical" ? "P1 - 15 min" : priority === "high" ? "P2 - 1 hora" : "P3 - dia util",
     tags: [category.toLowerCase().replace(/\s+/g, "-"), priority, input.affectedService.toLowerCase().replace(/\s+/g, "-")],
-    summary: `Ticket classified as ${category} with ${priority} priority.`,
+    summary: `Chamado classificado como ${category} com prioridade ${priority}.`,
     confidence: text.length > 120 ? 0.86 : 0.62,
-    missingInformation: text.length > 120 ? [] : ["Add error message, time window, and affected users."]
+    missingInformation: text.length > 120 ? [] : ["Informe a mensagem de erro, o horario de inicio e os usuarios afetados."]
   };
 }
 
@@ -66,8 +66,11 @@ function classifyPriority(text: string, urgency: TicketPriority): TicketPriority
 }
 
 function classifyCategory(text: string, affectedService: string): string {
-  if (/(vpn|rede|network|latencia|conexao)/.test(text)) return "Network";
-  if (/(senha|mfa|acesso|identity|login)/.test(text)) return "Identity Access";
+  if (/(vpn|rede|network|latencia|conexao)/.test(text)) return "Rede";
+  if (/(senha|mfa|acesso|identity|login)/.test(text)) return "Acesso e identidade";
   if (/(erp|faturamento|nota|invoice|financeiro)/.test(text)) return "ERP";
+  if (/(api|endpoint|webhook|integracao|integration|http|500|timeout)/.test(text)) return "APIs e integracoes";
+  if (/(hardware|notebook|computador|impressora|monitor|patrimonio|serial)/.test(text)) return "Hardware";
+  if (/(aprovacao|aprovar|compras|orcamento|centro de custo|acesso privilegiado)/.test(text)) return "Aprovacoes";
   return affectedService;
 }

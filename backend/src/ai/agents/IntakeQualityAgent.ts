@@ -63,6 +63,7 @@ export function assessTicketIntakeQuality(params: {
 }): IntakeAssessment {
   const { input, triage, sources, existingTickets } = params;
   const text = normalize(`${input.title} ${input.description} ${input.businessImpact}`);
+  const relevantSources = filterRelevantSources(input, sources, text);
   const unknownService = isUnknownService(input.affectedService);
   const genericDescription = isGenericDescription(input.description);
   const genericImpact = isGenericImpact(input.businessImpact);
@@ -85,14 +86,14 @@ export function assessTicketIntakeQuality(params: {
   const nonsense = isNonsense(input);
   const genericVague = isGenericVagueIntake(input, details, unknownService);
   const missingInformation = dedupe([
-    ...triage.missingInformation,
+    ...triage.missingInformation.map(normalizeMissingInformation),
     ...buildMissingInformation(details, input)
   ]).slice(0, 8);
-  const score = calculateQualityScore(details, sources, nonsense || genericVague, missingInformation.length);
+  const score = calculateQualityScore(details, relevantSources, nonsense || genericVague, missingInformation.length);
   const suggestedPriority = calculatePriority(input.urgency, input.impact);
   const group = selectGroup(input);
   const similarTickets = findSimilarTickets(input, existingTickets);
-  const selfService = buildSelfServiceSuggestion(input, sources, suggestedPriority, text);
+  const selfService = buildSelfServiceSuggestion(input, relevantSources, suggestedPriority, text);
   const hardBlock = nonsense || genericVague || score < 55 || missingInformation.length >= 5;
   const shouldCreate = !hardBlock && !selfService.canDeflect;
   const readiness: IntakeReadiness = hardBlock ? "needs_info" : selfService.canDeflect ? "self_service" : "ready";
@@ -123,7 +124,7 @@ export function assessTicketIntakeQuality(params: {
       title: titleSuggestion
     },
     selfService,
-    ragSources: sources,
+    ragSources: relevantSources,
     similarTickets,
     workflow: [
       "ticket.intake-assessment",
@@ -132,9 +133,70 @@ export function assessTicketIntakeQuality(params: {
       "rag.search",
       "agent.ticket-triage",
       "agent.routing",
-      "ticket.open"
+      readiness === "ready" ? "ticket.ready-to-open" : "ticket.blocked-before-open"
     ]
   };
+}
+
+function filterRelevantSources(input: CreateTicketInput, sources: RagSource[], normalizedText: string): RagSource[] {
+  const queryTerms = extractRelevantTerms(`${normalizedText} ${normalize(input.affectedService)}`);
+
+  return sources.filter((source) => {
+    const sourceText = normalize(`${source.title} ${source.source} ${source.excerpt}`);
+    const sourceTerms = extractRelevantTerms(sourceText);
+    const overlap = [...queryTerms].filter((term) => sourceTerms.has(term)).length;
+    const serviceMatch = serviceTerms(input.affectedService).some((term) => sourceText.includes(term));
+    const enoughLexicalSignal = overlap >= 2 || (overlap >= 1 && queryTerms.size <= 4) || serviceMatch;
+    return source.relevance >= 0.72 && enoughLexicalSignal;
+  });
+}
+
+function extractRelevantTerms(text: string): Set<string> {
+  const stopwords = new Set([
+    "com",
+    "para",
+    "por",
+    "que",
+    "uma",
+    "das",
+    "dos",
+    "esta",
+    "este",
+    "isso",
+    "nao",
+    "preciso",
+    "ajuda",
+    "problema",
+    "urgente",
+    "geral",
+    "chamado",
+    "funciona",
+    "ruim"
+  ]);
+  return new Set(
+    normalize(text)
+      .split(/\W+/)
+      .filter((term) => term.length >= 4 && !stopwords.has(term))
+  );
+}
+
+function serviceTerms(affectedService: string): string[] {
+  const service = normalize(affectedService);
+  if (/erp|faturamento|fiscal|nota/.test(service)) return ["erp", "fatur", "fiscal", "nota", "invoice", "billing"];
+  if (/rede|vpn|wi-fi|wifi|conexao/.test(service)) return ["rede", "vpn", "network", "conexao", "packet", "latencia"];
+  if (/identity|acesso|senha|mfa|login|sso/.test(service)) return ["identity", "acesso", "senha", "mfa", "login", "sso"];
+  if (/api|integracao|plataforma/.test(service)) return ["api", "integracao", "plataforma"];
+  return [];
+}
+
+function normalizeMissingInformation(item: string): string {
+  const normalized = normalize(item);
+  if (/error message|time window|affected users/.test(normalized)) {
+    return "Informe a mensagem de erro, o horario de inicio e os usuarios afetados.";
+  }
+  if (/system|application|service/.test(normalized)) return "Informe o sistema, aplicacao ou servico afetado.";
+  if (/business impact|impact/.test(normalized)) return "Informe o impacto no negocio, area afetada ou processo parado.";
+  return item;
 }
 
 function calculateQualityScore(

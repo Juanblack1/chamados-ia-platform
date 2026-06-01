@@ -339,7 +339,7 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         role: "admin",
         entityId: "corp",
         entityName: "Corporativo",
-        groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform"],
+        groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform", "grp-workplace", "grp-approvals"],
         permissions: [...permissionKeys],
         active: true
       },
@@ -353,7 +353,7 @@ async function buildInitialUsers(env: AppEnv): Promise<StoredUser[]> {
         role: "manager",
         entityId: "corp",
         entityName: "Corporativo",
-        groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform"],
+        groupIds: ["grp-erp", "grp-network", "grp-iam", "grp-platform", "grp-workplace", "grp-approvals"],
         permissions: defaultPermissionsForRole("manager"),
         active: true
       },

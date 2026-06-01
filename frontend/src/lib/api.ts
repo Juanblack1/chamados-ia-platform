@@ -236,6 +236,18 @@ export type ServiceDeskCatalog = {
   groups: Array<{ id: string; name: string; services: string[] }>;
   slaPolicies: Array<{ id: string; name: string; priority: TicketPriority; responseMinutes: number; resolutionMinutes: number }>;
   knowledgeArticles: Array<{ id: string; title: string; source: string; category: string; updatedAt: string }>;
+  openingTemplates: Array<{
+    id: string;
+    category: string;
+    affectedService: string;
+    type: TicketType;
+    assignedGroupId: string;
+    titlePlaceholder: string;
+    descriptionPrompt: string;
+    businessImpactPrompt: string;
+    requiredFields: string[];
+    examples: string[];
+  }>;
 };
 
 export type CreateUserPayload = {

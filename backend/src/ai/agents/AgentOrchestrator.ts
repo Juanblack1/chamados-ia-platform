@@ -723,6 +723,16 @@ export class AgentOrchestrator {
     return this.tickets.delete(id);
   }
 
+  async replaceTicketAttachments(id: string, actor: AppUser, attachments: string[]): Promise<Ticket | undefined> {
+    const ticket = await this.findTicketForUser(id, actor);
+    if (!ticket) return undefined;
+    const now = new Date().toISOString();
+    return this.tickets.update(id, {
+      attachments,
+      audit: [...ticket.audit, buildAudit(actor, "ticket.attachments_stored", "Anexos validados e armazenados fora do registro do chamado.", now)]
+    });
+  }
+
   private async appendAudit(id: string, actor: AppUser, action: string, message: string): Promise<void> {
     const ticket = await this.tickets.findById(id);
     if (!ticket) return;
@@ -734,7 +744,12 @@ export class AgentOrchestrator {
 
 function canAccessTicket(ticket: Ticket, user: AppUser): boolean {
   if (!hasPermission(user, "tickets.read")) return false;
-  if (user.role === "admin" || user.role === "manager") return true;
+  if (user.role === "admin") return true;
+  if (user.role === "manager") {
+    const sameEntity = ticket.entityId === user.entityId;
+    const sameGroup = Boolean(ticket.assignedGroupId && user.groupIds.includes(ticket.assignedGroupId));
+    return sameEntity && (sameGroup || ticket.requesterEmail.toLowerCase() === user.email.toLowerCase());
+  }
   if (ticket.requesterEmail.toLowerCase() === user.email.toLowerCase()) return true;
   if (user.role === "employee") {
     return Boolean(ticket.assigneeId === user.id || (ticket.assignedGroupId && user.groupIds.includes(ticket.assignedGroupId)));
@@ -768,8 +783,8 @@ function assessSlaRisk(input: CreateTicketInput, triage: TriageResult, sources: 
 
 function canWorkTicket(ticket: Ticket, user: AppUser): boolean {
   if (!hasPermission(user, "tickets.work")) return false;
-  if (user.role === "admin" || user.role === "manager") return true;
-  return user.role === "employee" && canAccessTicket(ticket, user);
+  if (user.role === "admin") return true;
+  return (user.role === "manager" || user.role === "employee") && canAccessTicket(ticket, user);
 }
 
 function buildAudit(actor: AppUser, action: string, message: string, createdAt: string) {

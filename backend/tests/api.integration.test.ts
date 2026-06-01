@@ -1,0 +1,204 @@
+import { afterEach, describe, expect, it } from "vitest";
+import type { FastifyInstance } from "fastify";
+import type { AppEnv } from "../src/config/env.js";
+import { buildServer } from "../src/http/server.js";
+
+const imageDataUrl =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+
+let app: FastifyInstance | undefined;
+
+afterEach(async () => {
+  await app?.close();
+  app = undefined;
+});
+
+describe("service desk API", () => {
+  it("requires auth, blocks vague intake, opens a ticket and serves stored attachments only to the requester", async () => {
+    app = await buildServer(makeEnv());
+
+    const unauthenticated = await app.inject({ method: "GET", url: "/api/tickets" });
+    expect(unauthenticated.statusCode).toBe(401);
+
+    const requesterCookie = await loginAs("solicitante.teste@empresa.local", "dev123");
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/tickets",
+      headers: { cookie: requesterCookie },
+      payload: {
+        requesterEmail: "alguem@empresa.local",
+        department: "Operacoes",
+        title: "Problema urgente",
+        description: "Nao funciona direito desde ontem e preciso de ajuda.",
+        affectedService: "Geral",
+        urgency: "medium",
+        impact: "medium",
+        businessImpact: "Nao sei.",
+        attachments: []
+      }
+    });
+    expect(blocked.statusCode).toBe(422);
+    expect(blocked.json().error).toBe("intake_not_ready");
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/tickets",
+      headers: { cookie: requesterCookie },
+      payload: buildTicketPayload({
+        requesterEmail: "outra.pessoa@empresa.local",
+        title: "Faturamento bloqueado no ERP",
+        attachments: [imageDataUrl]
+      })
+    });
+
+    expect(created.statusCode).toBe(201);
+    const ticket = created.json();
+    expect(ticket.requesterEmail).toBe("solicitante.teste@empresa.local");
+    expect(ticket.attachments[0]).toMatch(new RegExp(`^/api/tickets/${ticket.id}/attachments/`));
+    expect(ticket.attachments[0]).not.toContain("base64");
+
+    const listed = await app.inject({ method: "GET", url: "/api/tickets", headers: { cookie: requesterCookie } });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().map((item: { id: string }) => item.id)).toContain(ticket.id);
+
+    const attachment = await app.inject({ method: "GET", url: ticket.attachments[0], headers: { cookie: requesterCookie } });
+    expect(attachment.statusCode).toBe(200);
+    expect(attachment.headers["content-type"]).toContain("image/png");
+
+    const otherRequesterCookie = await loginAs("solicitante@empresa.local", "dev123");
+    const forbiddenAttachment = await app.inject({
+      method: "GET",
+      url: ticket.attachments[0],
+      headers: { cookie: otherRequesterCookie }
+    });
+    expect(forbiddenAttachment.statusCode).toBe(404);
+  });
+
+  it("scopes managers to their entity and assigned groups for queue and status changes", async () => {
+    app = await buildServer(makeEnv());
+    const adminCookie = await loginAs("admin@empresa.local", "admin123");
+
+    const manager = await app.inject({
+      method: "POST",
+      url: "/api/users",
+      headers: { cookie: adminCookie },
+      payload: {
+        email: "gestor.erp@empresa.local",
+        name: "Gestor ERP",
+        role: "manager",
+        entityId: "corp",
+        entityName: "Corporativo",
+        groupIds: ["grp-erp"],
+        password: "gestor123"
+      }
+    });
+    expect(manager.statusCode).toBe(201);
+
+    const erpTicket = await app.inject({
+      method: "POST",
+      url: "/api/tickets",
+      headers: { cookie: adminCookie },
+      payload: buildTicketPayload({ title: "Falha fiscal ERP SP", affectedService: "ERP Central" })
+    });
+    const networkTicket = await app.inject({
+      method: "POST",
+      url: "/api/tickets",
+      headers: { cookie: adminCookie },
+      payload: buildTicketPayload({
+        title: "VPN instavel para equipe externa",
+        affectedService: "Rede Corporativa",
+        description: "VPN desconecta a cada dez minutos para a equipe externa desde 08:30 com erro de tunel.",
+        businessImpact: "Equipe externa nao consegue atender clientes em campo."
+      })
+    });
+    expect(erpTicket.statusCode).toBe(201);
+    expect(networkTicket.statusCode).toBe(201);
+
+    const managerCookie = await loginAs("gestor.erp@empresa.local", "gestor123");
+    const queue = await app.inject({ method: "GET", url: "/api/tickets", headers: { cookie: managerCookie } });
+    expect(queue.statusCode).toBe(200);
+    const titles = queue.json().map((ticket: { title: string }) => ticket.title);
+    expect(titles).toContain("Falha fiscal ERP SP");
+    expect(titles).not.toContain("VPN instavel para equipe externa");
+
+    const statusChange = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${erpTicket.json().id}/status`,
+      headers: { cookie: managerCookie },
+      payload: { status: "in_progress" }
+    });
+    expect(statusChange.statusCode).toBe(200);
+    expect(statusChange.json().status).toBe("in_progress");
+
+    const outOfScopeChange = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${networkTicket.json().id}/status`,
+      headers: { cookie: managerCookie },
+      payload: { status: "in_progress" }
+    });
+    expect(outOfScopeChange.statusCode).toBe(404);
+  });
+});
+
+async function loginAs(email: string, password: string): Promise<string> {
+  if (!app) throw new Error("Server not initialized.");
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    payload: { email, password }
+  });
+  expect(response.statusCode).toBe(200);
+  const setCookie = response.headers["set-cookie"];
+  const cookie = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+  expect(cookie).toBeTruthy();
+  return String(cookie).split(";")[0];
+}
+
+function buildTicketPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    requesterEmail: "ana@acme.local",
+    department: "Financeiro",
+    title: "Faturamento bloqueado no ERP",
+    description: "O lote de faturamento do ERP falhou e o fechamento fiscal da filial esta bloqueado desde 09:00.",
+    affectedService: "ERP Central",
+    urgency: "critical",
+    impact: "critical",
+    businessImpact: "Fechamento mensal parado para a filial SP.",
+    attachments: [],
+    ...overrides
+  };
+}
+
+function makeEnv(): AppEnv {
+  return {
+    NODE_ENV: "development",
+    PORT: 4000,
+    FRONTEND_ORIGIN: "http://localhost:5173",
+    LOG_LEVEL: "silent",
+    API_KEYS: "",
+    AI_PROVIDER: "mock",
+    GOOGLE_GENERATIVE_AI_API_KEY: "",
+    GOOGLE_GENERATIVE_AI_MODEL: "gemini-2.5-flash",
+    GOOGLE_GENERATIVE_AI_FALLBACK_MODELS: "gemini-2.5-flash-lite,gemini-2.0-flash",
+    GOOGLE_EMBEDDING_MODEL: "gemini-embedding-001",
+    XAI_API_KEY: "",
+    XAI_MODEL_CASCADE: "grok-4-1-fast-non-reasoning,grok-4-fast-non-reasoning,grok-3-mini,grok-3",
+    EMBEDDING_DIMENSION: 64,
+    AUTH_COOKIE_NAME: "asid",
+    AUTH_SESSION_TTL_SECONDS: 28800,
+    AUTH_BOOTSTRAP_ADMIN_EMAIL: "admin@empresa.local",
+    AUTH_BOOTSTRAP_ADMIN_PASSWORD: "admin123",
+    AUTH_TEST_REQUESTER_EMAIL: "solicitante.teste@empresa.local",
+    AUTH_TEST_REQUESTER_PASSWORD: "dev123",
+    TICKET_STORAGE: "memory",
+    TICKET_REDIS_PREFIX: "ai-service-desk-api-test",
+    TICKET_SEED_SAMPLE_DATA: false,
+    KV_REST_API_URL: "",
+    KV_REST_API_TOKEN: "",
+    UPSTASH_REDIS_REST_URL: "",
+    UPSTASH_REDIS_REST_TOKEN: "",
+    QDRANT_URL: "http://localhost:6333",
+    QDRANT_API_KEY: "",
+    QDRANT_COLLECTION: "service_desk_knowledge_api_test"
+  };
+}

@@ -2,9 +2,13 @@ import { config as loadDotenv } from "dotenv";
 import { resolve } from "node:path";
 import { z } from "zod";
 
+const runtimeEnv = { ...process.env };
 for (const file of ["../.env", ".env", "../.env.local", ".env.local"]) {
   loadDotenv({ path: resolve(process.cwd(), file), override: file.endsWith(".local") });
 }
+Object.entries(runtimeEnv).forEach(([key, value]) => {
+  if (value !== undefined) process.env[key] = value;
+});
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),

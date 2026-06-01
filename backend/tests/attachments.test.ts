@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { summarizeTicketInputForLlm } from "../src/ai/agents/attachmentSummary.js";
+import {
+  AttachmentValidationError,
+  MemoryTicketAttachmentStore,
+  finalizeTicketAttachments,
+  prepareTicketAttachments
+} from "../src/domain/attachmentStore.js";
 import { CreateTicketInputSchema } from "../src/domain/ticket.js";
 
 const imageDataUrl =
@@ -23,5 +29,32 @@ describe("ticket attachments", () => {
     const summarized = summarizeTicketInputForLlm(input);
     expect(summarized.attachments[0]).toContain("image/png attachment 1");
     expect(summarized.attachments[0]).not.toContain("iVBORw0KGgo");
+  });
+
+  it("stores scanned image attachments outside the ticket payload", async () => {
+    const store = new MemoryTicketAttachmentStore();
+    const prepared = await prepareTicketAttachments(store, [imageDataUrl], "usr-requester");
+
+    expect(prepared.attachments[0]).toMatch(/^attachment:\/\/pending\//);
+    expect(prepared.attachments[0]).not.toContain("iVBORw0KGgo");
+
+    const finalized = await finalizeTicketAttachments(store, "ticket-1", prepared);
+    expect(finalized[0]).toMatch(/^\/api\/tickets\/ticket-1\/attachments\//);
+
+    const attachmentId = finalized[0].split("/").pop();
+    expect(attachmentId).toBeTruthy();
+    const stored = await store.get("ticket-1", attachmentId ?? "");
+    expect(stored?.contentType).toBe("image/png");
+    expect(stored?.scan.status).toBe("clean");
+    expect(stored?.content.toString("base64")).toContain("iVBORw0KGgo");
+  });
+
+  it("rejects image payloads whose binary signature does not match the declared type", async () => {
+    const store = new MemoryTicketAttachmentStore();
+    const executableAsImage = `data:image/png;base64,${Buffer.from("MZ fake executable").toString("base64")}`;
+
+    await expect(prepareTicketAttachments(store, [executableAsImage], "usr-requester")).rejects.toBeInstanceOf(
+      AttachmentValidationError
+    );
   });
 });

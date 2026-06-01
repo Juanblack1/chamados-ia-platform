@@ -1,12 +1,22 @@
 import type { FastifyInstance } from "fastify";
 import { once } from "node:events";
 import { z } from "zod";
+import {
+  AttachmentValidationError,
+  finalizeTicketAttachments,
+  prepareTicketAttachments,
+  type TicketAttachmentStore
+} from "../../domain/attachmentStore.js";
 import { CreateTicketInputSchema, TicketStatusSchema, normalizeCreateTicketInput } from "../../domain/ticket.js";
 import type { AgentOrchestrator } from "../../ai/agents/AgentOrchestrator.js";
 import { requireUser } from "../../security/authGuard.js";
 import { hasPermission } from "../../security/authStore.js";
 
-export async function registerTicketRoutes(app: FastifyInstance, orchestrator: AgentOrchestrator): Promise<void> {
+export async function registerTicketRoutes(
+  app: FastifyInstance,
+  orchestrator: AgentOrchestrator,
+  attachmentStore: TicketAttachmentStore
+): Promise<void> {
   app.get("/api/tickets", async (request) => orchestrator.listTicketsForUser(requireUser(request)));
 
   app.post("/api/tickets/intake-assessment", async (request, reply) => {
@@ -43,17 +53,53 @@ export async function registerTicketRoutes(app: FastifyInstance, orchestrator: A
     const user = requireUser(request);
     if (!hasPermission(user, "tickets.open")) return reply.code(403).send({ error: "forbidden", message: "Voce nao tem permissao para abrir chamados." });
     const payload = normalizeCreateTicketInput(hasPermission(user, "tickets.work") ? parsed.data : { ...parsed.data, requesterEmail: user.email });
-    const assessment = await orchestrator.assessIntake(payload, {}, user);
-    if (!assessment.shouldCreate) {
-      return reply.code(422).send({
-        error: "intake_not_ready",
-        message: assessment.blockedReason ?? assessment.summary,
-        assessment
-      });
+    const prepared = await prepareTicketAttachments(attachmentStore, payload.attachments, user.id).catch((cause: unknown) => {
+      if (cause instanceof AttachmentValidationError) return cause;
+      throw cause;
+    });
+    if (prepared instanceof AttachmentValidationError) {
+      return reply.code(400).send({ error: "attachment_rejected", message: prepared.message });
     }
 
-    const ticket = await orchestrator.openTicket(payload, {}, user, assessment);
-    return reply.code(201).send(ticket);
+    const storageSafePayload = { ...payload, attachments: prepared.attachments };
+    try {
+      const assessment = await orchestrator.assessIntake(storageSafePayload, {}, user);
+      if (!assessment.shouldCreate) {
+        await attachmentStore.deletePending(prepared.pendingIds);
+        return reply.code(422).send({
+          error: "intake_not_ready",
+          message: assessment.blockedReason ?? assessment.summary,
+          assessment
+        });
+      }
+
+      const ticket = await orchestrator.openTicket(storageSafePayload, {}, user, assessment);
+      const finalizedAttachments = await finalizeTicketAttachments(attachmentStore, ticket.id, prepared);
+      const responseTicket =
+        finalizedAttachments.some((attachment, index) => attachment !== storageSafePayload.attachments[index])
+          ? await orchestrator.replaceTicketAttachments(ticket.id, user, finalizedAttachments)
+          : ticket;
+      return reply.code(201).send(responseTicket ?? ticket);
+    } catch (cause) {
+      await attachmentStore.deletePending(prepared.pendingIds);
+      throw cause;
+    }
+  });
+
+  app.get<{ Params: { id: string; attachmentId: string } }>("/api/tickets/:id/attachments/:attachmentId", async (request, reply) => {
+    const user = requireUser(request);
+    const ticket = await orchestrator.findTicketForUser(request.params.id, user);
+    if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found." });
+
+    const attachment = await attachmentStore.get(ticket.id, request.params.attachmentId);
+    if (!attachment) return reply.code(404).send({ error: "not_found", message: "Attachment not found." });
+
+    reply
+      .header("content-type", attachment.contentType)
+      .header("content-length", attachment.byteLength)
+      .header("cache-control", "private, max-age=300")
+      .header("content-disposition", `inline; filename="${attachment.fileName}"`);
+    return attachment.content;
   });
 
   app.post<{ Params: { id: string } }>("/api/tickets/:id/assign", async (request, reply) => {

@@ -153,7 +153,7 @@ describe("AgentOrchestrator", () => {
       role: "manager" as const,
       entityId: "corp",
       entityName: "Corporativo",
-      groupIds: [],
+      groupIds: ["grp-erp"],
       permissions: ["tickets.open", "tickets.read"],
       active: true
     };
@@ -219,6 +219,10 @@ describe("AgentOrchestrator", () => {
     expect(assessment.shouldCreate).toBe(false);
     expect(assessment.readiness).toBe("needs_info");
     expect(assessment.missingInformation.length).toBeGreaterThan(0);
+    expect(JSON.stringify(assessment.missingInformation)).not.toMatch(/add error message/i);
+    expect(assessment.ragSources).toEqual([]);
+    expect(assessment.workflow).toEqual(expect.arrayContaining(["ticket.blocked-before-open"]));
+    expect(assessment.workflow).not.toEqual(expect.arrayContaining(["ticket.open"]));
 
     const genericButLongAssessment = await orchestrator.assessIntake(
       normalizeCreateTicketInput({
@@ -239,6 +243,7 @@ describe("AgentOrchestrator", () => {
     expect(genericButLongAssessment.missingInformation).toEqual(
       expect.arrayContaining(["Informe o sistema, aplicacao ou servico afetado."])
     );
+    expect(genericButLongAssessment.workflow).toEqual(expect.arrayContaining(["ticket.blocked-before-open"]));
     await expect(orchestrator.listTickets()).resolves.toHaveLength(2);
   });
 });

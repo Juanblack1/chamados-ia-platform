@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, Suspense, lazy, useEffect, useMemo, useState } from "react";
 import {
   AssistantRuntimeProvider,
   ComposerPrimitive,
@@ -10,7 +10,6 @@ import {
   type AppendMessage,
   type ThreadMessageLike
 } from "@assistant-ui/react";
-import { CopilotKit, CopilotPopup } from "@copilotkit/react-core/v2";
 import {
   Activity,
   AlertTriangle,
@@ -77,26 +76,42 @@ import {
   type TicketStatus,
   type TraceSpan
 } from "./lib/api";
+import {
+  MAX_ATTACHMENTS,
+  MAX_ATTACHMENT_BYTES,
+  assessmentTone,
+  canManageUsers,
+  canOpenTicketForOthers,
+  defaultPermissionsForRole,
+  estimatedGroup,
+  estimatedPriority,
+  hasPermission,
+  initialForm,
+  permissionOptions,
+  priorityLabel,
+  priorityTone,
+  readinessLabel,
+  relativeDue,
+  roleLabel,
+  roleOptions,
+  slaRisk,
+  statusLabel,
+  statusTone,
+  typeLabel,
+  type View
+} from "./lib/presentation";
+import { AdminPanel, AnalysisItem, Badge, Field } from "./components/common";
+import { QueueView as TicketQueueView } from "./views/tickets/QueueView";
+import { IntakeView as TicketIntakeView } from "./views/tickets/IntakeView";
+import { GroupCheckboxes as AdminGroupCheckboxes, PermissionCheckboxes as AdminPermissionCheckboxes } from "./views/admin/AccessControls";
 
-type View = "queue" | "new" | "detail" | "users" | "profile";
-
-const MAX_ATTACHMENTS = 4;
-const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
-
-const initialForm: CreateTicketPayload = {
-  type: "incident",
-  requesterEmail: "",
-  department: "Operacoes",
-  title: "",
-  description: "",
-  affectedService: "ERP Central",
-  urgency: "medium",
-  impact: "medium",
-  businessImpact: "",
-  attachments: []
-};
+const TEST_REQUESTER_EMAIL = import.meta.env.VITE_TEST_REQUESTER_EMAIL ?? (import.meta.env.DEV ? "solicitante.teste@empresa.local" : "");
+const TEST_REQUESTER_PASSWORD = import.meta.env.VITE_TEST_REQUESTER_PASSWORD ?? "";
+const ENABLE_TEST_LOGIN = import.meta.env.VITE_ENABLE_TEST_LOGIN === "true" || (import.meta.env.DEV && Boolean(TEST_REQUESTER_EMAIL));
 
 const copilotRuntimeUrl = import.meta.env.VITE_COPILOT_RUNTIME_URL ?? "/api/copilotkit";
+const CopilotKit = lazy(() => import("@copilotkit/react-core/v2").then((module) => ({ default: module.CopilotKit })));
+const CopilotPopup = lazy(() => import("@copilotkit/react-core/v2").then((module) => ({ default: module.CopilotPopup })));
 
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -316,7 +331,8 @@ export default function App() {
   }
 
   return (
-    <CopilotKit key={user.id} runtimeUrl={copilotRuntimeUrl} credentials="include" showDevConsole={false}>
+    <Suspense fallback={<WorkspaceFallback user={user} />}>
+      <CopilotKit key={user.id} runtimeUrl={copilotRuntimeUrl} credentials="include" showDevConsole={false}>
       <div className="app-shell">
         <Sidebar
           user={user}
@@ -351,7 +367,7 @@ export default function App() {
           ) : null}
 
           {view === "queue" ? (
-            <QueueView
+            <TicketQueueView
               tickets={visibleTickets}
               allTickets={tickets}
               isLoading={isLoading}
@@ -364,10 +380,12 @@ export default function App() {
           ) : null}
 
           {view === "new" ? (
-            <IntakeView
+            <TicketIntakeView
               user={user}
               form={form.requesterEmail ? form : { ...form, requesterEmail: user.email }}
               setForm={updateForm}
+              templates={catalog?.openingTemplates ?? []}
+              groups={catalog?.groups ?? []}
               assessment={intakeAssessment}
               isAssessing={isAssessing}
               isSubmitting={isSubmitting}
@@ -418,7 +436,8 @@ export default function App() {
         }}
         attachments={{ enabled: true, accept: "image/*", maxSize: 2 * 1024 * 1024 }}
       />
-    </CopilotKit>
+      </CopilotKit>
+    </Suspense>
   );
 }
 
@@ -427,6 +446,27 @@ function BootScreen() {
     <div className="boot-screen">
       <Loader2 className="spin" size={24} />
       <span>Carregando sessao</span>
+    </div>
+  );
+}
+
+function WorkspaceFallback({ user }: { user: AppUser }) {
+  return (
+    <div className="app-shell">
+      <aside className="sidebar collapsed" aria-label="Carregando navegacao">
+        <div className="brand-mark">
+          <Bot size={20} />
+        </div>
+      </aside>
+      <main className="workspace">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">{roleLabel(user.role)} · {user.entityName}</p>
+            <h1>Carregando workspace</h1>
+          </div>
+        </header>
+        <SkeletonRows />
+      </main>
     </div>
   );
 }
@@ -443,8 +483,6 @@ function LoginScreen({
   const [email, setEmail] = useState("admin@empresa.local");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const testRequesterEmail = "solicitante.teste@empresa.local";
-  const testRequesterPassword = "ChamadosTeste@2026!";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -488,17 +526,20 @@ function LoginScreen({
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
-        <button
-          type="button"
-          className="secondary-button wide"
-          onClick={() => {
-            setEmail(testRequesterEmail);
-            setPassword(testRequesterPassword);
-          }}
-        >
-          <UserRound size={18} />
-          <span>Usar conta teste</span>
-        </button>
+        {ENABLE_TEST_LOGIN ? (
+          <button
+            type="button"
+            className="secondary-button wide"
+            onClick={() => {
+              setEmail(TEST_REQUESTER_EMAIL);
+              setPassword(TEST_REQUESTER_PASSWORD);
+            }}
+            disabled={!TEST_REQUESTER_EMAIL || !TEST_REQUESTER_PASSWORD}
+          >
+            <UserRound size={18} />
+            <span>Usar conta teste</span>
+          </button>
+        ) : null}
         <button type="submit" className="primary-button wide" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="spin" size={18} /> : <LockKeyhole size={18} />}
           <span>Entrar</span>
@@ -785,6 +826,8 @@ function IntakeView({
   user,
   form,
   setForm,
+  templates,
+  groups,
   assessment,
   isAssessing,
   isSubmitting,
@@ -794,6 +837,8 @@ function IntakeView({
   user: AppUser;
   form: CreateTicketPayload;
   setForm: (form: CreateTicketPayload) => void;
+  templates: ServiceDeskCatalog["openingTemplates"];
+  groups: ServiceDeskCatalog["groups"];
   assessment: IntakeAssessment | null;
   isAssessing: boolean;
   isSubmitting: boolean;
@@ -803,17 +848,30 @@ function IntakeView({
   const remainingAttachments = MAX_ATTACHMENTS - form.attachments.length;
   const shouldBlockCreate = Boolean(assessment && !assessment.shouldCreate);
   const canChooseRequester = canOpenTicketForOthers(user);
+  const selectedTemplate = templates.find((template) => template.affectedService === form.affectedService);
+  const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
 
   async function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
-    const imageFiles = files
-      .filter((file) => file.type.startsWith("image/") && file.size <= MAX_ATTACHMENT_BYTES)
-      .slice(0, Math.max(remainingAttachments, 0));
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    const rejectedByType = files.length - imageFiles.length;
+    const allowedImages = imageFiles.filter((file) => file.size <= MAX_ATTACHMENT_BYTES);
+    const rejectedBySize = imageFiles.length - allowedImages.length;
+    const acceptedImages = allowedImages.slice(0, Math.max(remainingAttachments, 0));
+    const rejectedByLimit = allowedImages.length - acceptedImages.length;
 
-    if (imageFiles.length > 0) {
-      const encoded = await Promise.all(imageFiles.map(readFileAsDataUrl));
+    if (acceptedImages.length > 0) {
+      const encoded = await Promise.all(acceptedImages.map(readFileAsDataUrl));
       setForm({ ...form, attachments: [...form.attachments, ...encoded] });
     }
+
+    const notices = [
+      rejectedByType ? `${rejectedByType} arquivo(s) ignorado(s): use PNG, JPG, WebP ou GIF.` : null,
+      rejectedBySize ? `${rejectedBySize} imagem(ns) acima de 2 MB.` : null,
+      rejectedByLimit ? `Limite de ${MAX_ATTACHMENTS} imagens atingido.` : null,
+      acceptedImages.length ? `${acceptedImages.length} imagem(ns) anexada(s).` : null
+    ].filter(Boolean);
+    setAttachmentNotice(notices.length ? notices.join(" ") : null);
 
     event.target.value = "";
   }
@@ -852,18 +910,39 @@ function IntakeView({
           </Field>
           <Field label="Servico afetado">
             <select value={form.affectedService} onChange={(event) => setForm({ ...form, affectedService: event.target.value })}>
-              <option>ERP Central</option>
-              <option>Rede Corporativa</option>
-              <option>Identity Access</option>
-              <option>Portal Cliente</option>
-              <option>APIs Corporativas</option>
+              {(templates.length ? templates : [
+                { affectedService: "ERP Central", category: "ERP" },
+                { affectedService: "Rede Corporativa", category: "Rede" },
+                { affectedService: "Identity Access", category: "Identidade" },
+                { affectedService: "Portal Cliente", category: "Portal" },
+                { affectedService: "APIs Corporativas", category: "APIs" },
+                { affectedService: "Hardware", category: "Hardware" },
+                { affectedService: "Aprovacoes", category: "Aprovacoes" }
+              ]).map((template) => (
+                <option key={template.affectedService} value={template.affectedService}>
+                  {template.affectedService} - {template.category}
+                </option>
+              ))}
             </select>
           </Field>
           <Field label="Titulo" wide>
-            <input required minLength={6} maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+            <input
+              required
+              minLength={6}
+              maxLength={120}
+              placeholder={selectedTemplate?.titlePlaceholder}
+              value={form.title}
+              onChange={(event) => setForm({ ...form, title: event.target.value })}
+            />
           </Field>
           <Field label="Descricao" wide>
-            <textarea required minLength={20} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+            <textarea
+              required
+              minLength={20}
+              placeholder={selectedTemplate?.descriptionPrompt}
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+            />
           </Field>
           <Field label="Urgencia">
             <select value={form.urgency} onChange={(event) => setForm({ ...form, urgency: event.target.value as TicketPriority })}>
@@ -882,8 +961,26 @@ function IntakeView({
             </select>
           </Field>
           <Field label="Impacto no negocio" wide>
-            <input required value={form.businessImpact} onChange={(event) => setForm({ ...form, businessImpact: event.target.value })} />
+            <input
+              required
+              placeholder={selectedTemplate?.businessImpactPrompt}
+              value={form.businessImpact}
+              onChange={(event) => setForm({ ...form, businessImpact: event.target.value })}
+            />
           </Field>
+          {selectedTemplate ? (
+            <div className="template-guide wide">
+              <div>
+                <strong>Template {selectedTemplate.category}</strong>
+                <span>Grupo sugerido: {groups.find((group) => group.id === selectedTemplate.assignedGroupId)?.name ?? "Nao definido"}</span>
+              </div>
+              <ul>
+                {selectedTemplate.requiredFields.map((field) => (
+                  <li key={field}>{field}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="field wide">
             <span>Imagens</span>
             <label className="attachment-drop">
@@ -892,6 +989,7 @@ function IntakeView({
               <small>PNG, JPG, WebP ou GIF ate 2 MB. Limite de {MAX_ATTACHMENTS} imagens.</small>
               <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled={remainingAttachments <= 0} onChange={handleAttachmentChange} />
             </label>
+            {attachmentNotice ? <small className="field-note" role="status">{attachmentNotice}</small> : null}
             {form.attachments.length ? (
               <div className="attachment-grid" aria-label="Imagens anexadas">
                 {form.attachments.map((attachment, index) => (
@@ -1180,6 +1278,18 @@ function DetailView({
           <AnalysisItem label="Categoria" value={ticket.category} />
           <AnalysisItem label="Impacto" value={ticket.businessImpact} />
           <AnalysisItem label="Tags" value={ticket.tags.join(", ") || "Sem tags"} />
+          {ticket.attachments.length ? (
+            <div className="ticket-attachments">
+              <h3>Evidencias</h3>
+              <div className="attachment-grid">
+                {ticket.attachments.map((attachment, index) => (
+                  <a className="attachment-thumb" href={attachment} target="_blank" rel="noreferrer" key={attachment}>
+                    <img src={attachment} alt={`Evidencia ${index + 1}`} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="task-list">
             <h3>Tarefas</h3>
             {ticket.tasks.length ? ticket.tasks.map((task) => (
@@ -1765,12 +1875,12 @@ function CreateUserForm({
           <input required type="password" minLength={8} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
         </Field>
       </div>
-      <PermissionCheckboxes
+      <AdminPermissionCheckboxes
         role={form.role}
         selected={form.permissions ?? []}
         onChange={(permissions) => setForm({ ...form, permissions })}
       />
-      <GroupCheckboxes
+      <AdminGroupCheckboxes
         groups={catalog?.groups ?? []}
         selected={form.groupIds ?? []}
         disabled={form.role === "requester"}
@@ -1883,8 +1993,8 @@ function UserDetailPanel({
           <span>Usuario ativo</span>
         </label>
       </div>
-      <PermissionCheckboxes role={role} selected={permissions} onChange={setPermissions} />
-      <GroupCheckboxes
+      <AdminPermissionCheckboxes role={role} selected={permissions} onChange={setPermissions} />
+      <AdminGroupCheckboxes
         groups={catalog?.groups ?? []}
         selected={groupIds}
         disabled={role === "requester"}
@@ -1963,7 +2073,7 @@ function UserEditorRow({
             <input type="password" minLength={8} placeholder="Manter atual" value={password} onChange={(event) => setPassword(event.target.value)} />
           </Field>
         </div>
-        <GroupCheckboxes
+        <AdminGroupCheckboxes
           groups={catalog?.groups ?? []}
           selected={groupIds}
           disabled={role === "requester"}
@@ -2056,67 +2166,6 @@ function PermissionCheckboxes({
   );
 }
 
-function roleOptions(): Array<{ value: AppUser["role"]; label: string }> {
-  return [
-    { value: "employee", label: "Funcionario" },
-    { value: "manager", label: "Gestor" },
-    { value: "requester", label: "Solicitante" },
-    { value: "admin", label: "Administrador" }
-  ];
-}
-
-function permissionOptions(): Array<{ value: PermissionKey; label: string; description: string }> {
-  return [
-    { value: "tickets.open", label: "Abrir chamados", description: "Pode registrar novos chamados no portal." },
-    { value: "tickets.read", label: "Ler chamados", description: "Pode acessar chamados dentro do escopo do cargo e grupos." },
-    { value: "tickets.work", label: "Tratar chamados", description: "Pode atribuir, mudar status, criar tarefas e resolver." },
-    { value: "tickets.delete", label: "Excluir chamados", description: "Pode remover chamados da base operacional." },
-    { value: "users.manage", label: "Gerenciar usuarios", description: "Pode criar usuarios e alterar cargos, grupos e permissoes." }
-  ];
-}
-
-function defaultPermissionsForRole(role: AppUser["role"]): PermissionKey[] {
-  if (role === "admin") return permissionOptions().map((permission) => permission.value);
-  if (role === "manager" || role === "employee") return ["tickets.open", "tickets.read", "tickets.work"];
-  return ["tickets.open", "tickets.read"];
-}
-
-function AdminPanel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
-  return (
-    <section className="panel admin-panel">
-      <div className="panel-heading">
-        <div className="heading-inline">
-          {icon}
-          <h2>{title}</h2>
-        </div>
-      </div>
-      <div className="admin-list">{children}</div>
-    </section>
-  );
-}
-
-function Field({ label, wide, children }: { label: string; wide?: boolean; children: ReactNode }) {
-  return (
-    <label className={wide ? "field wide" : "field"}>
-      <span>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function AnalysisItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="analysis-item">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function Badge({ tone, children }: { tone: string; children: ReactNode }) {
-  return <span className={`badge ${tone}`}>{children}</span>;
-}
-
 function SlaBadge({ ticket }: { ticket: Ticket }) {
   const risk = slaRisk(ticket);
   const due = new Date(ticket.sla.resolutionDueAt);
@@ -2138,117 +2187,4 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Nao foi possivel ler a imagem."));
     reader.readAsDataURL(file);
   });
-}
-
-function estimatedPriority(form: CreateTicketPayload): TicketPriority {
-  const score = priorityScore(form.urgency) + priorityScore(form.impact);
-  if (score >= 7) return "critical";
-  if (score >= 5) return "high";
-  if (score >= 3) return "medium";
-  return "low";
-}
-
-function estimatedGroup(form: CreateTicketPayload) {
-  const text = `${form.affectedService} ${form.title} ${form.description}`.toLowerCase();
-  if (/vpn|rede|wi-fi|conexao/.test(text)) return "N2 Redes e Conectividade";
-  if (/mfa|senha|login|acesso|sso/.test(text)) return "N1 Identidade e Acesso";
-  if (/erp|faturamento|fiscal|nota/.test(text)) return "N2 ERP e Financeiro";
-  return "N3 Plataforma e Integracoes";
-}
-
-function priorityScore(priority: TicketPriority) {
-  if (priority === "critical") return 4;
-  if (priority === "high") return 3;
-  if (priority === "medium") return 2;
-  return 1;
-}
-
-function slaRisk(ticket: Ticket): "ok" | "warning" | "breached" {
-  if (ticket.status === "resolved" || ticket.status === "closed") return "ok";
-  const due = Date.parse(ticket.sla.resolutionDueAt);
-  const remaining = due - Date.now();
-  if (remaining <= 0 || ticket.sla.breached) return "breached";
-  if (remaining <= 60 * 60 * 1000) return "warning";
-  return "ok";
-}
-
-function relativeDue(due: Date) {
-  const minutes = Math.round((due.getTime() - Date.now()) / 60_000);
-  if (minutes < 0) return "vencido";
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} h`;
-  return `${Math.round(hours / 24)} d`;
-}
-
-function hasPermission(user: AppUser, permission: PermissionKey): boolean {
-  return (user.permissions ?? defaultPermissionsForRole(user.role)).includes(permission);
-}
-
-function canManageUsers(user: AppUser): boolean {
-  return hasPermission(user, "users.manage");
-}
-
-function canOpenTicketForOthers(user: AppUser): boolean {
-  return hasPermission(user, "tickets.work") || hasPermission(user, "users.manage");
-}
-
-function roleLabel(role: string) {
-  if (role === "admin") return "Administrador";
-  if (role === "manager" || role === "supervisor") return "Gestor";
-  if (role === "employee" || role === "technician") return "Funcionario";
-  return "Solicitante";
-}
-
-function typeLabel(type: string) {
-  return type === "request" ? "Solicitacao" : "Incidente";
-}
-
-function priorityLabel(priority: string) {
-  if (priority === "critical") return "Critica";
-  if (priority === "high") return "Alta";
-  if (priority === "medium") return "Media";
-  return "Baixa";
-}
-
-function statusLabel(status: string) {
-  const labels: Record<string, string> = {
-    new: "Novo",
-    open: "Aberto",
-    triaging: "Triagem",
-    in_progress: "Em atendimento",
-    waiting_customer: "Aguardando solicitante",
-    pending_approval: "Aguardando aprovacao",
-    escalated: "Escalado",
-    resolved: "Resolvido",
-    closed: "Fechado"
-  };
-  return labels[status] ?? status;
-}
-
-function priorityTone(priority: string) {
-  if (priority === "critical") return "danger";
-  if (priority === "high") return "warning";
-  if (priority === "medium") return "info";
-  return "neutral";
-}
-
-function statusTone(status: string) {
-  if (status === "resolved" || status === "closed") return "success";
-  if (status === "escalated") return "danger";
-  if (status === "waiting_customer" || status === "pending_approval") return "warning";
-  if (status === "triaging" || status === "in_progress") return "info";
-  return "neutral";
-}
-
-function readinessLabel(readiness: string) {
-  if (readiness === "ready") return "Pronto";
-  if (readiness === "self_service") return "Autoatendimento";
-  return "Pedir dados";
-}
-
-function assessmentTone(assessment: IntakeAssessment) {
-  if (assessment.readiness === "ready") return "success";
-  if (assessment.readiness === "self_service") return "info";
-  return "warning";
 }
