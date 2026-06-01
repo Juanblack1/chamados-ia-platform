@@ -6,6 +6,7 @@ import { ResolutionDraftAgent } from "../ai/agents/ResolutionDraftAgent.js";
 import { TicketSpecialistChatAgent } from "../ai/agents/TicketSpecialistChatAgent.js";
 import { TicketTriageAgent } from "../ai/agents/TicketTriageAgent.js";
 import { ModelGateway } from "../ai/modelGateway.js";
+import { createTicketDatabaseTool } from "../ai/mastra/ticketDatabaseTool.js";
 import { QdrantKnowledgeBase } from "../ai/rag/QdrantKnowledgeBase.js";
 import type { AppEnv } from "../config/env.js";
 import { DomainEventBus } from "../domain/events.js";
@@ -38,7 +39,8 @@ export async function buildServer(env: AppEnv) {
   const traces = new TraceRecorder();
   const triageAgent = new TicketTriageAgent(llm);
   const resolutionAgent = new ResolutionDraftAgent(llm);
-  const specialistAgent = new TicketSpecialistChatAgent(llm);
+  const ticketDatabaseTool = createTicketDatabaseTool(tickets);
+  const specialistAgent = new TicketSpecialistChatAgent(llm, ticketDatabaseTool);
   const orchestrator = new AgentOrchestrator(tickets, knowledge, triageAgent, resolutionAgent, specialistAgent, events, audit, traces);
 
   await app.register(cors, {

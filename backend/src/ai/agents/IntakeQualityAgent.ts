@@ -39,6 +39,7 @@ export type IntakeAssessment = {
     urgency: TicketPriority;
     impact: TicketPriority;
     affectedService: string;
+    businessImpact: string;
     assignedGroupId: string;
     assignedGroupName: string;
     tags: string[];
@@ -63,20 +64,22 @@ export function assessTicketIntakeQuality(params: {
 }): IntakeAssessment {
   const { input, triage, sources, existingTickets } = params;
   const text = normalize(`${input.title} ${input.description} ${input.businessImpact}`);
-  const relevantSources = filterRelevantSources(input, sources, text);
-  const unknownService = isUnknownService(input.affectedService);
+  const inferredFields = inferTicketFields(input, triage, text);
+  const effectiveInput: CreateTicketInput = { ...input, ...inferredFields };
+  const relevantSources = filterRelevantSources(effectiveInput, sources, text);
+  const unknownService = isUnknownService(effectiveInput.affectedService);
   const genericDescription = isGenericDescription(input.description);
-  const genericImpact = isGenericImpact(input.businessImpact);
+  const genericImpact = isGenericImpact(effectiveInput.businessImpact);
   const details = {
     hasMeaningfulTitle: wordCount(input.title) >= 3 && normalize(input.title).length >= 10,
     hasDetailedDescription: (wordCount(input.description) >= 12 || normalize(input.description).length >= 80) && !genericDescription,
     hasBusinessImpact:
-      normalize(input.businessImpact).length >= 20 &&
+      normalize(effectiveInput.businessImpact).length >= 20 &&
       !genericImpact &&
       /(parad|bloquead|indisponivel|atras|fila|fatur|pagamento|pedido|cliente|usuario|equipe|filial|operacao|financeiro|seguranca|compliance|\d+)/.test(
-        normalize(input.businessImpact)
+        normalize(effectiveInput.businessImpact)
       ),
-    hasService: normalize(input.affectedService).length >= 3 && !unknownService,
+    hasService: normalize(effectiveInput.affectedService).length >= 3 && !unknownService,
     hasTimeWindow: /(desde|hoje|ontem|agora|manha|tarde|noite|\d{1,2}:\d{2}|\d+\s?(min|hora|horas|dia|dias))/.test(text),
     hasAffectedUsers: /(usuario|usuarios|pessoa|pessoas|equipe|time|setor|departamento|filial|todos|cliente|clientes|\d+\s?(user|usuarios|pessoas))/.test(text),
     hasObservedError: /(erro|falha|codigo|http|timeout|lento|indisponivel|bloqueado|nao abre|nao carrega|print|anexo|mensagem|log)/.test(text),
@@ -87,17 +90,17 @@ export function assessTicketIntakeQuality(params: {
   const genericVague = isGenericVagueIntake(input, details, unknownService);
   const missingInformation = dedupe([
     ...triage.missingInformation.map(normalizeMissingInformation),
-    ...buildMissingInformation(details, input)
+    ...buildMissingInformation(details, effectiveInput)
   ]).slice(0, 8);
   const score = calculateQualityScore(details, relevantSources, nonsense || genericVague, missingInformation.length);
-  const suggestedPriority = calculatePriority(input.urgency, input.impact);
-  const group = selectGroup(input);
-  const similarTickets = findSimilarTickets(input, existingTickets);
-  const selfService = buildSelfServiceSuggestion(input, relevantSources, suggestedPriority, text);
+  const suggestedPriority = calculatePriority(effectiveInput.urgency, effectiveInput.impact);
+  const group = selectGroup(effectiveInput);
+  const similarTickets = findSimilarTickets(effectiveInput, existingTickets);
+  const selfService = buildSelfServiceSuggestion(effectiveInput, relevantSources, suggestedPriority, text);
   const hardBlock = nonsense || genericVague || score < 55 || missingInformation.length >= 5;
   const shouldCreate = !hardBlock && !selfService.canDeflect;
   const readiness: IntakeReadiness = hardBlock ? "needs_info" : selfService.canDeflect ? "self_service" : "ready";
-  const titleSuggestion = suggestTitle(input, triage.category);
+  const titleSuggestion = suggestTitle(effectiveInput, triage.category);
 
   return {
     readiness,
@@ -112,12 +115,13 @@ export function assessTicketIntakeQuality(params: {
     clarificationQuestions: buildClarificationQuestions(missingInformation, input).slice(0, 5),
     qualitySignals: buildQualitySignals(details, nonsense || genericVague),
     suggestedFields: {
-      type: input.type,
+      type: effectiveInput.type,
       category: triage.category,
       priority: triage.priority === "critical" ? "critical" : suggestedPriority,
-      urgency: input.urgency,
-      impact: input.impact,
-      affectedService: input.affectedService,
+      urgency: effectiveInput.urgency,
+      impact: effectiveInput.impact,
+      affectedService: effectiveInput.affectedService,
+      businessImpact: effectiveInput.businessImpact,
       assignedGroupId: group.id,
       assignedGroupName: group.name,
       tags: dedupe([...triage.tags, readiness === "self_service" ? "self-service-candidate" : "intake-validated"]),
@@ -187,6 +191,67 @@ function serviceTerms(affectedService: string): string[] {
   if (/identity|acesso|senha|mfa|login|sso/.test(service)) return ["identity", "acesso", "senha", "mfa", "login", "sso"];
   if (/api|integracao|plataforma/.test(service)) return ["api", "integracao", "plataforma"];
   return [];
+}
+
+function inferTicketFields(input: CreateTicketInput, triage: TriageResult, normalizedText: string): Pick<CreateTicketInput, "type" | "affectedService" | "urgency" | "impact" | "businessImpact"> {
+  const affectedService = inferAffectedService(input.affectedService, triage.category, normalizedText);
+  const urgency = inferUrgency(input.urgency, normalizedText);
+  const impact = inferImpact(input.impact, normalizedText);
+
+  return {
+    type: inferType(input.type, normalizedText),
+    affectedService,
+    urgency,
+    impact,
+    businessImpact: inferBusinessImpact(input.businessImpact, affectedService, normalizedText)
+  };
+}
+
+function inferType(current: TicketType, text: string): TicketType {
+  if (/(liberar|solicito|solicitacao|aprovar|criar acesso|novo acesso|instalar|trocar|alterar permissao)/.test(text)) {
+    return "request";
+  }
+  if (/(erro|falha|indisponivel|bloqueado|nao abre|nao carrega|lento|queda|timeout|problema)/.test(text)) {
+    return "incident";
+  }
+  return current;
+}
+
+function inferAffectedService(current: string, category: string, text: string): string {
+  const currentService = normalize(current);
+  if (!isUnknownService(current) && currentService !== "geral") return current;
+  if (/(erp|faturamento|fiscal|nota|financeiro|boleto|pedido)/.test(text) || normalize(category).includes("erp")) return "ERP Central";
+  if (/(vpn|rede|wi-fi|wifi|internet|conexao|latencia|pacote)/.test(text) || normalize(category).includes("rede")) return "Rede Corporativa";
+  if (/(login|senha|mfa|sso|acesso|bloquead|conta|autenticacao)/.test(text) || normalize(category).includes("identidade")) return "Identity Access";
+  if (/(portal|cliente|area do cliente|site)/.test(text)) return "Portal Cliente";
+  if (/(api|integracao|webhook|endpoint|timeout|http|plataforma)/.test(text) || normalize(category).includes("api")) return "APIs Corporativas";
+  if (/(notebook|computador|impressora|monitor|hardware|patrimonio)/.test(text) || normalize(category).includes("hardware")) return "Hardware";
+  if (/(aprovacao|aprovar|compras|orcamento|centro de custo|permissao privilegiada)/.test(text)) return "Aprovacoes";
+  return "Geral";
+}
+
+function inferUrgency(current: TicketPriority, text: string): TicketPriority {
+  if (/(agora|urgente|critico|critica|parado|indisponivel|sem faturar|todos|cliente parado|seguranca|compliance)/.test(text)) return "critical";
+  if (/(hoje|bloqueado|alta|clientes|equipe parada|fila parada|degradado|sla)/.test(text)) return "high";
+  if (/(lento|intermitente|alguns usuarios|parcial)/.test(text)) return "medium";
+  return current;
+}
+
+function inferImpact(current: TicketPriority, text: string): TicketPriority {
+  if (/(empresa toda|todos|varias filiais|filial|clientes|faturamento|pagamento|compliance|seguranca|operacao parada|parado)/.test(text)) return "critical";
+  if (/(equipe|setor|departamento|financeiro|operacoes|cliente|clientes|bloqueado)/.test(text)) return "high";
+  if (/(usuario|pessoa|individual|apenas um|um cliente|parcial)/.test(text)) return "medium";
+  return current;
+}
+
+function inferBusinessImpact(current: string, affectedService: string, text: string): string {
+  if (!isGenericImpact(current) && normalize(current).length >= 20) return current;
+  if (/(faturamento|fiscal|nota|pagamento|financeiro)/.test(text)) return `Impacto inferido pela IA: processo financeiro ou fiscal afetado em ${affectedService}.`;
+  if (/(login|senha|acesso|mfa|sso|bloqueado|conta)/.test(text)) return `Impacto inferido pela IA: usuario ou area impedida de acessar ${affectedService}.`;
+  if (/(cliente|clientes|portal|atendimento)/.test(text)) return `Impacto inferido pela IA: atendimento a clientes afetado em ${affectedService}.`;
+  if (/(vpn|rede|internet|conexao)/.test(text)) return `Impacto inferido pela IA: conectividade corporativa degradada em ${affectedService}.`;
+  if (/(api|integracao|webhook|endpoint)/.test(text)) return `Impacto inferido pela IA: integracao ou plataforma afetada em ${affectedService}.`;
+  return `Impacto inferido pela IA: operacao relacionada a ${affectedService} precisa de validacao pelo atendimento.`;
 }
 
 function normalizeMissingInformation(item: string): string {
@@ -325,11 +390,15 @@ function findSimilarTickets(input: CreateTicketInput, tickets: Ticket[]): Intake
 }
 
 function suggestTitle(input: CreateTicketInput, category: string): string | undefined {
-  if (wordCount(input.title) >= 5) return undefined;
+  if (input.title && !isPlaceholderTitle(input.title)) return input.title;
   const service = input.affectedService || category;
   const symptom = input.description.split(/[.!?]/)[0]?.trim();
   if (!symptom || symptom.length < 12) return undefined;
   return `${service}: ${symptom}`.slice(0, 120);
+}
+
+function isPlaceholderTitle(title: string): boolean {
+  return normalize(title) === "chamado informado pelo solicitante";
 }
 
 function buildSummary(
@@ -341,7 +410,14 @@ function buildSummary(
 ): string {
   if (readiness === "needs_info") return `Intake incompleto (${score}/100). Colete mais contexto antes de abrir o chamado.`;
   if (canDeflect) return `Possivel autoatendimento com base de conhecimento antes de abrir chamado.`;
-  return `Intake pronto (${score}/100). Previsao: ${triage.category}, prioridade ${triage.priority}, grupo ${groupName}.`;
+  return `Intake pronto (${score}/100). Previsao: ${triage.category}, prioridade ${priorityLabel(triage.priority)}, grupo ${groupName}.`;
+}
+
+function priorityLabel(priority: TicketPriority): string {
+  if (priority === "critical") return "critica";
+  if (priority === "high") return "alta";
+  if (priority === "medium") return "media";
+  return "baixa";
 }
 
 function detectSentiment(text: string): IntakeAssessment["sentiment"] {

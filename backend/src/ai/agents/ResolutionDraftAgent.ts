@@ -19,7 +19,7 @@ export class ResolutionDraftAgent {
   async run(input: CreateTicketInput, triage: TriageResult, sources: RagSource[]): Promise<ResolutionDraft> {
     const result = await this.llm.completeObject({
       system:
-        "Draft a concise first response for a service desk analyst. Cite only the provided source IDs and avoid unsupported claims.",
+        "Redija em portugues do Brasil uma primeira resposta objetiva para o analista de service desk. Cite apenas IDs de fontes fornecidas e evite afirmacoes sem evidencia. Nunca responda em ingles.",
       user: JSON.stringify({ input: summarizeTicketInputForLlm(input), triage, sources }, null, 2),
       schema: ResolutionDraftSchema,
       fallback: () => fallbackDraft(input, triage, sources)

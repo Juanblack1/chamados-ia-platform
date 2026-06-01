@@ -7,7 +7,7 @@ import {
   prepareTicketAttachments,
   type TicketAttachmentStore
 } from "../../domain/attachmentStore.js";
-import { CreateTicketInputSchema, TicketStatusSchema, normalizeCreateTicketInput } from "../../domain/ticket.js";
+import { CreateTicketInputSchema, TicketStatusSchema, normalizeCreateTicketInput, type CreateTicketInput } from "../../domain/ticket.js";
 import type { AgentOrchestrator } from "../../ai/agents/AgentOrchestrator.js";
 import { requireUser } from "../../security/authGuard.js";
 import { hasPermission } from "../../security/authStore.js";
@@ -24,7 +24,7 @@ export async function registerTicketRoutes(
     if (!parsed.success) {
       return reply.code(400).send({
         error: "validation_error",
-        message: "Preencha titulo, descricao, solicitante, servico e impacto para analisar o chamado.",
+        message: "Preencha solicitante e descricao para analisar o chamado.",
         issues: parsed.error.issues
       });
     }
@@ -73,7 +73,8 @@ export async function registerTicketRoutes(
         });
       }
 
-      const ticket = await orchestrator.openTicket(storageSafePayload, {}, user, assessment);
+      const aiClassifiedPayload = applyIntakeAssessmentSuggestions(storageSafePayload, assessment);
+      const ticket = await orchestrator.openTicket(aiClassifiedPayload, {}, user, assessment);
       const finalizedAttachments = await finalizeTicketAttachments(attachmentStore, ticket.id, prepared);
       const responseTicket =
         finalizedAttachments.some((attachment, index) => attachment !== storageSafePayload.attachments[index])
@@ -210,4 +211,16 @@ export async function registerTicketRoutes(
     if (!deleted) return reply.code(404).send({ error: "not_found", message: "Ticket not found." });
     return reply.code(204).send();
   });
+}
+
+function applyIntakeAssessmentSuggestions(input: CreateTicketInput, assessment: Awaited<ReturnType<AgentOrchestrator["assessIntake"]>>): CreateTicketInput {
+  return {
+    ...input,
+    type: assessment.suggestedFields.type,
+    title: assessment.suggestedFields.title ?? input.title,
+    affectedService: assessment.suggestedFields.affectedService,
+    urgency: assessment.suggestedFields.urgency,
+    impact: assessment.suggestedFields.impact,
+    businessImpact: assessment.suggestedFields.businessImpact ?? input.businessImpact
+  };
 }

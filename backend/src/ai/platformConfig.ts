@@ -44,10 +44,17 @@ export const serviceDeskAgentCatalog = [
     memory: "Risco fica registrado em tags, metadata, timeline, agentMemory e traces."
   },
   {
+    id: "ticket-memory",
+    name: "Ticket Memory Agent",
+    framework: "Mastra Agent",
+    responsibility: "Consolida aprendizados reutilizaveis de cada chamado e recupera memoria operacional autorizada.",
+    memory: "Aprendizados ficam em ticket.ai.agentMemory e sao recuperados pela ferramenta de banco antes das respostas."
+  },
+  {
     id: "ticket-specialist",
     name: "Ticket Specialist Agent",
     framework: "Mastra Agent",
-    responsibility: "Conversa no chamado usando chamado ativo, fila autorizada, memoria e RAG.",
+    responsibility: "Conversa no chamado usando chamado ativo, fila autorizada, memoria, RAG e ferramenta read-only de banco.",
     memory: "Cada turno do chat e persistido em ticket.ai.agentMemory com traceId e contextTicketIds."
   }
 ] as const;
@@ -65,6 +72,7 @@ export const serviceDeskWorkflow = {
     "agent.routing",
     "agent.sla-risk",
     "agent.resolution-draft",
+    "agent.ticket-memory",
     "ticket.triaged",
     "audit.recorded"
   ],
@@ -74,6 +82,7 @@ export const serviceDeskWorkflow = {
 export const serviceDeskToolCatalog = [
   "describe_ai_service_desk",
   "search_service_desk_knowledge",
+  "query_service_desk_database",
   "list_service_desk_tickets",
   "assess_ticket_intake",
   "preview_ticket_triage",

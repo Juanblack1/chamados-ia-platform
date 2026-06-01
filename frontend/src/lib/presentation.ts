@@ -11,7 +11,7 @@ export const initialForm: CreateTicketPayload = {
   department: "Operacoes",
   title: "",
   description: "",
-  affectedService: "ERP Central",
+  affectedService: "Geral",
   urgency: "medium",
   impact: "medium",
   businessImpact: "",

@@ -8,7 +8,8 @@ import { z } from "zod";
 import type { AgentOrchestrator, TriagePreview } from "../../ai/agents/AgentOrchestrator.js";
 import type { ModelGateway } from "../../ai/modelGateway.js";
 import type { AiPlatformFocus } from "../../ai/platformConfig.js";
-import { CreateTicketInputSchema, normalizeCreateTicketInput, type RagSource, type Ticket } from "../../domain/ticket.js";
+import { TicketDatabaseQuerySchema } from "../../ai/mastra/ticketDatabaseTool.js";
+import { CreateTicketInputSchema, normalizeCreateTicketInput, type CreateTicketInput, type RagSource, type Ticket } from "../../domain/ticket.js";
 import type { TraceRecorder } from "../../observability/traces.js";
 import type { AppUser } from "../../security/authStore.js";
 
@@ -103,6 +104,7 @@ function createServiceDeskAgent(
           "Always answer in Brazilian Portuguese.",
           "When the user asks about agents, Mastra, RAG, workflows, observability, tracing, Docker, Kubernetes, Azure, Vercel, or tool calls, call describe_ai_service_desk before answering.",
           "When the user asks for policy, runbook, SLA, access, VPN, ERP, or knowledge-base guidance, call search_service_desk_knowledge before answering.",
+          "When the user asks about previous tickets, similar incidents, memory, requester history, status, or lessons learned, call query_service_desk_database before answering.",
           "Before creating a ticket, call assess_ticket_intake. If shouldCreate is false, do not create the ticket; ask the missing questions or provide the self-service answer.",
           "Use ticket tools when the user asks to inspect, assess, preview, or create tickets.",
           "Keep answers concise, cite trace IDs when actions run, and require human approval for high-impact or low-confidence decisions."
@@ -172,6 +174,24 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
             summarizeOutput: (items) => `${items.length} sources`
           },
           async ({ spanId }) => orchestrator.searchKnowledge(query, limit, { traceId, parentSpanId: spanId })
+        )
+    }),
+    defineTool({
+      name: "query_service_desk_database",
+      description:
+        "Read-only, permission-scoped lookup of tickets and accumulated agent memory in the service desk database. Use it for prior tickets, similar incidents, status, SLA context, requester history, and lessons learned.",
+      parameters: TicketDatabaseQuerySchema,
+      execute: async (input) =>
+        traces.runSpan(
+          {
+            traceId,
+            name: "tool.query_service_desk_database",
+            kind: "tool",
+            inputSummary: `${input.operation} ${input.query ?? input.ticketId ?? ""}`.trim(),
+            metadata: { tenantId, userId: user?.id },
+            summarizeOutput: (result) => `${result.count} tickets ${result.memories.length} memories`
+          },
+          async () => orchestrator.queryTicketDatabaseForUser(user, input)
         )
     }),
     defineTool({
@@ -264,11 +284,23 @@ function createServiceDeskTools(orchestrator: AgentOrchestrator, traces: TraceRe
                 assessment
               };
             }
-            return orchestrator.openTicket(payload, { traceId, parentSpanId: spanId }, user, assessment);
+            return orchestrator.openTicket(applyIntakeAssessmentSuggestions(payload, assessment), { traceId, parentSpanId: spanId }, user, assessment);
           }
         )
     })
   ];
+}
+
+function applyIntakeAssessmentSuggestions(input: CreateTicketInput, assessment: Awaited<ReturnType<AgentOrchestrator["assessIntake"]>>): CreateTicketInput {
+  return {
+    ...input,
+    type: assessment.suggestedFields.type,
+    title: assessment.suggestedFields.title ?? input.title,
+    affectedService: assessment.suggestedFields.affectedService,
+    urgency: assessment.suggestedFields.urgency,
+    impact: assessment.suggestedFields.impact,
+    businessImpact: assessment.suggestedFields.businessImpact ?? input.businessImpact
+  };
 }
 
 function normalizeTicketInputForUser(input: z.input<typeof CreateTicketInputSchema>, user?: AppUser) {

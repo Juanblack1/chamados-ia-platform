@@ -34,7 +34,7 @@ export const CreateTicketInputSchema = z.object({
   requestSource: z.enum(["portal", "email", "phone", "chat", "api"]).default("portal"),
   requesterEmail: z.string().email(),
   department: optionalText(2, "Nao informado"),
-  title: z.string().min(6).max(120),
+  title: optionalText(6, "Chamado informado pelo solicitante").pipe(z.string().max(120)),
   description: z.string().min(20).max(5000),
   affectedService: optionalText(2, "Geral"),
   urgency: z.enum(["low", "medium", "high", "critical"]).default("medium"),
@@ -110,6 +110,7 @@ export type TicketAgentMemoryEntry = {
     | "routing"
     | "resolution-drafter"
     | "sla-risk"
+    | "ticket-memory"
     | "ticket-specialist";
   role: "user" | "assistant" | "system";
   actorId: string;

@@ -51,10 +51,17 @@ function fallbackTriage(input: CreateTicketInput): TriageResult {
     priority,
     slaClass: priority === "critical" ? "P1 - 15 min" : priority === "high" ? "P2 - 1 hora" : "P3 - dia util",
     tags: [category.toLowerCase().replace(/\s+/g, "-"), priority, input.affectedService.toLowerCase().replace(/\s+/g, "-")],
-    summary: `Chamado classificado como ${category} com prioridade ${priority}.`,
+    summary: `Chamado classificado como ${category} com prioridade ${priorityLabel(priority)}.`,
     confidence: text.length > 120 ? 0.86 : 0.62,
     missingInformation: text.length > 120 ? [] : ["Informe a mensagem de erro, o horario de inicio e os usuarios afetados."]
   };
+}
+
+function priorityLabel(priority: TicketPriority): string {
+  if (priority === "critical") return "critica";
+  if (priority === "high") return "alta";
+  if (priority === "medium") return "media";
+  return "baixa";
 }
 
 function classifyPriority(text: string, urgency: TicketPriority): TicketPriority {

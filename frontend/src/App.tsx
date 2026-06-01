@@ -662,9 +662,11 @@ function Topbar({
 
   return (
     <header className="topbar">
-      <button type="button" className="icon-button mobile-menu-button" onClick={onToggleSidebar} aria-label={isSidebarCollapsed ? "Abrir menu" : "Recolher menu"}>
-        <Menu size={18} />
-      </button>
+      {isSidebarCollapsed ? (
+        <button type="button" className="icon-button mobile-menu-button" onClick={onToggleSidebar} aria-label="Abrir menu">
+          <Menu size={18} />
+        </button>
+      ) : null}
       <div>
         <p className="eyebrow">{roleLabel(user.role)} · {user.entityName}</p>
         <h1>{title}</h1>
@@ -1200,6 +1202,7 @@ function DetailView({
   const [resolution, setResolution] = useState(ticket.ai.resolutionDraft?.summary ?? "");
   const canWork = hasPermission(user, "tickets.work");
   const canDelete = hasPermission(user, "tickets.delete");
+  const timelineEvents = useMemo(() => buildTimelineEvents(ticket), [ticket]);
 
   return (
     <section className="detail-layout" aria-label="Detalhe do chamado">
@@ -1211,20 +1214,26 @@ function DetailView({
         </div>
         <div className="header-badges">
           <Badge tone={priorityTone(ticket.priority)}>{priorityLabel(ticket.priority)}</Badge>
-          <select className="status-select" value={ticket.status} disabled={!canWork || isSubmitting} onChange={(event) => onStatus(event.target.value as TicketStatus)}>
-            <option value="open">Aberto</option>
-            <option value="in_progress">Em atendimento</option>
-            <option value="waiting_customer">Aguardando solicitante</option>
-            <option value="pending_approval">Aguardando aprovacao</option>
-            <option value="escalated">Escalado</option>
-            <option value="resolved">Resolvido</option>
-          </select>
+          <label className="status-control">
+            <span>Status</span>
+            <select className="status-select" value={ticket.status} disabled={!canWork || isSubmitting} onChange={(event) => onStatus(event.target.value as TicketStatus)}>
+              <option value="new">Novo</option>
+              <option value="open">Aberto</option>
+              <option value="triaging">Em triagem</option>
+              <option value="in_progress">Em atendimento</option>
+              <option value="waiting_customer">Aguardando solicitante</option>
+              <option value="pending_approval">Aguardando aprovacao</option>
+              <option value="escalated">Escalado</option>
+              <option value="resolved">Resolvido</option>
+              <option value="closed">Fechado</option>
+            </select>
+          </label>
         </div>
       </div>
       <div className="action-bar panel">
         <SlaBadge ticket={ticket} />
-        <span>{ticket.assignedGroupName ?? "Sem grupo"}</span>
-        <span>{ticket.assigneeName ?? "Nao atribuido"}</span>
+        <span className="detail-chip"><strong>Grupo</strong>{ticket.assignedGroupName ?? "Sem grupo"}</span>
+        <span className="detail-chip"><strong>Tecnico</strong>{ticket.assigneeName ?? "Nao atribuido"}</span>
         {canWork ? (
           <button type="button" className="secondary-button small" disabled={isSubmitting} onClick={onAssign}>
             <UserRound size={16} />
@@ -1247,10 +1256,14 @@ function DetailView({
             </div>
           </div>
           <div className="timeline">
-            {[...ticket.timeline, ...ticket.followups.map((item) => ({ id: item.id, actor: item.visibility === "internal" ? "technician" as const : "requester" as const, message: item.message, createdAt: item.createdAt }))].map((event) => (
+            {timelineEvents.map((event) => (
               <article key={event.id} className={`timeline-item ${event.actor}`}>
-                <span>{event.actor}</span>
-                <p>{event.message}</p>
+                <div className="timeline-meta">
+                  <strong>{event.actorLabel}</strong>
+                  <time dateTime={event.createdAt}>{formatTimelineDate(event.createdAt)}</time>
+                  {event.visibility ? <Badge tone={event.visibility === "internal" ? "warning" : "info"}>{event.visibility === "internal" ? "Interno" : "Visivel"}</Badge> : null}
+                </div>
+                <p>{localizeTimelineMessage(event.message)}</p>
               </article>
             ))}
           </div>
@@ -1344,6 +1357,88 @@ function DetailView({
       </section>
     </section>
   );
+}
+
+type TimelineDisplayEvent = {
+  id: string;
+  actor: Ticket["timeline"][number]["actor"];
+  actorLabel: string;
+  message: string;
+  createdAt: string;
+  visibility?: "public" | "internal";
+};
+
+function buildTimelineEvents(ticket: Ticket): TimelineDisplayEvent[] {
+  const baseEvents: TimelineDisplayEvent[] = ticket.timeline.map((event) => ({
+    ...event,
+    actorLabel: timelineActorLabel(event.actor)
+  }));
+  const followupEvents: TimelineDisplayEvent[] = ticket.followups.map((item) => ({
+    id: item.id,
+    actor: item.visibility === "internal" ? "technician" : "requester",
+    actorLabel: item.visibility === "internal" ? "Tecnico" : "Solicitante",
+    message: item.message,
+    createdAt: item.createdAt,
+    visibility: item.visibility
+  }));
+  const deduped = new Map<string, TimelineDisplayEvent>();
+
+  [...baseEvents, ...followupEvents].forEach((event) => {
+    const key = `${event.actor}|${event.createdAt}|${event.message}`;
+    deduped.set(key, event);
+  });
+
+  return [...deduped.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+}
+
+function timelineActorLabel(actor: TimelineDisplayEvent["actor"]): string {
+  if (actor === "requester") return "Solicitante";
+  if (actor === "technician") return "Tecnico";
+  if (actor === "analyst") return "Analista";
+  if (actor === "agent") return "Agente IA";
+  return "Sistema";
+}
+
+function formatTimelineDate(value: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
+function localizeTimelineMessage(message: string): string {
+  if (/^Routing agent assigned/i.test(message)) {
+    return message
+      .replace(/^Routing agent assigned/i, "Agente de roteamento direcionou")
+      .replace(/\bto\b/i, "para");
+  }
+
+  if (/^SLA risk agent marked risk as/i.test(message)) {
+    return message
+      .replace(/^SLA risk agent marked risk as/i, "Agente de SLA marcou risco")
+      .replace(/\bnormal\b/g, "normal")
+      .replace(/\bwatch\b/g, "em observacao")
+      .replace(/\bescalate\b/g, "de escalacao")
+      .replace(/\bfor\b/i, "para")
+      .replace(/\bpriority\b/i, "prioridade")
+      .replace(/\bEvidence:/i, "Evidencia:");
+  }
+
+  if (/^I understand you're experiencing/i.test(message)) {
+    return "Entendi que ha um problema de login. Para avancar, confirme o tipo de falha, a mensagem de erro completa, o usuario afetado e a validacao de identidade.";
+  }
+
+  return message
+    .replace(/\bpriority critical\b/gi, "prioridade critica")
+    .replace(/\bpriority high\b/gi, "prioridade alta")
+    .replace(/\bpriority medium\b/gi, "prioridade media")
+    .replace(/\bpriority low\b/gi, "prioridade baixa")
+    .replace(/\bcritical priority\b/gi, "prioridade critica")
+    .replace(/\bhigh priority\b/gi, "prioridade alta")
+    .replace(/\bmedium priority\b/gi, "prioridade media")
+    .replace(/\blow priority\b/gi, "prioridade baixa");
 }
 
 function TicketAssistantChat({

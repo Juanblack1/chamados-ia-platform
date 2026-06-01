@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 import { buildSla, selectGroup } from "../../domain/serviceDeskCatalog.js";
 import type { CreateTicketInput, RagSource, Ticket, TicketAgentMemoryEntry, TicketFollowup, TicketStatus, TicketTask } from "../../domain/ticket.js";
 import { DomainEventBus } from "../../domain/events.js";
+import { canAccessTicket, canWorkTicket } from "../../domain/ticketAccess.js";
 import type { TicketStore } from "../../domain/ticketRepository.js";
 import { AuditLog } from "../../observability/auditLog.js";
 import { TraceRecorder } from "../../observability/traces.js";
 import { hasPermission, type AppUser } from "../../security/authStore.js";
 import { describeAiServiceDeskPlatform, type AiPlatformFocus } from "../platformConfig.js";
+import { queryTicketDatabase, type TicketDatabaseQuery, type TicketDatabaseResult } from "../mastra/ticketDatabaseTool.js";
 import { QdrantKnowledgeBase } from "../rag/QdrantKnowledgeBase.js";
 import { assessTicketIntakeQuality, type IntakeAssessment } from "./IntakeQualityAgent.js";
 import { ResolutionDraftAgent } from "./ResolutionDraftAgent.js";
@@ -113,6 +115,10 @@ export class AgentOrchestrator {
       },
       () => this.knowledge.search(query, limit)
     );
+  }
+
+  queryTicketDatabaseForUser(user: AppUser | undefined, query: TicketDatabaseQuery): Promise<TicketDatabaseResult> {
+    return queryTicketDatabase(this.tickets, user, query);
   }
 
   async assessIntake(input: CreateTicketInput, traceLink: TraceLink = {}, actor?: AppUser): Promise<IntakeAssessment> {
@@ -262,6 +268,17 @@ export class AgentOrchestrator {
             },
             () => this.resolutionAgent.run(input, triage, sources)
           );
+          const ticketLearning = await this.traces.runSpan(
+            {
+              traceId,
+              parentSpanId: spanId,
+              name: "agent.ticket-memory",
+              kind: "agent",
+              inputSummary: `${triage.category} ${input.affectedService}`,
+              summarizeOutput: (result) => result.slice(0, 120)
+            },
+            () => Promise.resolve(buildTicketLearning(input, triage, routing, slaRisk, draft.response, sources))
+          );
           const now = new Date().toISOString();
 
           const updated = await this.tickets.update(created.id, {
@@ -292,14 +309,15 @@ export class AgentOrchestrator {
                   "assistant",
                   "Sistema",
                   "system",
-                  `RAG retrieval attached ${sources.length} source(s): ${sources.map((source) => source.id).join(", ") || "none"}.`,
+                  `RAG vinculou ${sources.length} fonte(s): ${sources.map((source) => source.id).join(", ") || "nenhuma"}.`,
                   now,
                   traceId
                 ),
                 buildMemoryEntry(created.id, "ticket-triage", "assistant", "Sistema", "system", triage.summary, now, traceId),
                 buildMemoryEntry(created.id, "routing", "assistant", "Sistema", "system", routing.summary, now, traceId),
                 buildMemoryEntry(created.id, "sla-risk", "assistant", "Sistema", "system", slaRisk.summary, now, traceId),
-                buildMemoryEntry(created.id, "resolution-drafter", "assistant", "Sistema", "system", draft.response, now, traceId)
+                buildMemoryEntry(created.id, "resolution-drafter", "assistant", "Sistema", "system", draft.response, now, traceId),
+                buildMemoryEntry(created.id, "ticket-memory", "system", "Memoria operacional", "ticket-memory", ticketLearning, now, traceId)
               ],
               triage: {
                 agent: "ticket-triage",
@@ -453,11 +471,11 @@ export class AgentOrchestrator {
         {
           id: randomUUID(),
           actor: "system",
-          message: `${actor.name} alterou o status para ${status}.`,
+          message: `${actor.name} alterou o status para ${statusLabel(status)}.`,
           createdAt: now
         }
       ],
-      audit: [...ticket.audit, buildAudit(actor, "ticket.status_changed", `Status alterado para ${status}.`, now)]
+      audit: [...ticket.audit, buildAudit(actor, "ticket.status_changed", `Status alterado para ${statusLabel(status)}.`, now)]
     });
   }
 
@@ -574,6 +592,25 @@ export class AgentOrchestrator {
       async ({ spanId }) => {
         const accessibleTickets = await this.listTicketsForUser(actor);
         const memory = ticket.ai.agentMemory ?? [];
+        const databaseContext = await this.traces.runSpan<TicketDatabaseResult>(
+          {
+            traceId,
+            parentSpanId: spanId,
+            name: "tool.query_service_desk_database",
+            kind: "tool",
+            inputSummary: `${ticket.number}: ${message.slice(0, 80)}`,
+            metadata: { ticketId: ticket.id, actorId: actor.id, operation: "memory_summary" },
+            summarizeOutput: (result) => `${result.count} tickets ${result.memories.length} memories`
+          },
+          () =>
+            queryTicketDatabase(this.tickets, actor, {
+              operation: "memory_summary",
+              ticketId: ticket.id,
+              query: `${ticket.title} ${ticket.description} ${message}`,
+              includeResolved: true,
+              limit: 8
+            })
+        );
         const sources = await this.traces.runSpan(
           {
             traceId,
@@ -591,6 +628,7 @@ export class AgentOrchestrator {
           actor,
           message,
           memory,
+          databaseContext,
           sources
         });
         const now = new Date().toISOString();
@@ -630,11 +668,30 @@ export class AgentOrchestrator {
       yield {
         type: "status",
         phase: "thinking",
-        message: "Buscando chamados autorizados, memoria do agente e fontes RAG."
+        message: "Consultando chamados autorizados, memoria do agente e fontes RAG."
       };
 
       const accessibleTickets = await this.listTicketsForUser(actor);
       const memory = ticket.ai.agentMemory ?? [];
+      const databaseContext = await this.traces.runSpan<TicketDatabaseResult>(
+        {
+          traceId,
+          parentSpanId: spanId,
+          name: "tool.query_service_desk_database",
+          kind: "tool",
+          inputSummary: `${ticket.number}: ${message.slice(0, 80)}`,
+          metadata: { ticketId: ticket.id, actorId: actor.id, operation: "memory_summary", streaming: true },
+          summarizeOutput: (result) => `${result.count} tickets ${result.memories.length} memories`
+        },
+        () =>
+          queryTicketDatabase(this.tickets, actor, {
+            operation: "memory_summary",
+            ticketId: ticket.id,
+            query: `${ticket.title} ${ticket.description} ${message}`,
+            includeResolved: true,
+            limit: 8
+          })
+      );
       const sources = await this.traces.runSpan(
         {
           traceId,
@@ -654,6 +711,7 @@ export class AgentOrchestrator {
         actor,
         message,
         memory,
+        databaseContext,
         sources
       })) {
         if (event.type === "delta") answer += event.text;
@@ -742,27 +800,12 @@ export class AgentOrchestrator {
   }
 }
 
-function canAccessTicket(ticket: Ticket, user: AppUser): boolean {
-  if (!hasPermission(user, "tickets.read")) return false;
-  if (user.role === "admin") return true;
-  if (user.role === "manager") {
-    const sameEntity = ticket.entityId === user.entityId;
-    const sameGroup = Boolean(ticket.assignedGroupId && user.groupIds.includes(ticket.assignedGroupId));
-    return sameEntity && (sameGroup || ticket.requesterEmail.toLowerCase() === user.email.toLowerCase());
-  }
-  if (ticket.requesterEmail.toLowerCase() === user.email.toLowerCase()) return true;
-  if (user.role === "employee") {
-    return Boolean(ticket.assigneeId === user.id || (ticket.assignedGroupId && user.groupIds.includes(ticket.assignedGroupId)));
-  }
-  return false;
-}
-
 function buildRoutingDecision(input: CreateTicketInput, triage: TriageResult): RoutingDecision {
   const group = selectGroup(input);
   return {
     groupId: group.id,
     groupName: group.name,
-    summary: `Routing agent assigned ${triage.category} to ${group.name}.`
+    summary: `Agente de roteamento direcionou ${triage.category} para ${group.name}.`
   };
 }
 
@@ -777,14 +820,55 @@ function assessSlaRisk(input: CreateTicketInput, triage: TriageResult, sources: 
     risk,
     riskTag: risk === "escalate" ? "sla-risk" : risk === "watch" ? "sla-watch" : "sla-normal",
     requiresHumanApproval,
-    summary: `SLA risk agent marked risk as ${risk} for ${triage.priority} priority.${evidence}`
+    summary: `Agente de SLA marcou risco ${slaRiskLabel(risk)} para prioridade ${priorityLabel(triage.priority)}.${evidence.replace(" Evidence:", " Evidencia:")}`
   };
 }
 
-function canWorkTicket(ticket: Ticket, user: AppUser): boolean {
-  if (!hasPermission(user, "tickets.work")) return false;
-  if (user.role === "admin") return true;
-  return (user.role === "manager" || user.role === "employee") && canAccessTicket(ticket, user);
+function buildTicketLearning(
+  input: CreateTicketInput,
+  triage: TriageResult,
+  routing: RoutingDecision,
+  slaRisk: SlaRiskDecision,
+  draftResponse: string,
+  sources: RagSource[]
+): string {
+  const sourceIds = sources.map((source) => source.id).join(", ") || "sem fontes RAG";
+  return [
+    `Aprendizado do chamado: ${triage.category} em ${input.affectedService}.`,
+    `Sinais: prioridade ${priorityLabel(triage.priority)}, urgencia ${priorityLabel(input.urgency)}, impacto ${priorityLabel(input.impact)}, risco SLA ${slaRiskLabel(slaRisk.risk)}.`,
+    `Roteamento validado: ${routing.groupName}.`,
+    `Impacto: ${input.businessImpact}`,
+    `Resposta inicial sugerida: ${draftResponse}`,
+    `Evidencias: ${sourceIds}.`
+  ].join(" ");
+}
+
+function priorityLabel(priority: string): string {
+  if (priority === "critical") return "critica";
+  if (priority === "high") return "alta";
+  if (priority === "medium") return "media";
+  return "baixa";
+}
+
+function statusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    new: "Novo",
+    open: "Aberto",
+    triaging: "Em triagem",
+    in_progress: "Em atendimento",
+    waiting_customer: "Aguardando solicitante",
+    pending_approval: "Aguardando aprovacao",
+    escalated: "Escalado",
+    resolved: "Resolvido",
+    closed: "Fechado"
+  };
+  return labels[status] ?? status;
+}
+
+function slaRiskLabel(risk: SlaRiskDecision["risk"]): string {
+  if (risk === "escalate") return "de escalacao";
+  if (risk === "watch") return "em observacao";
+  return "normal";
 }
 
 function buildAudit(actor: AppUser, action: string, message: string, createdAt: string) {

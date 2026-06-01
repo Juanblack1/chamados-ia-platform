@@ -49,13 +49,26 @@ export const slaRiskMastraAgent = new Agent({
   model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`
 });
 
-export const ticketSpecialistMastraAgent = new Agent({
-  id: "ticket-specialist",
-  name: "Ticket Specialist Agent",
+export const ticketMemoryMastraAgent = new Agent({
+  id: "ticket-memory",
+  name: "Ticket Memory Agent",
   instructions:
-    "Act as a senior enterprise service desk specialist. Use ticket history, RAG evidence, SLA context, and memory before answering. Keep replies actionable and safe for requester-facing workflows.",
+    "Consolidate reusable service desk learnings from each ticket, including symptoms, services, decisions, actions, and outcomes. Keep memory permission-scoped and useful for future similar tickets.",
   model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`
 });
+
+export function createTicketSpecialistMastraAgent(tools?: Record<string, unknown>) {
+  return new Agent({
+    id: "ticket-specialist",
+    name: "Ticket Specialist Agent",
+    instructions:
+      "Act as a senior enterprise service desk specialist. Use ticket history, RAG evidence, SLA context, accumulated ticket memory, and the read-only service desk database tool before answering. Keep replies in Brazilian Portuguese, actionable, and safe for requester-facing workflows.",
+    model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`,
+    ...(tools ? { tools: tools as never } : {})
+  });
+}
+
+export const ticketSpecialistMastraAgent = createTicketSpecialistMastraAgent();
 
 export const mastraAgents = {
   "intake-quality": intakeQualityMastraAgent,
@@ -64,6 +77,7 @@ export const mastraAgents = {
   routing: routingMastraAgent,
   "resolution-drafter": resolutionDraftMastraAgent,
   "sla-risk": slaRiskMastraAgent,
+  "ticket-memory": ticketMemoryMastraAgent,
   "ticket-specialist": ticketSpecialistMastraAgent
 };
 

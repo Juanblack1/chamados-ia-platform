@@ -53,6 +53,7 @@ export type TicketAgentMemoryEntry = {
     | "routing"
     | "resolution-drafter"
     | "sla-risk"
+    | "ticket-memory"
     | "ticket-specialist";
   role: "user" | "assistant" | "system";
   actorId: string;
@@ -214,6 +215,7 @@ export type IntakeAssessment = {
     urgency: TicketPriority;
     impact: TicketPriority;
     affectedService: string;
+    businessImpact?: string;
     assignedGroupId: string;
     assignedGroupName: string;
     tags: string[];
