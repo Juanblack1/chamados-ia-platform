@@ -71,16 +71,25 @@ const AppUserContextSchema = z.object({
   permissions: z.array(z.enum(permissionKeys)),
   active: z.boolean()
 });
+const TicketDatabaseRequestContextSchema = z
+  .object({
+    user: z.union([AppUserContextSchema, z.string()]).optional(),
+    currentUser: z.union([AppUserContextSchema, z.string()]).optional()
+  })
+  .passthrough();
+
+type TicketDatabaseRequestContext = z.infer<typeof TicketDatabaseRequestContextSchema>;
 
 export function createTicketDatabaseTool(ticketStoreOrResolver: TicketStore | TicketStoreResolver): ServiceDeskTool {
   const resolveTicketStore = toTicketStoreResolver(ticketStoreOrResolver);
 
-  return defineServiceDeskTool({
+  return defineServiceDeskTool<TicketDatabaseRequestContext>({
     id: "query-service-desk-database",
     description:
       "Read-only, permission-scoped access to the service desk ticket database and accumulated ticket memory. Use it before answering about prior tickets, similar incidents, status, SLA, requester history, or lessons learned.",
     inputSchema: TicketDatabaseQuerySchema,
     outputSchema: TicketDatabaseResultSchema,
+    requestContextSchema: TicketDatabaseRequestContextSchema,
     mcp: {
       annotations: {
         title: "Query Service Desk Database",
@@ -209,7 +218,7 @@ function toTicketStoreResolver(ticketStoreOrResolver: TicketStore | TicketStoreR
   return typeof ticketStoreOrResolver === "function" ? ticketStoreOrResolver : async () => ticketStoreOrResolver;
 }
 
-function parseToolUser(requestContext: RequestContext | undefined): AppUser | undefined {
+function parseToolUser(requestContext: RequestContext<TicketDatabaseRequestContext> | undefined): AppUser | undefined {
   const raw = requestContext?.get("user") ?? requestContext?.get("currentUser");
   if (!raw) return undefined;
 

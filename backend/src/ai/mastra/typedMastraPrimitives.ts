@@ -8,15 +8,16 @@ export type ServiceDeskTool = ToolAction<any, any, any, any, any, any, unknown>;
 export type ServiceDeskScorer = MastraScorer<string, unknown, unknown, Record<string, unknown>>;
 export type ServiceDeskStep = Step<string, unknown, unknown, unknown, unknown, unknown>;
 
-export type ServiceDeskToolContext = {
-  requestContext?: RequestContext;
+export type ServiceDeskToolContext<TRequestContext = unknown> = {
+  requestContext?: RequestContext<TRequestContext>;
 };
 
-type ServiceDeskToolConfig = {
+type ServiceDeskToolConfig<TRequestContext = unknown> = {
   id: string;
   description: string;
   inputSchema?: z.ZodType;
   outputSchema?: z.ZodType;
+  requestContextSchema?: z.ZodType;
   mcp?: {
     annotations?: {
       title?: string;
@@ -26,7 +27,7 @@ type ServiceDeskToolConfig = {
       openWorldHint?: boolean;
     };
   };
-  execute: (input: unknown, context: ServiceDeskToolContext) => Promise<unknown> | unknown;
+  execute: (input: unknown, context: ServiceDeskToolContext<TRequestContext>) => Promise<unknown> | unknown;
 };
 
 type ServiceDeskScorerRun = {
@@ -69,12 +70,12 @@ type ServiceDeskWorkflowConfig = {
   outputSchema: z.ZodType;
 };
 
-const createServiceDeskTool = createTool as unknown as (config: ServiceDeskToolConfig) => ServiceDeskTool;
+const createServiceDeskTool = createTool as unknown as <TRequestContext = unknown>(config: ServiceDeskToolConfig<TRequestContext>) => ServiceDeskTool;
 const createServiceDeskScorer = createScorer as unknown as (config: ServiceDeskScorerConfig) => ServiceDeskScorerBuilder;
 const createServiceDeskStep = createStep as unknown as (config: ServiceDeskStepConfig) => ServiceDeskStep;
 const createServiceDeskWorkflow = createWorkflow as unknown as (config: ServiceDeskWorkflowConfig) => AnyWorkflow;
 
-export function defineServiceDeskTool(config: ServiceDeskToolConfig): ServiceDeskTool {
+export function defineServiceDeskTool<TRequestContext = unknown>(config: ServiceDeskToolConfig<TRequestContext>): ServiceDeskTool {
   return createServiceDeskTool(config);
 }
 
