@@ -47,9 +47,12 @@ Local development creates deterministic demo users in memory:
 
 These fallback passwords are disabled in `NODE_ENV=production`; production requires `AUTH_BOOTSTRAP_ADMIN_PASSWORD`. The production bootstrap admin is always present with `AUTH_BOOTSTRAP_ADMIN_EMAIL` and the password from `AUTH_BOOTSTRAP_ADMIN_PASSWORD`; when Redis is used, startup syncs that admin record so password rotations take effect. A production requester test account can be enabled with `AUTH_TEST_REQUESTER_EMAIL` and `AUTH_TEST_REQUESTER_PASSWORD`.
 
-Production test requester on Vercel:
+Production accounts on Vercel:
 
+- `admin@empresa.local` / `ChamadosAdmin@2026!`
 - `solicitante.teste@empresa.local` / `ChamadosTeste@2026!`
+
+This is a disposable test environment. Testers may use the shared admin account to validate flows and clear test data between cycles; do not use these credentials or this reset pattern for a real customer environment.
 
 The backend has deterministic fallback responses when no AI key is configured, so tests and the local demo run without external credentials. For Google AI Studio, put `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`; for x.ai, put `XAI_API_KEY` in `.env.local`. That file is gitignored. The frontend never receives these keys.
 Text generation uses a provider/model cascade: Google starts with `GOOGLE_GENERATIVE_AI_MODEL`, then `GOOGLE_GENERATIVE_AI_FALLBACK_MODELS`; x.ai models from `XAI_MODEL_CASCADE` are appended as provider fallbacks for rate-limit/provider failures. If every provider fails, the backend returns a deterministic local fallback.
