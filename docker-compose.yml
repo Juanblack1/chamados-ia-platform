@@ -47,6 +47,38 @@ services:
     depends_on:
       - backend
 
+  mastra:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.mastra
+    environment:
+      NODE_ENV: production
+      MASTRA_HOST: 0.0.0.0
+      MASTRA_PORT: 4111
+      MASTRA_MODEL: ${MASTRA_MODEL:-google/gemini-2.5-flash}
+      MASTRA_STUDIO_ORIGINS: ${MASTRA_STUDIO_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:4111,http://127.0.0.1:4111}
+      AI_PROVIDER: google
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_MODEL: ${GOOGLE_GENERATIVE_AI_MODEL:-gemini-2.5-flash}
+      GOOGLE_GENERATIVE_AI_FALLBACK_MODELS: ${GOOGLE_GENERATIVE_AI_FALLBACK_MODELS:-gemini-2.5-flash-lite,gemini-2.0-flash}
+      GOOGLE_EMBEDDING_MODEL: ${GOOGLE_EMBEDDING_MODEL:-gemini-embedding-001}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      XAI_MODEL_CASCADE: ${XAI_MODEL_CASCADE:-grok-4-1-fast-non-reasoning,grok-4-fast-non-reasoning,grok-3-mini,grok-3}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-64}
+      TICKET_STORAGE: ${TICKET_STORAGE:-memory}
+      TICKET_REDIS_PREFIX: ${TICKET_REDIS_PREFIX:-ai-service-desk}
+      TICKET_SEED_SAMPLE_DATA: ${TICKET_SEED_SAMPLE_DATA:-false}
+      KV_REST_API_URL: ${KV_REST_API_URL:-}
+      KV_REST_API_TOKEN: ${KV_REST_API_TOKEN:-}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: service_desk_knowledge
+    ports:
+      - "4111:4111"
+    depends_on:
+      - qdrant
+
   qdrant:
     image: qdrant/qdrant:v1.12.6
     ports:

@@ -10,6 +10,7 @@ variables:
   nodeVersion: "22.x"
   backendImage: "ai-service-desk-backend"
   frontendImage: "ai-service-desk-frontend"
+  mastraImage: "ai-service-desk-mastra"
 
 stages:
   - stage: verify
@@ -36,16 +37,26 @@ stages:
           - task: Docker@2
             displayName: Build backend image
             inputs:
-              command: build
+              command: buildAndPush
+              containerRegistry: "$(ACR_SERVICE_CONNECTION)"
               Dockerfile: backend/Dockerfile
               repository: "$(backendImage)"
               tags: "$(Build.BuildId)"
           - task: Docker@2
             displayName: Build frontend image
             inputs:
-              command: build
+              command: buildAndPush
+              containerRegistry: "$(ACR_SERVICE_CONNECTION)"
               Dockerfile: frontend/Dockerfile
               repository: "$(frontendImage)"
+              tags: "$(Build.BuildId)"
+          - task: Docker@2
+            displayName: Build Mastra Studio image
+            inputs:
+              command: buildAndPush
+              containerRegistry: "$(ACR_SERVICE_CONNECTION)"
+              Dockerfile: backend/Dockerfile.mastra
+              repository: "$(mastraImage)"
               tags: "$(Build.BuildId)"
 
   - stage: deploy
@@ -70,6 +81,13 @@ stages:
                       --from-literal=apiKeys="$(API_KEYS)" \
                       --dry-run=client -o yaml | kubectl apply -f -
                     kubectl apply -f infra/k8s/platform-config.yaml
-                    kubectl apply -f infra/k8s/backend-deployment.yaml
-                    kubectl apply -f infra/k8s/frontend-deployment.yaml
+                    for manifest in \
+                      infra/k8s/backend-deployment.yaml \
+                      infra/k8s/frontend-deployment.yaml \
+                      infra/k8s/mastra-studio-deployment.yaml; do
+                      perl -pe 's/\$\(ACR_NAME\)/$ENV{ACR_NAME}/g; s/\$\(Build\.BuildId\)/$ENV{BUILD_BUILDID}/g' "$manifest" | kubectl apply -f -
+                    done
                   displayName: Apply Kubernetes manifests
+                  env:
+                    ACR_NAME: $(ACR_NAME)
+                    BUILD_BUILDID: $(Build.BuildId)

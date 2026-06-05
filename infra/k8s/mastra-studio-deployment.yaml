@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service-desk-mastra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-service-desk-mastra
+  template:
+    metadata:
+      labels:
+        app: ai-service-desk-mastra
+    spec:
+      containers:
+        - name: mastra
+          image: $(ACR_NAME).azurecr.io/ai-service-desk-mastra:$(Build.BuildId)
+          ports:
+            - containerPort: 4111
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: MASTRA_HOST
+              value: "0.0.0.0"
+            - name: MASTRA_PORT
+              value: "4111"
+            - name: MASTRA_STUDIO_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: mastraStudioOrigins
+            - name: MASTRA_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: mastraModel
+            - name: AI_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: aiProvider
+            - name: GOOGLE_GENERATIVE_AI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: googleGenerativeAiApiKey
+            - name: GOOGLE_GENERATIVE_AI_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: googleGenerativeAiModel
+            - name: GOOGLE_GENERATIVE_AI_FALLBACK_MODELS
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: googleGenerativeAiFallbackModels
+            - name: GOOGLE_EMBEDDING_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: googleEmbeddingModel
+            - name: XAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: xaiApiKey
+                  optional: true
+            - name: XAI_MODEL_CASCADE
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: xaiModelCascade
+            - name: EMBEDDING_DIMENSION
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: embeddingDimension
+            - name: TICKET_STORAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: ticketStorage
+            - name: TICKET_REDIS_PREFIX
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: ticketRedisPrefix
+            - name: TICKET_SEED_SAMPLE_DATA
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: ticketSeedSampleData
+            - name: KV_REST_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: kvRestApiUrl
+            - name: KV_REST_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-desk-secrets
+                  key: kvRestApiToken
+            - name: QDRANT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-desk-config
+                  key: qdrantUrl
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4111
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service-desk-mastra
+spec:
+  selector:
+    app: ai-service-desk-mastra
+  ports:
+    - port: 80
+      targetPort: 4111

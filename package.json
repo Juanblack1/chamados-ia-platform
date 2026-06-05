@@ -11,6 +11,10 @@
     "dev": "npm-run-all --parallel dev:backend dev:frontend",
     "dev:backend": "npm --workspace backend run dev",
     "dev:frontend": "npm --workspace frontend run dev",
+    "dev:mastra": "mastra dev --dir backend/src/mastra --root .",
+    "build:mastra": "mastra build --dir backend/src/mastra --root . --studio",
+    "start:mastra": "node .mastra/output/index.mjs",
+    "studio:mastra": "mastra studio",
     "build": "npm --workspaces run build",
     "test": "npm --workspace backend run test",
     "test:e2e": "playwright test",
@@ -18,6 +22,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "mastra": "^1.12.2",
     "npm-run-all": "^4.1.5"
   }
 }

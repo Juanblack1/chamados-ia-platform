@@ -45,7 +45,7 @@ Local development creates deterministic demo users in memory:
 - `solicitante@empresa.local` / `dev123`
 - `solicitante.teste@empresa.local` / `dev123`
 
-These fallback passwords are disabled in `NODE_ENV=production`; production requires `AUTH_BOOTSTRAP_ADMIN_PASSWORD`. A production requester test account can be enabled with `AUTH_TEST_REQUESTER_EMAIL` and `AUTH_TEST_REQUESTER_PASSWORD`.
+These fallback passwords are disabled in `NODE_ENV=production`; production requires `AUTH_BOOTSTRAP_ADMIN_PASSWORD`. The production bootstrap admin is always present with `AUTH_BOOTSTRAP_ADMIN_EMAIL` and the password from `AUTH_BOOTSTRAP_ADMIN_PASSWORD`; when Redis is used, startup syncs that admin record so password rotations take effect. A production requester test account can be enabled with `AUTH_TEST_REQUESTER_EMAIL` and `AUTH_TEST_REQUESTER_PASSWORD`.
 
 Production test requester on Vercel:
 
@@ -92,6 +92,17 @@ Ticket persistence uses memory by default in local/test runs. In production, set
 
 CopilotKit is backed by a Google model through the Vercel AI SDK and exposes server-side tools to describe the AI architecture, search RAG knowledge, list tickets, assess intake quality, preview triage, and create a ticket. The create-ticket tool runs `assess_ticket_intake` first and returns missing questions or self-service guidance instead of creating low-quality tickets.
 
+## Mastra Studio
+
+Run the Mastra server and Studio locally with:
+
+```bash
+npm run dev:mastra
+npm run studio:mastra
+```
+
+The server defaults to `http://localhost:4111` and the standalone Studio defaults to `http://localhost:3000`. Production can run Mastra as a separate internal service with `backend/Dockerfile.mastra` and `infra/k8s/mastra-studio-deployment.yaml`; the Azure pipeline builds and applies that manifest. Do not expose Studio publicly without VPN, private networking, or an authenticated reverse proxy, because Studio can inspect and execute registered agents, workflows, tools, logs, and scores.
+
 ## Image attachments
 
 Use the image drop area in "Abrir chamado" or the upload button in the Copilot chat. The API accepts up to 4 image URLs or image data URLs per ticket. Binary image data is stored on the ticket for the demo UI, but agent prompts receive only an attachment summary so base64 is not sent to the LLM.
@@ -119,7 +130,7 @@ Optional production settings:
 - `GOOGLE_GENERATIVE_AI_FALLBACK_MODELS`
 - `XAI_MODEL_CASCADE`
 
-`docker-compose.yml` runs backend, frontend, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY`, `XAI_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `AUTH_BOOTSTRAP_ADMIN_PASSWORD`, and `API_KEYS`; no production secret is stored in the repository.
+`docker-compose.yml` runs backend, frontend, Mastra Studio/server, and Qdrant. Kubernetes manifests expect `ai-service-desk-secrets` to be created by the Azure DevOps pipeline from secret variables `GOOGLE_GENERATIVE_AI_API_KEY`, `XAI_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `AUTH_BOOTSTRAP_ADMIN_PASSWORD`, and `API_KEYS`; no production secret is stored in the repository. Azure DevOps also needs `ACR_NAME` and `ACR_SERVICE_CONNECTION` configured so the pipeline can push backend, frontend, and Mastra images to Azure Container Registry before applying the AKS manifests.
 
 ## Stitch
 

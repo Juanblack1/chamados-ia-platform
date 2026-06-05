@@ -1,0 +1,26 @@
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+COPY backend/package.json backend/package.json
+COPY frontend/package.json frontend/package.json
+RUN npm install
+
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY backend ./backend
+RUN npm run build:mastra
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV MASTRA_HOST=0.0.0.0
+ENV MASTRA_PORT=4111
+ENV MASTRA_STUDIO_PATH=.mastra/output/studio
+COPY package.json ./
+COPY backend/package.json backend/package.json
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/.mastra ./.mastra
+EXPOSE 4111
+CMD ["npm", "run", "start:mastra"]

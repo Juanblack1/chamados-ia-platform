@@ -174,7 +174,7 @@ export class RedisAuthStore implements AuthStore {
     await Promise.all(
       users.map(async (user) => {
         const existing = await this.redis.get<StoredUser>(this.userKey(user.id));
-        if (!existing) await this.saveUser(user);
+        if (!existing || this.env.NODE_ENV === "production") await this.saveUser(user);
       })
     );
   }
