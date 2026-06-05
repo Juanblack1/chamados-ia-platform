@@ -69,7 +69,7 @@ export function DashboardView({
             ) : null}
             <div className="status-card-top">
               <span>{card.label}</span>
-              <Badge tone={statusTone(card.status)}>{card.label}</Badge>
+              {card.hasCriticalRisk ? <Badge tone="danger">P1</Badge> : null}
             </div>
             <strong>{card.count}</strong>
             <small>{card.hint}</small>

@@ -16,6 +16,14 @@ export type ResolutionDraft = z.infer<typeof ResolutionDraftSchema>;
 export class ResolutionDraftAgent {
   constructor(private readonly llm: ModelGateway) {}
 
+  modelRoute(): string {
+    return this.llm.routeLabel;
+  }
+
+  executionMode(): "model-cascade" | "deterministic-fallback" {
+    return this.llm.executionMode;
+  }
+
   async run(input: CreateTicketInput, triage: TriageResult, sources: RagSource[]): Promise<ResolutionDraft> {
     const result = await this.llm.completeObject({
       system:

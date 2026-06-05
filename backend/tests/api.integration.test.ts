@@ -146,6 +146,28 @@ describe("service desk API", () => {
     expect(statusChange.statusCode).toBe(200);
     expect(statusChange.json().status).toBe("in_progress");
 
+    const targetedAssignment = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${erpTicket.json().id}/assign`,
+      headers: { cookie: adminCookie },
+      payload: { assigneeId: "usr-tech-erp" }
+    });
+    expect(targetedAssignment.statusCode).toBe(200);
+    expect(targetedAssignment.json()).toEqual(
+      expect.objectContaining({
+        assigneeId: "usr-tech-erp",
+        assigneeName: "Rafael Torres"
+      })
+    );
+
+    const invalidAssignment = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${erpTicket.json().id}/assign`,
+      headers: { cookie: adminCookie },
+      payload: { assigneeId: "usr-tech-network" }
+    });
+    expect(invalidAssignment.statusCode).toBe(404);
+
     const outOfScopeChange = await app.inject({
       method: "POST",
       url: `/api/tickets/${networkTicket.json().id}/status`,
@@ -153,6 +175,222 @@ describe("service desk API", () => {
       payload: { status: "in_progress" }
     });
     expect(outOfScopeChange.statusCode).toBe(404);
+  });
+
+  it("requires worker approval before resolving a ticket with pending human review", async () => {
+    app = await buildServer(makeEnv());
+    const adminCookie = await loginAs("admin@empresa.local", "admin123");
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/tickets",
+      headers: { cookie: adminCookie },
+      payload: buildTicketPayload({
+        title: "Faturamento parado para filial SP",
+        description: "O lote fiscal do ERP falhou desde 09:00 com erro FIS-103 e a filial SP esta sem faturar.",
+        businessImpact: "Fechamento fiscal parado, clientes sem notas e risco de compliance."
+      })
+    });
+    expect(created.statusCode).toBe(201);
+    const ticket = created.json();
+    expect(ticket.approvals).toEqual([
+      expect.objectContaining({
+        status: "requested",
+        requesterId: "sla-risk"
+      })
+    ]);
+
+    const blockedResolution = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${ticket.id}/resolve`,
+      headers: { cookie: adminCookie },
+      payload: { message: "Solucao validada e comunicada ao solicitante." }
+    });
+    expect(blockedResolution.statusCode).toBe(404);
+
+    const requesterCookie = await loginAs("solicitante.teste@empresa.local", "dev123");
+    const requesterDecision = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${ticket.id}/approval`,
+      headers: { cookie: requesterCookie },
+      payload: { decision: "approved" }
+    });
+    expect(requesterDecision.statusCode).toBe(404);
+
+    const approved = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${ticket.id}/approval`,
+      headers: { cookie: adminCookie },
+      payload: { decision: "approved", note: "Risco revisado pelo N2." }
+    });
+    expect(approved.statusCode).toBe(200);
+    expect(approved.json().approvals[0]).toEqual(
+      expect.objectContaining({
+        status: "approved",
+        decidedById: "usr-admin",
+        decidedByName: "Administrador Service Desk",
+        decisionNote: "Risco revisado pelo N2."
+      })
+    );
+
+    const resolved = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${ticket.id}/resolve`,
+      headers: { cookie: adminCookie },
+      payload: { message: "Solucao validada e comunicada ao solicitante." }
+    });
+    expect(resolved.statusCode).toBe(200);
+    expect(resolved.json().status).toBe("resolved");
+  });
+
+  it("records worker feedback for an AI decision", async () => {
+    app = await buildServer(makeEnv());
+    const adminCookie = await loginAs("admin@empresa.local", "admin123");
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/tickets",
+      headers: { cookie: adminCookie },
+      payload: buildTicketPayload({
+        title: "VPN instavel para diretoria",
+        affectedService: "Rede Corporativa",
+        description: "VPN desconecta a cada dez minutos para diretoria desde 08:30 com erro de tunel no cliente.",
+        businessImpact: "Diretoria nao consegue acessar paineis comerciais antes da reuniao executiva."
+      })
+    });
+    expect(created.statusCode).toBe(201);
+    const ticket = created.json();
+
+    const requesterCookie = await loginAs("solicitante.teste@empresa.local", "dev123");
+    const denied = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${ticket.id}/ai-feedback`,
+      headers: { cookie: requesterCookie },
+      payload: { decision: "triage", rating: "incorrect" }
+    });
+    expect(denied.statusCode).toBe(404);
+
+    const feedback = await app.inject({
+      method: "POST",
+      url: `/api/tickets/${ticket.id}/ai-feedback`,
+      headers: { cookie: adminCookie },
+      payload: { decision: "triage", rating: "needs_review", note: "Prioridade deveria considerar diretoria." }
+    });
+    expect(feedback.statusCode).toBe(200);
+    expect(feedback.json().ai.feedback).toEqual([
+      expect.objectContaining({
+        decision: "triage",
+        rating: "needs_review",
+        note: "Prioridade deveria considerar diretoria.",
+        actorId: "usr-admin",
+        actorName: "Administrador Service Desk"
+      })
+    ]);
+    expect(feedback.json().audit).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "ai.feedback_recorded",
+          message: expect.stringContaining("feedback para revisao")
+        })
+      ])
+    );
+  });
+
+  it("keeps retrieved RAG evidence aligned with the service desk catalog", async () => {
+    app = await buildServer(makeEnv());
+    const adminCookie = await loginAs("admin@empresa.local", "admin123");
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/tickets",
+      headers: { cookie: adminCookie },
+      payload: buildTicketPayload({
+        title: "Faturamento ERP bloqueado no fechamento fiscal",
+        affectedService: "ERP Central"
+      })
+    });
+    expect(created.statusCode).toBe(201);
+    const ticket = created.json();
+    expect(ticket.ai.triage.metadata).toEqual(
+      expect.objectContaining({
+        traceId: expect.any(String),
+        modelRoute: "local-fallback",
+        executionMode: "deterministic-fallback"
+      })
+    );
+    expect(ticket.ai.resolutionDraft.metadata).toEqual(
+      expect.objectContaining({
+        traceId: ticket.ai.triage.metadata.traceId,
+        modelRoute: "local-fallback",
+        executionMode: "deterministic-fallback"
+      })
+    );
+
+    const catalog = await app.inject({
+      method: "GET",
+      url: "/api/catalog/service-desk",
+      headers: { cookie: adminCookie }
+    });
+    expect(catalog.statusCode).toBe(200);
+
+    const articleIds = new Set(catalog.json().knowledgeArticles.map((article: { id: string }) => article.id));
+    const sourceIds = ticket.ai.retrievedSources.map((source: { id: string }) => source.id);
+
+    expect(sourceIds.length).toBeGreaterThan(0);
+    expect(sourceIds.every((sourceId: string) => articleIds.has(sourceId))).toBe(true);
+    expect(catalog.json().knowledgeArticles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "kb-priority-sla",
+          ownerGroupId: "grp-approvals",
+          reviewCadenceDays: 30,
+          status: "needs_review"
+        })
+      ])
+    );
+  });
+
+  it("exposes a deterministic agent eval report", async () => {
+    app = await buildServer(makeEnv());
+    const adminCookie = await loginAs("admin@empresa.local", "admin123");
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/agents/evals",
+      headers: { cookie: adminCookie }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        suiteId: "service-desk-agent-baseline",
+        score: 100,
+        passRate: 100,
+        totalCases: 3,
+        passedCases: 3,
+        failedCases: 0,
+        modelRoute: "local-fallback",
+        executionMode: "deterministic-fallback"
+      })
+    );
+    expect(response.json().cases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "erp-critical-approval",
+          passed: true,
+          sourceIds: expect.arrayContaining(["kb-erp-billing-lock"]),
+          expectedSpans: expect.arrayContaining(["agent.rag-retrieval", "agent.ticket-triage"])
+        })
+      ])
+    );
+    expect(response.json().scorers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "rag-grounding",
+          passRate: 100
+        })
+      ])
+    );
   });
 });
 

@@ -1,46 +1,100 @@
-import { createTool } from "@mastra/core/tools";
+import type { RequestContext } from "@mastra/core/request-context";
 import { z } from "zod";
+import { TicketPrioritySchema, TicketStatusSchema } from "../../domain/ticket.js";
 import { canAccessTicket } from "../../domain/ticketAccess.js";
 import type { Ticket, TicketAgentMemoryEntry } from "../../domain/ticket.js";
 import type { TicketStore } from "../../domain/ticketRepository.js";
-import type { AppUser } from "../../security/authStore.js";
+import { permissionKeys, type AppUser } from "../../security/authStore.js";
+import { defineServiceDeskTool, type ServiceDeskTool } from "./typedMastraPrimitives.js";
 
+export const TicketDatabaseOperationSchema = z.enum(["list_tickets", "find_ticket", "similar_tickets", "memory_summary"]);
 export const TicketDatabaseQuerySchema = z.object({
-  operation: z.enum(["list_tickets", "find_ticket", "similar_tickets", "memory_summary"]).default("memory_summary"),
+  operation: TicketDatabaseOperationSchema.default("memory_summary"),
   ticketId: z.string().optional(),
   query: z.string().max(500).optional(),
-  status: z.enum(["new", "open", "triaging", "in_progress", "waiting_customer", "pending_approval", "escalated", "resolved", "closed"]).optional(),
+  status: TicketStatusSchema.optional(),
   includeResolved: z.boolean().default(false),
   limit: z.number().int().min(1).max(20).default(8)
 });
 
 export type TicketDatabaseQuery = z.infer<typeof TicketDatabaseQuerySchema>;
 
-export type TicketDatabaseResult = {
-  operation: TicketDatabaseQuery["operation"];
-  storage: TicketStore["kind"];
-  count: number;
-  tickets: Array<ReturnType<typeof summarizeTicketForTool>>;
-  memories: Array<ReturnType<typeof summarizeMemoryForTool>>;
-  note?: string;
-};
+export const TicketDatabaseTicketSchema = z.object({
+  id: z.string(),
+  number: z.string(),
+  title: z.string(),
+  status: TicketStatusSchema,
+  priority: TicketPrioritySchema,
+  affectedService: z.string(),
+  category: z.string(),
+  assignedGroupName: z.string().optional(),
+  assigneeName: z.string().optional(),
+  requesterEmail: z.string().email(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  tags: z.array(z.string()),
+  memoryCount: z.number().int().nonnegative()
+});
 
-export function createTicketDatabaseTool(ticketStore: TicketStore): unknown {
-  const createServiceDeskTool = createTool as unknown as (options: {
-    id: string;
-    description: string;
-    inputSchema: typeof TicketDatabaseQuerySchema;
-    execute: (input: TicketDatabaseQuery, context?: { requestContext?: unknown }) => Promise<TicketDatabaseResult>;
-  }) => unknown;
+export const TicketDatabaseMemorySchema = z.object({
+  ticketId: z.string(),
+  ticketNumber: z.string(),
+  ticketTitle: z.string(),
+  agent: z.string(),
+  role: z.enum(["user", "assistant", "system"]),
+  actorName: z.string(),
+  content: z.string(),
+  createdAt: z.string(),
+  traceId: z.string().optional()
+});
 
-  return createServiceDeskTool({
+export const TicketDatabaseResultSchema = z.object({
+  operation: TicketDatabaseOperationSchema,
+  storage: z.enum(["memory", "redis"]),
+  count: z.number().int().nonnegative(),
+  tickets: z.array(TicketDatabaseTicketSchema),
+  memories: z.array(TicketDatabaseMemorySchema),
+  note: z.string().optional()
+});
+
+export type TicketDatabaseResult = z.infer<typeof TicketDatabaseResultSchema>;
+type TicketStoreResolver = () => Promise<TicketStore>;
+
+const AppUserContextSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string(),
+  role: z.enum(["admin", "manager", "employee", "requester"]),
+  entityId: z.string(),
+  entityName: z.string(),
+  groupIds: z.array(z.string()),
+  permissions: z.array(z.enum(permissionKeys)),
+  active: z.boolean()
+});
+
+export function createTicketDatabaseTool(ticketStoreOrResolver: TicketStore | TicketStoreResolver): ServiceDeskTool {
+  const resolveTicketStore = toTicketStoreResolver(ticketStoreOrResolver);
+
+  return defineServiceDeskTool({
     id: "query-service-desk-database",
     description:
       "Read-only, permission-scoped access to the service desk ticket database and accumulated ticket memory. Use it before answering about prior tickets, similar incidents, status, SLA, requester history, or lessons learned.",
     inputSchema: TicketDatabaseQuerySchema,
+    outputSchema: TicketDatabaseResultSchema,
+    mcp: {
+      annotations: {
+        title: "Query Service Desk Database",
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
+    },
     execute: async (input, context) => {
-      const user = parseToolUser(context?.requestContext);
-      return queryTicketDatabase(ticketStore, user, input);
+      const query = TicketDatabaseQuerySchema.parse(input);
+      const user = parseToolUser(context.requestContext);
+      const ticketStore = await resolveTicketStore();
+      return queryTicketDatabase(ticketStore, user, query);
     }
   });
 }
@@ -151,18 +205,25 @@ function buildDatabaseToolNote(query: TicketDatabaseQuery, count: number): strin
   return `${count} chamado(s) retornados no escopo permitido.`;
 }
 
-function parseToolUser(requestContext: unknown): AppUser | undefined {
-  const getter = requestContext as { get?: (key: string) => unknown } | undefined;
-  const raw = getter?.get?.("user") ?? getter?.get?.("currentUser");
-  if (!raw) return undefined;
-  if (typeof raw === "object") return raw as AppUser;
-  if (typeof raw !== "string") return undefined;
+function toTicketStoreResolver(ticketStoreOrResolver: TicketStore | TicketStoreResolver): TicketStoreResolver {
+  return typeof ticketStoreOrResolver === "function" ? ticketStoreOrResolver : async () => ticketStoreOrResolver;
+}
 
-  try {
-    return JSON.parse(raw) as AppUser;
-  } catch {
-    return undefined;
+function parseToolUser(requestContext: RequestContext | undefined): AppUser | undefined {
+  const raw = requestContext?.get("user") ?? requestContext?.get("currentUser");
+  if (!raw) return undefined;
+
+  if (typeof raw === "string") {
+    try {
+      const parsed = AppUserContextSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : undefined;
+    } catch {
+      return undefined;
+    }
   }
+
+  const parsed = AppUserContextSchema.safeParse(raw);
+  return parsed.success ? parsed.data : undefined;
 }
 
 function tokenize(value: string): string[] {

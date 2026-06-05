@@ -262,6 +262,30 @@ describe("AgentOrchestrator", () => {
     expect(actionableButIncomplete.shouldCreate).toBe(true);
     expect(actionableButIncomplete.readiness).not.toBe("needs_info");
     expect(actionableButIncomplete.workflow).toEqual(expect.arrayContaining(["ticket.ready-to-open"]));
+
+    const vaguePortalAssessment = await orchestrator.assessIntake(
+      normalizeCreateTicketInput({
+        requesterEmail: "ana@acme.local",
+        department: "Operacoes",
+        title: "Portal Cliente: Cara o cliente nao ta conseguindo abrir sinistro",
+        description: "Cara o cliente nao ta conseguindo abrir sinistro",
+        affectedService: "Portal Cliente",
+        urgency: "medium",
+        impact: "high",
+        businessImpact: "Impacto inferido pela IA: atendimento a clientes afetado em Portal Cliente.",
+        attachments: []
+      })
+    );
+
+    expect(vaguePortalAssessment.shouldCreate).toBe(false);
+    expect(vaguePortalAssessment.readiness).toBe("needs_info");
+    expect(vaguePortalAssessment.missingInformation).toEqual(
+      expect.arrayContaining([
+        "Descreva o sintoma observado, quando ocorre e como reproduzir.",
+        "Informe desde quando ocorre ou o horario da primeira ocorrencia."
+      ])
+    );
+    expect(vaguePortalAssessment.workflow).toEqual(expect.arrayContaining(["ticket.blocked-before-open"]));
     await expect(orchestrator.listTickets()).resolves.toHaveLength(2);
   });
 });

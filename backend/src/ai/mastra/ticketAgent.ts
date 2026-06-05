@@ -1,12 +1,17 @@
-import { Agent } from "@mastra/core/agent";
+import { Agent, type ToolsInput } from "@mastra/core/agent";
 import { Mastra } from "@mastra/core/mastra";
+import { serviceDeskTools } from "./serviceDeskTools.js";
 
 export const ticketTriageMastraAgent = new Agent({
   id: "ticket-triage",
   name: "Ticket Triage Agent",
   instructions:
     "Classify service desk tickets, retrieve relevant policy context, explain confidence, and require human approval for low-confidence or high-impact decisions.",
-  model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`
+  model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`,
+  tools: {
+    describeAiServiceDesk: serviceDeskTools.describeAiServiceDesk,
+    searchServiceDeskKnowledge: serviceDeskTools.searchServiceDeskKnowledge
+  }
 });
 
 export const intakeQualityMastraAgent = new Agent({
@@ -22,7 +27,10 @@ export const ragRetrievalMastraAgent = new Agent({
   name: "RAG Retrieval Agent",
   instructions:
     "Retrieve approved service desk policy, runbook, and knowledge evidence from Qdrant or the local fallback. Return only source-backed context with relevance and citeable source IDs.",
-  model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`
+  model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`,
+  tools: {
+    searchServiceDeskKnowledge: serviceDeskTools.searchServiceDeskKnowledge
+  }
 });
 
 export const routingMastraAgent = new Agent({
@@ -38,7 +46,10 @@ export const resolutionDraftMastraAgent = new Agent({
   name: "Resolution Draft Agent",
   instructions:
     "Draft safe, concise analyst responses and resolution plans using only the active ticket, authorized context, and RAG evidence. Include next actions and cite source IDs.",
-  model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`
+  model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`,
+  tools: {
+    searchServiceDeskKnowledge: serviceDeskTools.searchServiceDeskKnowledge
+  }
 });
 
 export const slaRiskMastraAgent = new Agent({
@@ -57,18 +68,22 @@ export const ticketMemoryMastraAgent = new Agent({
   model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`
 });
 
-export function createTicketSpecialistMastraAgent(tools?: Record<string, unknown>) {
+export function createTicketSpecialistMastraAgent(tools?: ToolsInput) {
   return new Agent({
     id: "ticket-specialist",
     name: "Ticket Specialist Agent",
     instructions:
       "Act as a senior enterprise service desk specialist. Use ticket history, RAG evidence, SLA context, accumulated ticket memory, and the read-only service desk database tool before answering. Keep replies in Brazilian Portuguese, actionable, and safe for requester-facing workflows.",
     model: process.env.MASTRA_MODEL ?? `google/${process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash"}`,
-    ...(tools ? { tools: tools as never } : {})
+    ...(tools ? { tools } : {})
   });
 }
 
-export const ticketSpecialistMastraAgent = createTicketSpecialistMastraAgent();
+export const ticketSpecialistMastraAgent = createTicketSpecialistMastraAgent({
+  describeAiServiceDesk: serviceDeskTools.describeAiServiceDesk,
+  searchServiceDeskKnowledge: serviceDeskTools.searchServiceDeskKnowledge,
+  queryServiceDeskDatabase: serviceDeskTools.queryServiceDeskDatabase
+});
 
 export const mastraAgents = {
   "intake-quality": intakeQualityMastraAgent,

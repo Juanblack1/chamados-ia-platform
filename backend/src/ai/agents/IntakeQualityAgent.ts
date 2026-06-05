@@ -20,6 +20,19 @@ export type IntakeSimilarTicket = {
   score: number;
 };
 
+type IntakeDetailKey =
+  | "hasMeaningfulTitle"
+  | "hasDetailedDescription"
+  | "hasBusinessImpact"
+  | "hasService"
+  | "hasTimeWindow"
+  | "hasAffectedUsers"
+  | "hasObservedError"
+  | "hasAttemptedAction"
+  | "hasEvidence";
+
+type IntakeDetails = Record<IntakeDetailKey, boolean>;
+
 export type IntakeAssessment = {
   readiness: IntakeReadiness;
   shouldCreate: boolean;
@@ -70,18 +83,21 @@ export function assessTicketIntakeQuality(params: {
   const unknownService = isUnknownService(effectiveInput.affectedService);
   const genericDescription = isGenericDescription(input.description);
   const genericImpact = isGenericImpact(effectiveInput.businessImpact);
-  const details = {
+  const details: IntakeDetails = {
     hasMeaningfulTitle: wordCount(input.title) >= 3 && normalize(input.title).length >= 10,
     hasDetailedDescription: (wordCount(input.description) >= 12 || normalize(input.description).length >= 80) && !genericDescription,
     hasBusinessImpact:
       normalize(effectiveInput.businessImpact).length >= 20 &&
       !genericImpact &&
-      /(parad|bloquead|indisponivel|atras|fila|fatur|pagamento|pedido|cliente|usuario|equipe|filial|operacao|financeiro|seguranca|compliance|\d+)/.test(
+      /(parad|bloquead|indisponivel|atras|fila|fatur|pagamento|pedido|cliente|usuario|equipe|filial|operacao|financeiro|seguranca|compliance|diretoria|area|painel|paineis|reuniao|executiv|\d+)/.test(
         normalize(effectiveInput.businessImpact)
       ),
     hasService: normalize(effectiveInput.affectedService).length >= 3 && !unknownService,
     hasTimeWindow: /(desde|hoje|ontem|agora|manha|tarde|noite|\d{1,2}:\d{2}|\d+\s?(min|hora|horas|dia|dias))/.test(text),
-    hasAffectedUsers: /(usuario|usuarios|pessoa|pessoas|equipe|time|setor|departamento|filial|todos|cliente|clientes|\d+\s?(user|usuarios|pessoas))/.test(text),
+    hasAffectedUsers:
+      /(usuario|usuarios|pessoa|pessoas|equipe|time|setor|departamento|filial|todos|cliente|clientes|diretoria|area|areas|colaborador|colaboradores|funcionario|funcionarios|\d+\s?(user|usuarios|pessoas))/.test(
+        text
+      ),
     hasObservedError: /(erro|falha|codigo|http|timeout|lento|indisponivel|bloqueado|nao abre|nao carrega|print|anexo|mensagem|log)/.test(text),
     hasAttemptedAction: /(tentei|testei|reiniciei|limpei|validei|verifiquei|sem workaround|contorno|workaround|reproduzi)/.test(text),
     hasEvidence: input.attachments.length > 0 || /(print|screenshot|log|evidencia|anexo)/.test(text)
@@ -98,9 +114,15 @@ export function assessTicketIntakeQuality(params: {
   const similarTickets = findSimilarTickets(effectiveInput, existingTickets);
   const selfService = buildSelfServiceSuggestion(effectiveInput, relevantSources, suggestedPriority, text);
   const hasOperationalCore = details.hasDetailedDescription && (details.hasService || details.hasObservedError || details.hasAffectedUsers);
+  const missingRequiredContext = requiresRequiredContextBeforeCreate(details, effectiveInput);
   const extremelyThin = score < 35 && !hasOperationalCore;
   const overloadedMissingContext = missingInformation.length >= 6 && !hasOperationalCore;
-  const hardBlock = nonsense || (genericVague && !hasOperationalCore) || extremelyThin || overloadedMissingContext;
+  const hardBlock =
+    nonsense ||
+    (genericVague && !hasOperationalCore) ||
+    (!selfService.canDeflect && missingRequiredContext) ||
+    extremelyThin ||
+    overloadedMissingContext;
   const shouldCreate = !hardBlock;
   const readiness: IntakeReadiness = hardBlock ? "needs_info" : selfService.canDeflect ? "self_service" : "ready";
   const titleSuggestion = suggestTitle(effectiveInput, triage.category);
@@ -110,7 +132,7 @@ export function assessTicketIntakeQuality(params: {
     shouldCreate,
     qualityScore: score,
     summary: buildSummary(readiness, score, triage, group.name, selfService.canDeflect),
-    blockedReason: hardBlock ? "Inclua contexto suficiente para a triagem antes de criar o chamado." : undefined,
+    blockedReason: hardBlock ? "Responda as perguntas obrigatorias da IA antes de criar o chamado." : undefined,
     detectedIntent: triage.category,
     sentiment: detectSentiment(text),
     language: detectLanguage(text),
@@ -235,12 +257,13 @@ function inferAffectedService(current: string, category: string, text: string): 
 
 function inferUrgency(current: TicketPriority, text: string): TicketPriority {
   if (/(agora|urgente|critico|critica|parado|indisponivel|sem faturar|todos|cliente parado|seguranca|compliance)/.test(text)) return "critical";
-  if (/(hoje|bloqueado|alta|clientes|equipe parada|fila parada|degradado|sla)/.test(text)) return "high";
+  if (/(bloqueado|alta|clientes|equipe parada|fila parada|degradado|sla)/.test(text)) return "high";
   if (/(lento|intermitente|alguns usuarios|parcial)/.test(text)) return "medium";
   return current;
 }
 
 function inferImpact(current: TicketPriority, text: string): TicketPriority {
+  if (hasSingleUserScope(text) && !/(empresa toda|todos|varias filiais|filial|clientes|equipe parada|setor|departamento|operacao parada)/.test(text)) return "low";
   if (/(empresa toda|todos|varias filiais|filial|clientes|faturamento|pagamento|compliance|seguranca|operacao parada|parado)/.test(text)) return "critical";
   if (/(equipe|setor|departamento|financeiro|operacoes|cliente|clientes|bloqueado)/.test(text)) return "high";
   if (/(usuario|pessoa|individual|apenas um|um cliente|parcial)/.test(text)) return "medium";
@@ -267,15 +290,10 @@ function normalizeMissingInformation(item: string): string {
   return item;
 }
 
-function calculateQualityScore(
-  details: Record<string, boolean>,
-  sources: RagSource[],
-  nonsense: boolean,
-  missingCount: number
-): number {
+function calculateQualityScore(details: IntakeDetails, sources: RagSource[], nonsense: boolean, missingCount: number): number {
   if (nonsense) return 20;
 
-  const weights: Array<[keyof typeof details, number]> = [
+  const weights: Array<[IntakeDetailKey, number]> = [
     ["hasMeaningfulTitle", 10],
     ["hasDetailedDescription", 20],
     ["hasBusinessImpact", 15],
@@ -291,7 +309,18 @@ function calculateQualityScore(
   return clamp(base + ragBonus - Math.max(0, missingCount - 2) * 4, 0, 100);
 }
 
-function buildMissingInformation(details: Record<string, boolean>, input: CreateTicketInput): string[] {
+function requiresRequiredContextBeforeCreate(details: IntakeDetails, input: CreateTicketInput): boolean {
+  const missingSharedContext =
+    !details.hasService ||
+    !details.hasDetailedDescription ||
+    !details.hasBusinessImpact ||
+    !details.hasTimeWindow ||
+    !details.hasAffectedUsers;
+  const missingIncidentEvidence = input.type === "incident" && !details.hasObservedError && !details.hasEvidence;
+  return missingSharedContext || missingIncidentEvidence;
+}
+
+function buildMissingInformation(details: IntakeDetails, input: CreateTicketInput): string[] {
   const missing: string[] = [];
   if (!details.hasService) missing.push("Informe o sistema, aplicacao ou servico afetado.");
   if (!details.hasDetailedDescription) missing.push("Descreva o sintoma observado, quando ocorre e como reproduzir.");
@@ -318,7 +347,7 @@ function buildClarificationQuestions(missingInformation: string[], input: Create
   return dedupe(questions);
 }
 
-function buildQualitySignals(details: Record<string, boolean>, nonsense: boolean): IntakeQualitySignal[] {
+function buildQualitySignals(details: IntakeDetails, nonsense: boolean): IntakeQualitySignal[] {
   if (nonsense) {
     return [
       {
@@ -460,10 +489,15 @@ function isGenericDescription(value: string): boolean {
 
 function isGenericImpact(value: string): boolean {
   const impact = normalize(value);
+  if (hasSingleUserScope(impact)) return false;
   return /(nao informado|n\/a|sem impacto|nao sei|preciso de ajuda|nao informei impacto|impacto operacional concreto|sem detalhe)/.test(impact);
 }
 
-function isGenericVagueIntake(input: CreateTicketInput, details: Record<string, boolean>, unknownService: boolean): boolean {
+function hasSingleUserScope(text: string): boolean {
+  return /(usuario individual|apenas um usuario|um usuario|uma pessoa|pessoa individual|sem impacto em equipe|sem impacto para equipe)/.test(text);
+}
+
+function isGenericVagueIntake(input: CreateTicketInput, details: IntakeDetails, unknownService: boolean): boolean {
   const text = normalize(`${input.title} ${input.description} ${input.businessImpact}`);
   const genericPhrase = /(sem detalhes|nao sei explicar|nao consigo explicar|nao sei informar|preciso de ajuda|nao funciona direito|problema urgente)/.test(text);
   const missingOperationalCore = !details.hasService || !details.hasBusinessImpact || (!details.hasObservedError && !details.hasAffectedUsers);

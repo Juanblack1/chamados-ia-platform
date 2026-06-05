@@ -1,6 +1,15 @@
 import type { AppUser, CreateTicketPayload, IntakeAssessment, PermissionKey, Ticket, TicketPriority } from "./api";
 
-export type View = "dashboard" | "queue" | "new" | "detail" | "users" | "userCreate" | "userDetail" | "profile";
+export type View =
+  | "dashboard"
+  | "governance"
+  | "queue"
+  | "new"
+  | "detail"
+  | "users"
+  | "userCreate"
+  | "userDetail"
+  | "profile";
 
 export const MAX_ATTACHMENTS = 4;
 export const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;

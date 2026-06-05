@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const backendPort = process.env.E2E_BACKEND_PORT ?? "4100";
+const frontendPort = process.env.E2E_FRONTEND_PORT ?? "53174";
+const backendUrl = `http://127.0.0.1:${backendPort}`;
+const frontendUrl = `http://127.0.0.1:${frontendPort}`;
+
 export default defineConfig({
   testDir: "./frontend/e2e",
   timeout: 45_000,
@@ -8,7 +13,7 @@ export default defineConfig({
   },
   reporter: [["list"]],
   use: {
-    baseURL: "http://127.0.0.1:5174",
+    baseURL: frontendUrl,
     trace: "retain-on-failure"
   },
   projects: [
@@ -23,13 +28,13 @@ export default defineConfig({
   webServer: [
     {
       command: "npm --workspace backend run dev",
-      url: "http://127.0.0.1:4100/api/health",
+      url: `${backendUrl}/api/health`,
       timeout: 30_000,
       reuseExistingServer: false,
       env: {
         NODE_ENV: "development",
-        PORT: "4100",
-        FRONTEND_ORIGIN: "http://127.0.0.1:5174",
+        PORT: backendPort,
+        FRONTEND_ORIGIN: frontendUrl,
         LOG_LEVEL: "silent",
         AI_PROVIDER: "mock",
         AUTH_BOOTSTRAP_ADMIN_PASSWORD: "admin123",
@@ -38,12 +43,12 @@ export default defineConfig({
       }
     },
     {
-      command: "npm --workspace frontend run dev -- --host 127.0.0.1 --port 5174",
-      url: "http://127.0.0.1:5174",
+      command: `npm --workspace frontend run dev -- --host 127.0.0.1 --port ${frontendPort} --strictPort`,
+      url: frontendUrl,
       timeout: 30_000,
       reuseExistingServer: false,
       env: {
-        VITE_DEV_API_TARGET: "http://127.0.0.1:4100",
+        VITE_DEV_API_TARGET: backendUrl,
         VITE_ENABLE_TEST_LOGIN: "true",
         VITE_TEST_REQUESTER_EMAIL: "solicitante.teste@empresa.local",
         VITE_TEST_REQUESTER_PASSWORD: "dev123"

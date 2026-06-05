@@ -20,6 +20,9 @@ export type KnowledgeArticle = {
   source: string;
   category: string;
   updatedAt: string;
+  ownerGroupId: string;
+  reviewCadenceDays: number;
+  status: "active" | "needs_review";
 };
 
 export type OpeningTemplate = {
@@ -52,9 +55,46 @@ export const slaPolicies: SlaPolicy[] = [
 ];
 
 export const knowledgeArticles: KnowledgeArticle[] = [
-  { id: "kb-erp-001", title: "Runbook de falha no lote fiscal ERP", source: "kb://erp/billing-batch", category: "ERP", updatedAt: "2026-05-20" },
-  { id: "kb-net-001", title: "Diagnostico de instabilidade VPN", source: "kb://network/vpn-disconnect", category: "Network", updatedAt: "2026-05-22" },
-  { id: "kb-iam-001", title: "Reset seguro de MFA e SSO", source: "kb://iam/mfa-reset", category: "Identity Access", updatedAt: "2026-05-18" }
+  {
+    id: "kb-erp-billing-lock",
+    title: "ERP billing batch failure runbook",
+    source: "Confluence / ERP / Billing",
+    category: "ERP",
+    updatedAt: "2026-05-20",
+    ownerGroupId: "grp-erp",
+    reviewCadenceDays: 30,
+    status: "active"
+  },
+  {
+    id: "kb-vpn-instability",
+    title: "VPN instability and packet loss checklist",
+    source: "Network runbook",
+    category: "Network",
+    updatedAt: "2026-05-22",
+    ownerGroupId: "grp-network",
+    reviewCadenceDays: 30,
+    status: "active"
+  },
+  {
+    id: "kb-access-reset",
+    title: "Identity access reset policy",
+    source: "IAM policy",
+    category: "Identity Access",
+    updatedAt: "2026-05-18",
+    ownerGroupId: "grp-iam",
+    reviewCadenceDays: 60,
+    status: "active"
+  },
+  {
+    id: "kb-priority-sla",
+    title: "Priority and SLA classification",
+    source: "Service desk policy",
+    category: "SLA",
+    updatedAt: "2026-04-01",
+    ownerGroupId: "grp-approvals",
+    reviewCadenceDays: 30,
+    status: "needs_review"
+  }
 ];
 
 export const openingTemplates: OpeningTemplate[] = [

@@ -1,8 +1,36 @@
 import { useMemo, type KeyboardEvent } from "react";
-import { Activity, AlertTriangle, Bot, Clock3, FileSearch, TicketCheck } from "lucide-react";
+import { Activity, AlertTriangle, Bot, Clock3, FileSearch, TicketCheck, UserCheck, UsersRound } from "lucide-react";
 import type { Ticket } from "../../lib/api";
 import { priorityLabel, priorityTone, slaRisk, statusLabel, statusTone, typeLabel } from "../../lib/presentation";
 import { Badge, SkeletonRows, SlaBadge } from "../../components/common";
+
+const LOW_CONFIDENCE_THRESHOLD = 0.72;
+
+type GroupWorkloadRow = {
+  id: string;
+  name: string;
+  active: number;
+  critical: number;
+  slaAttention: number;
+  lowConfidence: number;
+  unassigned: number;
+};
+
+type AssigneeWorkloadRow = {
+  id: string;
+  name: string;
+  groupName: string;
+  active: number;
+  critical: number;
+  slaAttention: number;
+};
+
+type WorkloadModel = {
+  activeCount: number;
+  unassignedCount: number;
+  groups: GroupWorkloadRow[];
+  assignees: AssigneeWorkloadRow[];
+};
 
 export function QueueView({
   tickets,
@@ -34,9 +62,12 @@ export function QueueView({
     ];
   }, [allTickets]);
 
+  const workload = useMemo(() => buildWorkloadModel(allTickets), [allTickets]);
+
   return (
     <section className="queue-layout" aria-label="Fila operacional">
       <MetricStrip metrics={metrics} />
+      <WorkloadPanel model={workload} />
       <div className="content-grid">
         <section className="panel queue-panel" aria-labelledby="queue-title">
           <div className="panel-heading">
@@ -50,6 +81,101 @@ export function QueueView({
         </section>
       </div>
     </section>
+  );
+}
+
+function WorkloadPanel({ model }: { model: WorkloadModel }) {
+  return (
+    <section className="panel workload-panel" aria-labelledby="workload-title">
+      <div className="panel-heading">
+        <div className="heading-inline">
+          <UsersRound size={19} />
+          <div>
+            <h2 id="workload-title">Distribuicao de carga</h2>
+            <p>Chamados ativos por grupo, tecnico e risco operacional.</p>
+          </div>
+        </div>
+        <Badge tone={model.unassignedCount ? "warning" : "success"}>{model.unassignedCount} sem tecnico</Badge>
+      </div>
+
+      {model.activeCount === 0 ? (
+        <div className="workload-empty">
+          <TicketCheck size={22} />
+          <div>
+            <strong>Sem carga ativa</strong>
+            <span>Os chamados autorizados estao resolvidos ou fechados.</span>
+          </div>
+        </div>
+      ) : (
+        <div className="workload-grid">
+          <section aria-labelledby="group-load-title">
+            <div className="workload-section-heading">
+              <h3 id="group-load-title">Carga por grupo</h3>
+              <span>{model.groups.length} grupos</span>
+            </div>
+            <div className="workload-list">
+              {model.groups.map((row) => (
+                <div className="workload-row" key={row.id}>
+                  <div className="workload-row-main">
+                    <strong>{row.name}</strong>
+                    <small>{row.active} ativo(s) - {row.unassigned} sem tecnico</small>
+                  </div>
+                  <div className="workload-counters" aria-label={`Indicadores de ${row.name}`}>
+                    <Counter label="Criticos" value={row.critical} tone={row.critical ? "danger" : "neutral"} />
+                    <Counter label="SLA" value={row.slaAttention} tone={row.slaAttention ? "warning" : "success"} />
+                    <Counter label="IA baixa" value={row.lowConfidence} tone={row.lowConfidence ? "warning" : "success"} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section aria-labelledby="assignee-load-title">
+            <div className="workload-section-heading">
+              <div className="heading-inline">
+                <UserCheck size={17} />
+                <h3 id="assignee-load-title">Carga por tecnico</h3>
+              </div>
+              <span>{model.assignees.length} tecnicos</span>
+            </div>
+            {model.assignees.length ? (
+              <div className="workload-list">
+                {model.assignees.map((row) => (
+                  <div className="workload-row compact" key={row.id}>
+                    <div className="workload-row-main">
+                      <strong>{row.name}</strong>
+                      <small>{row.groupName}</small>
+                    </div>
+                    <div className="workload-counters compact" aria-label={`Indicadores de ${row.name}`}>
+                      <Counter label="Ativos" value={row.active} tone="info" />
+                      <Counter label="Criticos" value={row.critical} tone={row.critical ? "danger" : "neutral"} />
+                      <Counter label="SLA" value={row.slaAttention} tone={row.slaAttention ? "warning" : "success"} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="workload-empty compact">
+                <UserCheck size={20} />
+                <div>
+                  <strong>Sem tecnicos atribuidos</strong>
+                  <span>Distribua chamados pela tela de tratamento para acompanhar carga individual.</span>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Counter({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <span className={`workload-counter ${tone}`}>
+      <strong>{value}</strong>
+      {label}
+    </span>
   );
 }
 
@@ -67,6 +193,67 @@ function MetricStrip({ metrics }: { metrics: Array<{ label: string; value: strin
         );
       })}
     </div>
+  );
+}
+
+function buildWorkloadModel(tickets: Ticket[]): WorkloadModel {
+  const activeTickets = tickets.filter(isActiveTicket);
+  const groups = new Map<string, GroupWorkloadRow>();
+  const assignees = new Map<string, AssigneeWorkloadRow>();
+
+  activeTickets.forEach((ticket) => {
+    const groupId = ticket.assignedGroupId ?? "unassigned-group";
+    const group = groups.get(groupId) ?? {
+      id: groupId,
+      name: ticket.assignedGroupName ?? "Sem grupo",
+      active: 0,
+      critical: 0,
+      slaAttention: 0,
+      lowConfidence: 0,
+      unassigned: 0
+    };
+
+    group.active += 1;
+    if (ticket.priority === "critical") group.critical += 1;
+    if (slaRisk(ticket) !== "ok") group.slaAttention += 1;
+    if ((ticket.ai.triage?.confidence ?? 0) < LOW_CONFIDENCE_THRESHOLD) group.lowConfidence += 1;
+    if (!ticket.assigneeId) group.unassigned += 1;
+    groups.set(groupId, group);
+
+    if (!ticket.assigneeId) return;
+
+    const assignee = assignees.get(ticket.assigneeId) ?? {
+      id: ticket.assigneeId,
+      name: ticket.assigneeName ?? "Tecnico sem nome",
+      groupName: ticket.assignedGroupName ?? "Sem grupo",
+      active: 0,
+      critical: 0,
+      slaAttention: 0
+    };
+    assignee.active += 1;
+    if (ticket.priority === "critical") assignee.critical += 1;
+    if (slaRisk(ticket) !== "ok") assignee.slaAttention += 1;
+    assignees.set(ticket.assigneeId, assignee);
+  });
+
+  return {
+    activeCount: activeTickets.length,
+    unassignedCount: activeTickets.filter((ticket) => !ticket.assigneeId).length,
+    groups: [...groups.values()].sort(sortWorkloadRows).slice(0, 6),
+    assignees: [...assignees.values()].sort(sortWorkloadRows).slice(0, 6)
+  };
+}
+
+function isActiveTicket(ticket: Ticket) {
+  return ticket.status !== "resolved" && ticket.status !== "closed";
+}
+
+function sortWorkloadRows<T extends { active: number; critical: number; slaAttention: number; name: string }>(left: T, right: T) {
+  return (
+    right.slaAttention - left.slaAttention ||
+    right.critical - left.critical ||
+    right.active - left.active ||
+    left.name.localeCompare(right.name)
   );
 }
 

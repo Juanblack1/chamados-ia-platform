@@ -7,15 +7,22 @@ import {
   prepareTicketAttachments,
   type TicketAttachmentStore
 } from "../../domain/attachmentStore.js";
-import { CreateTicketInputSchema, TicketStatusSchema, normalizeCreateTicketInput, type CreateTicketInput } from "../../domain/ticket.js";
+import {
+  CreateTicketInputSchema,
+  TicketAiFeedbackInputSchema,
+  TicketStatusSchema,
+  normalizeCreateTicketInput,
+  type CreateTicketInput
+} from "../../domain/ticket.js";
 import type { AgentOrchestrator } from "../../ai/agents/AgentOrchestrator.js";
 import { requireUser } from "../../security/authGuard.js";
-import { hasPermission } from "../../security/authStore.js";
+import { hasPermission, type AuthStore } from "../../security/authStore.js";
 
 export async function registerTicketRoutes(
   app: FastifyInstance,
   orchestrator: AgentOrchestrator,
-  attachmentStore: TicketAttachmentStore
+  attachmentStore: TicketAttachmentStore,
+  auth: AuthStore
 ): Promise<void> {
   app.get("/api/tickets", async (request) => orchestrator.listTicketsForUser(requireUser(request)));
 
@@ -108,7 +115,12 @@ export async function registerTicketRoutes(
     if (!parsed.success) return reply.code(400).send({ error: "validation_error", issues: parsed.error.issues });
 
     const user = requireUser(request);
-    const ticket = await orchestrator.assignTicket(request.params.id, user);
+    const assignee = parsed.data.assigneeId ? await auth.findUserById(parsed.data.assigneeId) : undefined;
+    if (parsed.data.assigneeId && !assignee) {
+      return reply.code(404).send({ error: "not_found", message: "Target assignee not found." });
+    }
+
+    const ticket = await orchestrator.assignTicket(request.params.id, user, assignee);
     if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found or not assignable." });
     return ticket;
   });
@@ -119,6 +131,29 @@ export async function registerTicketRoutes(
 
     const ticket = await orchestrator.updateStatus(request.params.id, requireUser(request), parsed.data.status);
     if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found or status transition not allowed." });
+    return ticket;
+  });
+
+  app.post<{ Params: { id: string } }>("/api/tickets/:id/approval", async (request, reply) => {
+    const parsed = z
+      .object({
+        decision: z.enum(["approved", "rejected"]),
+        note: z.string().trim().max(1000).optional()
+      })
+      .safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "validation_error", issues: parsed.error.issues });
+
+    const ticket = await orchestrator.decideApproval(request.params.id, requireUser(request), parsed.data.decision, parsed.data.note);
+    if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found, approval not pending, or approval not allowed." });
+    return ticket;
+  });
+
+  app.post<{ Params: { id: string } }>("/api/tickets/:id/ai-feedback", async (request, reply) => {
+    const parsed = TicketAiFeedbackInputSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "validation_error", issues: parsed.error.issues });
+
+    const ticket = await orchestrator.recordAiFeedback(request.params.id, requireUser(request), parsed.data);
+    if (!ticket) return reply.code(404).send({ error: "not_found", message: "Ticket not found, AI decision missing, or feedback not allowed." });
     return ticket;
   });
 

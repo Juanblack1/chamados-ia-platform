@@ -39,7 +39,7 @@ export function IntakeView({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const remainingAttachments = MAX_ATTACHMENTS - form.attachments.length;
-  const shouldBlockCreate = Boolean(assessment && !assessment.shouldCreate);
+  const shouldBlockCreate = !assessment?.shouldCreate;
   const canChooseRequester = canOpenTicketForOthers(user);
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
 
@@ -275,7 +275,7 @@ function IntakeIntelligencePanel({
           <AnalysisItem label="Prioridade local" value={priorityLabel(localPriority)} />
           <AnalysisItem label="SLA local" value={localPriority === "critical" ? "P1 - resposta em 15 min" : localPriority === "high" ? "P2 - resposta em 1 h" : "P3/P4 - fila padrao"} />
           <AnalysisItem label="Grupo local" value={estimatedGroup(form)} />
-          <AnalysisItem label="Controle" value="A analise IA orienta antes de criar o chamado" />
+          <AnalysisItem label="Controle" value="Analise IA pendente para liberar criacao" />
         </div>
       )}
     </section>

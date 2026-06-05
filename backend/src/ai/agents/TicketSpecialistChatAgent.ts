@@ -1,3 +1,4 @@
+import type { ToolsInput } from "@mastra/core/agent";
 import type { RagSource, Ticket, TicketAgentMemoryEntry } from "../../domain/ticket.js";
 import type { AppUser } from "../../security/authStore.js";
 import type { ModelGateway, ModelStreamEvent } from "../modelGateway.js";
@@ -19,7 +20,7 @@ export class TicketSpecialistChatAgent {
 
   constructor(
     private readonly llm: ModelGateway,
-    databaseTool?: unknown
+    databaseTool?: ToolsInput[string]
   ) {
     this.mastraAgent = createTicketSpecialistMastraAgent(databaseTool ? { queryServiceDeskDatabase: databaseTool } : undefined);
   }

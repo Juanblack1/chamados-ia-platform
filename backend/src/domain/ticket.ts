@@ -100,6 +100,21 @@ export type AgentDecision = {
   metadata?: Record<string, unknown>;
 };
 
+export const TicketAiFeedbackInputSchema = z.object({
+  decision: z.enum(["triage", "resolution_draft"]),
+  rating: z.enum(["useful", "needs_review", "incorrect"]),
+  note: z.string().trim().max(1000).optional()
+});
+
+export type TicketAiFeedbackInput = z.infer<typeof TicketAiFeedbackInputSchema>;
+
+export type TicketAiFeedback = TicketAiFeedbackInput & {
+  id: string;
+  actorId: string;
+  actorName: string;
+  createdAt: string;
+};
+
 export type TicketAgentMemoryEntry = {
   id: string;
   ticketId: string;
@@ -154,6 +169,10 @@ export type TicketApproval = {
   requesterId: string;
   requesterName: string;
   status: "not_required" | "requested" | "approved" | "rejected";
+  reason?: string;
+  decidedById?: string;
+  decidedByName?: string;
+  decisionNote?: string;
   createdAt: string;
   decidedAt?: string;
 };
@@ -208,6 +227,7 @@ export type Ticket = {
     resolutionDraft?: AgentDecision;
     retrievedSources: RagSource[];
     agentMemory?: TicketAgentMemoryEntry[];
+    feedback?: TicketAiFeedback[];
   };
   timeline: TimelineEvent[];
   followups: TicketFollowup[];

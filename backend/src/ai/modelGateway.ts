@@ -59,6 +59,14 @@ export class ModelGateway {
     return this.textModelTargets.map((target) => target.label);
   }
 
+  get routeLabel(): string {
+    return this.isConfigured ? this.modelCascade.join(" > ") : "local-fallback";
+  }
+
+  get executionMode(): "model-cascade" | "deterministic-fallback" {
+    return this.isConfigured ? "model-cascade" : "deterministic-fallback";
+  }
+
   async completeObject<T>(params: {
     system: string;
     user: string;

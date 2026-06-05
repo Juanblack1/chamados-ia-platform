@@ -1,6 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { buildSla, selectGroup } from "../../domain/serviceDeskCatalog.js";
-import type { CreateTicketInput, RagSource, Ticket, TicketAgentMemoryEntry, TicketFollowup, TicketStatus, TicketTask } from "../../domain/ticket.js";
+import type {
+  CreateTicketInput,
+  RagSource,
+  Ticket,
+  TicketAiFeedback,
+  TicketAiFeedbackInput,
+  TicketAgentMemoryEntry,
+  TicketApproval,
+  TicketFollowup,
+  TicketStatus,
+  TicketTask
+} from "../../domain/ticket.js";
 import { DomainEventBus } from "../../domain/events.js";
 import { canAccessTicket, canWorkTicket } from "../../domain/ticketAccess.js";
 import type { TicketStore } from "../../domain/ticketRepository.js";
@@ -280,11 +291,12 @@ export class AgentOrchestrator {
             () => Promise.resolve(buildTicketLearning(input, triage, routing, slaRisk, draft.response, sources))
           );
           const now = new Date().toISOString();
+          const approvals = buildInitialApprovals(slaRisk, now);
 
           const updated = await this.tickets.update(created.id, {
             category: triage.category,
             priority: triage.priority,
-            status: triage.priority === "critical" ? "escalated" : "open",
+            status: triage.priority === "critical" ? "escalated" : slaRisk.requiresHumanApproval ? "pending_approval" : "open",
             assignedGroupId: routing.groupId,
             assignedGroupName: routing.groupName,
             sla: buildSla(triage.priority, created.createdAt),
@@ -331,6 +343,8 @@ export class AgentOrchestrator {
                   routing,
                   slaRisk,
                   intakeQuality,
+                  modelRoute: this.triageAgent.modelRoute(),
+                  executionMode: this.triageAgent.executionMode(),
                   traceId
                 }
               },
@@ -342,6 +356,8 @@ export class AgentOrchestrator {
                 createdAt: now,
                 metadata: {
                   nextActions: draft.nextActions,
+                  modelRoute: this.resolutionAgent.modelRoute(),
+                  executionMode: this.resolutionAgent.executionMode(),
                   traceId
                 }
               }
@@ -377,7 +393,25 @@ export class AgentOrchestrator {
                 actor: "agent",
                 message: draft.response,
                 createdAt: now
-              }
+              },
+              ...approvals.map((approval) => ({
+                id: randomUUID(),
+                actor: "system" as const,
+                message: `Revisao humana solicitada: ${approval.reason ?? "validar decisao de IA antes do fechamento"}.`,
+                createdAt: now
+              }))
+            ],
+            approvals: [...created.approvals, ...approvals],
+            audit: [
+              ...created.audit,
+              ...approvals.map((approval) => ({
+                id: randomUUID(),
+                actorId: approval.requesterId,
+                actorName: approval.requesterName,
+                action: "approval.requested",
+                message: approval.reason ?? "Revisao humana solicitada.",
+                createdAt: now
+              }))
             ]
           });
 
@@ -397,6 +431,90 @@ export class AgentOrchestrator {
       });
       return created;
     }
+  }
+
+  async decideApproval(
+    id: string,
+    actor: AppUser,
+    decision: "approved" | "rejected",
+    note?: string
+  ): Promise<Ticket | undefined> {
+    const ticket = await this.findTicketForUser(id, actor);
+    if (!ticket || !canWorkTicket(ticket, actor)) return undefined;
+
+    const pending = ticket.approvals.filter((approval) => approval.status === "requested");
+    if (pending.length === 0) return undefined;
+
+    const now = new Date().toISOString();
+    const cleanNote = note?.trim();
+    const decisionLabel = decision === "approved" ? "aprovou" : "rejeitou";
+    const updatedApprovals: TicketApproval[] = ticket.approvals.map((approval) =>
+      approval.status === "requested"
+        ? {
+            ...approval,
+            status: decision,
+            decidedAt: now,
+            decidedById: actor.id,
+            decidedByName: actor.name,
+            decisionNote: cleanNote || undefined
+          }
+        : approval
+    );
+    const nextStatus: TicketStatus =
+      decision === "approved"
+        ? ticket.status === "pending_approval"
+          ? "in_progress"
+          : ticket.status
+        : "waiting_customer";
+    const noteSuffix = cleanNote ? ` Nota: ${cleanNote}` : "";
+
+    return this.tickets.update(id, {
+      approvals: updatedApprovals,
+      status: nextStatus,
+      timeline: [
+        ...ticket.timeline,
+        {
+          id: randomUUID(),
+          actor: "system",
+          message: `${actor.name} ${decisionLabel} a revisao humana.${noteSuffix}`,
+          createdAt: now
+        }
+      ],
+      audit: [...ticket.audit, buildAudit(actor, `approval.${decision}`, `${actor.name} ${decisionLabel} ${pending.length} aprovacao(oes).${noteSuffix}`, now)]
+    });
+  }
+
+  async recordAiFeedback(id: string, actor: AppUser, input: TicketAiFeedbackInput): Promise<Ticket | undefined> {
+    const ticket = await this.findTicketForUser(id, actor);
+    if (!ticket || !canWorkTicket(ticket, actor)) return undefined;
+    if (input.decision === "triage" && !ticket.ai.triage) return undefined;
+    if (input.decision === "resolution_draft" && !ticket.ai.resolutionDraft) return undefined;
+
+    const now = new Date().toISOString();
+    const cleanNote = input.note?.trim();
+    const feedback: TicketAiFeedback = {
+      id: randomUUID(),
+      decision: input.decision,
+      rating: input.rating,
+      note: cleanNote || undefined,
+      actorId: actor.id,
+      actorName: actor.name,
+      createdAt: now
+    };
+    const decisionLabel = input.decision === "triage" ? "triagem" : "rascunho de solucao";
+    const ratingLabel = aiFeedbackRatingLabel(input.rating);
+    const noteSuffix = cleanNote ? ` Nota: ${cleanNote}` : "";
+
+    return this.tickets.update(id, {
+      ai: {
+        ...ticket.ai,
+        feedback: [...(ticket.ai.feedback ?? []), feedback]
+      },
+      audit: [
+        ...ticket.audit,
+        buildAudit(actor, "ai.feedback_recorded", `${actor.name} registrou feedback ${ratingLabel} para ${decisionLabel}.${noteSuffix}`, now)
+      ]
+    });
   }
 
   async previewTriage(input: CreateTicketInput, traceLink: TraceLink = {}): Promise<TriagePreview> {
@@ -442,6 +560,7 @@ export class AgentOrchestrator {
     const ticket = await this.findTicketForUser(id, actor);
     if (!ticket || !canWorkTicket(ticket, actor)) return undefined;
     const target = assignee ?? actor;
+    if (!canAssignTicketToUser(ticket, target)) return undefined;
     const now = new Date().toISOString();
     return this.tickets.update(id, {
       assigneeId: target.id,
@@ -542,6 +661,7 @@ export class AgentOrchestrator {
   async resolveTicket(id: string, actor: AppUser, message: string): Promise<Ticket | undefined> {
     const ticket = await this.findTicketForUser(id, actor);
     if (!ticket || !canWorkTicket(ticket, actor)) return undefined;
+    if (hasPendingApproval(ticket)) return undefined;
     const now = new Date().toISOString();
     return this.tickets.update(id, {
       status: "resolved",
@@ -824,6 +944,32 @@ function assessSlaRisk(input: CreateTicketInput, triage: TriageResult, sources: 
   };
 }
 
+function buildInitialApprovals(slaRisk: SlaRiskDecision, createdAt: string): TicketApproval[] {
+  if (!slaRisk.requiresHumanApproval) return [];
+
+  return [
+    {
+      id: randomUUID(),
+      requesterId: "sla-risk",
+      requesterName: "SLA Risk Agent",
+      status: "requested",
+      reason: `Validar risco ${slaRiskLabel(slaRisk.risk)} antes de publicar solucao ou encerramento.`,
+      createdAt
+    }
+  ];
+}
+
+function hasPendingApproval(ticket: Ticket): boolean {
+  return ticket.approvals.some((approval) => approval.status === "requested");
+}
+
+function canAssignTicketToUser(ticket: Ticket, target: AppUser): boolean {
+  if (!target.active || !hasPermission(target, "tickets.work")) return false;
+  if (target.entityId !== ticket.entityId) return false;
+  if (!ticket.assignedGroupId) return true;
+  return target.groupIds.includes(ticket.assignedGroupId);
+}
+
 function buildTicketLearning(
   input: CreateTicketInput,
   triage: TriageResult,
@@ -869,6 +1015,12 @@ function slaRiskLabel(risk: SlaRiskDecision["risk"]): string {
   if (risk === "escalate") return "de escalacao";
   if (risk === "watch") return "em observacao";
   return "normal";
+}
+
+function aiFeedbackRatingLabel(rating: TicketAiFeedbackInput["rating"]): string {
+  if (rating === "useful") return "util";
+  if (rating === "needs_review") return "para revisao";
+  return "incorreto";
 }
 
 function buildAudit(actor: AppUser, action: string, message: string, createdAt: string) {

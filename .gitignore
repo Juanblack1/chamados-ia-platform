@@ -8,5 +8,6 @@ coverage/
 .DS_Store
 .vite/
 .vercel/
+.mastra/
 
 .vercel

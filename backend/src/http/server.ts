@@ -52,8 +52,8 @@ export async function buildServer(env: AppEnv) {
   registerAccessGuard(app, env, auth);
   await registerHealthRoutes(app, llm, tickets.kind);
   await registerAuthRoutes(app, env, auth);
-  await registerTicketRoutes(app, orchestrator, attachmentStore);
-  await registerAgentRoutes(app, orchestrator, traces, auth);
+  await registerTicketRoutes(app, orchestrator, attachmentStore, auth);
+  await registerAgentRoutes(app, orchestrator, traces, auth, env);
   await registerCopilotKitRoutes(app, orchestrator, llm, traces);
 
   return app;

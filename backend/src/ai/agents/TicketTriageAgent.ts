@@ -24,6 +24,14 @@ export class TicketTriageAgent {
 
   constructor(private readonly llm: ModelGateway) {}
 
+  modelRoute(): string {
+    return this.llm.routeLabel;
+  }
+
+  executionMode(): "model-cascade" | "deterministic-fallback" {
+    return this.llm.executionMode;
+  }
+
   async run(input: CreateTicketInput, sources: RagSource[]): Promise<TriageResult> {
     const rendered = await this.prompt.format({
       ticket: JSON.stringify(summarizeTicketInputForLlm(input), null, 2),
